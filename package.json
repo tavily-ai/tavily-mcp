@@ -2,7 +2,6 @@
   "name": "tavily-mcp",
   "version": "0.1.0",
   "description": "MCP server for advanced web search using Tavily",
-  "private": true,
   "type": "module",
   "bin": {
     "tavily-mcp": "./build/index.js"
@@ -17,6 +16,15 @@
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
     "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "tavily",
+    "mcp",
+    "websearch-mcp",
+    "websearch",
+    "search"
+  ],
+  "author": "Tavily",
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "0.6.0",
     "dotenv": "^16.4.5",
