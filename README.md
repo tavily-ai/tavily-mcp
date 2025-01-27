@@ -1,13 +1,13 @@
 # Tavily MCP Server 🚀
 
-INCLUDE A EMBEDED VIDEO DEMO
+![Tavily MCP Demo](./assets/mcp-demo.gif)
 
 The Model Context Protocol (MCP) is an open standard that enables AI systems to interact seamlessly with various data sources and tools, facilitating secure, two-way connections.
 
 Developed by Anthropic, the Model Context Protocol (MCP) enables AI assistants like Claude to seamlessly integrate with Tavily's advanced search and data extraction capabilities. This integration provides AI models with real-time access to web information, complete with sophisticated filtering options and domain-specific search features.
 
 The Tavily MCP server provides:
-- Seamless interation with the tavily-search and tavily-extract tools
+- Seamless interaction with the tavily-search and tavily-extract tools
 - Real-time web search capabilities through the tavily-search tool
 - Intelligent data extraction from web pages via the tavily-extract tool
 
@@ -47,13 +47,13 @@ Although you can launch a server on its own, it's not particularly helpful in is
 
 ```bash
 # Create the config file if it doesn't exist
-touch ~/Library/Application\ Support/Claude/claude_desktop_config.json
+touch "$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 
-# Opens the config file in Visual Studio Code (requires VS Code to be installed)
-code ~/Library/Application\ Support/Claude/claude_desktop_config.json
+# Opens the config file in TextEdit 
+open -e "$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 
-# Alternative methods if VS Code is not installed:
-open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json  # Opens with TextEdit
+# Alternative method using Visual Studio Code (requires VS Code to be installed)
+code "$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 ```
 
 ### For Windows:
@@ -119,7 +119,7 @@ Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com
 
 Once the installation is complete, and the Claude desktop app is configured, you must completely close and re-open the Claude desktop app to see the tavily-mcp server. You should see a hammer icon in the bottom left of the app, indicating available MCP tools, you can click on the hammer icon to see more detial on the tavily-search and tavily-extract tools.
 
-![Alt text](/tavily-mcp/imgs/claude-desktop-ref.png)
+![Alt text](./assets/claude-desktop-ref.png)
 
 Now claude will have complete access to the tavily-mcp server, including the tavily-search and tavily-extract tools. If you insert the below examples into the Claude desktop app, you should see the tavily-mcp server tools in action.
 
