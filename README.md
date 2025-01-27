@@ -7,7 +7,7 @@ The Model Context Protocol (MCP) is an open standard that enables AI systems to 
 Developed by Anthropic, the Model Context Protocol (MCP) enables AI assistants like Claude to seamlessly integrate with Tavily's advanced search and data extraction capabilities. This integration provides AI models with real-time access to web information, complete with sophisticated filtering options and domain-specific search features.
 
 The Tavily MCP server provides:
-- Seamless interation with the tavily-search and tavily-extract tools
+- Seamless interaction with the tavily-search and tavily-extract tools
 - Real-time web search capabilities through the tavily-search tool
 - Intelligent data extraction from web pages via the tavily-extract tool
 
@@ -47,13 +47,13 @@ Although you can launch a server on its own, it's not particularly helpful in is
 
 ```bash
 # Create the config file if it doesn't exist
-touch ~/Library/Application\ Support/Claude/claude_desktop_config.json
+touch "$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 
-# Opens the config file in Visual Studio Code (requires VS Code to be installed)
-code ~/Library/Application\ Support/Claude/claude_desktop_config.json
+# Opens the config file in TextEdit 
+open -e "$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 
-# Alternative methods if VS Code is not installed:
-open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json  # Opens with TextEdit
+# Alternative method using Visual Studio Code (requires VS Code to be installed)
+code "$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 ```
 
 ### For Windows:
