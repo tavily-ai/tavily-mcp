@@ -1,6 +1,6 @@
 # Tavily MCP Server 🚀
 
-INCLUDE A EMBEDED VIDEO DEMO
+![Tavily MCP Demo](./assets/mcp-demo.gif)
 
 The Model Context Protocol (MCP) is an open standard that enables AI systems to interact seamlessly with various data sources and tools, facilitating secure, two-way connections.
 
@@ -119,7 +119,7 @@ Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com
 
 Once the installation is complete, and the Claude desktop app is configured, you must completely close and re-open the Claude desktop app to see the tavily-mcp server. You should see a hammer icon in the bottom left of the app, indicating available MCP tools, you can click on the hammer icon to see more detial on the tavily-search and tavily-extract tools.
 
-![Alt text](/tavily-mcp/imgs/claude-desktop-ref.png)
+![Alt text](./assets/claude-desktop-ref.png)
 
 Now claude will have complete access to the tavily-mcp server, including the tavily-search and tavily-extract tools. If you insert the below examples into the Claude desktop app, you should see the tavily-mcp server tools in action.
 
