@@ -12,7 +12,7 @@ The Tavily MCP server provides:
 - Intelligent data extraction from web pages via the tavily-extract tool
 
 
-## Usage 🔧
+## Prerequisites 🔧
 
 Before you begin, ensure you have:
 
@@ -21,19 +21,58 @@ Before you begin, ensure you have:
 - [Node.js](https://nodejs.org/) (v20 or higher)
   - You can verify your Node.js installation by running:
     - `node --version`
-- [Git](https://git-scm.com/downloads) installed
+- [Git](https://git-scm.com/downloads) installed (only needed if using Git installation method)
   - On macOS: `brew install git`
   - On Linux: 
     - Debian/Ubuntu: `sudo apt install git`
     - RedHat/CentOS: `sudo yum install git`
   - On Windows: Download [Git for Windows](https://git-scm.com/download/win)
 
-### Tavily MCP server installation 🔨
+## Tavily MCP server installation ⚡
 
-### NPM Installation
+### Running with NPX 
 
 ```bash
-npm install -g tavily-mcp
+npx -y tavily-mcp@0.1.2    
+```
+
+Although you can launch a server on its own, it's not particularly helpful in isolation. Instead, you should integrate it into an MCP client. Below is an example of how to configure the Claude Desktop app to work with the tavily-mcp server.
+
+### Configuring the Claude Desktop app ⚙️
+### For macOS:
+
+```bash
+# Create the config file if it doesn't exist
+touch ~/Library/Application\ Support/Claude/claude_desktop_config.json
+
+# Opens the config file in Visual Studio Code (requires VS Code to be installed)
+code ~/Library/Application\ Support/Claude/claude_desktop_config.json
+
+# Alternative methods if VS Code is not installed:
+open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json  # Opens with TextEdit
+```
+
+### For Windows:
+```bash
+code %APPDATA%\Claude\claude_desktop_config.json
+```
+
+### Add the Tavily server configuration:
+
+Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com/api-keys).
+
+```json
+{
+  "mcpServers": {
+    "tavily-mcp": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@0.1.2"],
+      "env": {
+        "TAVILY_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
 ```
 
 ### Git Installation
@@ -53,24 +92,10 @@ npm install
 ```bash
 npm run build
 ```
+### Configuring the Claude Desktop app ⚙️
+Follow the configuration steps outlined in the [Configuring the Claude Desktop app](#configuring-the-claude-desktop-app-️) section above, using the below JSON configuration.
 
-## Configuration ⚙️
-
-### 1. Configure Claude Desktop
-
-Enable Developer Mode in Claude Desktop and open the configuration file:
-
-#### For macOS:
-```bash
-code ~/Library/Application\ Support/Claude/claude_desktop_config.json
-```
-
-#### For Windows:
-```bash
-code %APPDATA%\Claude\claude_desktop_config.json
-```
-
-### 2. Add the Tavily server configuration:
+Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com/api-keys) and `/path/to/tavily-mcp` with the actual path where you cloned the repository on your system.
 
 ```json
 {
@@ -86,11 +111,15 @@ code %APPDATA%\Claude\claude_desktop_config.json
 }
 ```
 
-Replace `your-api-key-here` with your actual Tavily API key.
+## Usage in Claude Desktop App 🎯
 
-## Usage 🎯
+Once the installation is complete, and the Claude desktop app is configured, you must completely close and re-open the Claude desktop app to see the tavily-mcp server. You should see a hammer icon in the bottom left of the app, indicating available MCP tools, you can click on the hammer icon to see more detial on the tavily-search and tavily-extract tools.
 
-The server provides three main search tools:
+![Alt text](/tavily-mcp/imgs/claude-desktop-ref.png)
+
+Now claude will have complete access to the tavily-mcp server, including the tavily-search and tavily-extract tools. If you insert the below examples into the Claude desktop app, you should see the tavily-mcp server tools in action.
+
+### Tavily Search Examples
 
 1. **General Web Search**:
 ```
@@ -107,52 +136,40 @@ Search for news articles about AI startups from the last 7 days.
 Search for climate change research on nature.com and sciencedirect.com
 ```
 
-## Features ✨
+### Tavily Extract Examples 
 
-- **Multiple Search Types**: General web search, news search, and answer generation
-- **Domain Filtering**: Include or exclude specific websites from search results
-- **Time-Based Filtering**: Filter news by recency
-- **Error Handling**: Graceful handling of API errors and rate limits
-- **Type Safety**: Full TypeScript implementation with proper type checking
-
-## Development
-
-Install dependencies:
-```bash
-npm install
+1. **Extract Article Content**:
+```
+Extract the main content from this article: https://example.com/article
 ```
 
-Build the server:
-```bash
-npm run build
+### ✨ Combine Search and Extract ✨
+
+You can also combine the tavily-search and tavily-extract tools to perform more complex tasks.
+
+```
+Search for news articles about AI startups from the last 7 days and extract the main content from each article to generate a detailed report.
 ```
 
-For development with auto-rebuild:
-```bash
-npm run watch
-```
-
-## Troubleshooting 🔧
+## Troubleshooting 🛠️
 
 ### Common Issues
 
 1. **Server Not Found**
-   - Verify the npm installation
-   - Check Claude Desktop configuration syntax
-   - Ensure Node.js is properly installed
+   - Verify the npm installation by running `npm --verison`
+   - Check Claude Desktop configuration syntax by running `code ~/Library/Application\ Support/Claude/claude_desktop_config.json`
+   - Ensure Node.js is properly installed by running `node --version`
+   
+2. **NPX related issues**
+  - If you encounter errors related to `npx`, you may need to use the full path to the npx executable instead. 
+  - You can find this path by running `which npx` in your terminal, then replace the `"command":  "npx"` line with `"command": "/full/path/to/npx"` in your configuration.
 
-2. **API Key Issues**
+3. **API Key Issues**
    - Confirm your Tavily API key is valid
    - Check the API key is correctly set in the config
    - Verify no spaces or quotes around the API key
 
-3. **Debugging**
-   - Use the MCP Inspector for detailed debugging:
-   ```bash
-   npm run inspector
-   ```
-
-## Acknowledgments 🙏
+## Acknowledgments ✨
 
 - [Tavily](https://tavily.com) for their powerful search API
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
