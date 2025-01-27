@@ -30,7 +30,11 @@ Before you begin, ensure you have:
 
 ## Tavily MCP server installation ⚡
 
-### Running with NPX 
+To install the tavily-mcp server, you can use the following methods:
+1. Running with NPX 
+2. Git installation
+
+### 1. Running with NPX 
 
 ```bash
 npx -y tavily-mcp@0.1.2    
@@ -75,11 +79,11 @@ Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com
 }
 ```
 
-### Git Installation
+### 2. Git Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/tavily/tavily-mcp.git
+git clone https://github.com/tavily-ai/tavily-mcp.git
 cd tavily-mcp
 ```
 
