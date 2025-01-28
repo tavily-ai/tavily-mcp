@@ -16,7 +16,8 @@ The Tavily MCP server provides:
 
 Before you begin, ensure you have:
 
-- [Tavily API key](https://tavily.com/api-keys)
+- [Tavily API key](https://app.tavily.com/home)
+  - If you don't have a Tavily API key, you can sign up for a free account [here](https://app.tavily.com/home)
 - [Claude Desktop](https://claude.ai/download)
 - [Node.js](https://nodejs.org/) (v20 or higher)
   - You can verify your Node.js installation by running:
