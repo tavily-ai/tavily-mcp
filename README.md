@@ -11,6 +11,7 @@ The Tavily MCP server provides:
 - Real-time web search capabilities through the tavily-search tool
 - Intelligent data extraction from web pages via the tavily-extract tool
 
+<a href="https://glama.ai/mcp/servers/jog9una8ox"><img width="380" height="200" src="https://glama.ai/mcp/servers/jog9una8ox/badge" alt="Tavily Server MCP server" /></a>
 
 ## Prerequisites 🔧
 
