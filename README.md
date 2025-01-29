@@ -1,5 +1,8 @@
 # Tavily MCP Server 🚀
 
+![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
+![npm](https://img.shields.io/npm/dt/tavily-mcp)
+
 ![Tavily MCP Demo](./assets/mcp-demo.gif)
 
 The Model Context Protocol (MCP) is an open standard that enables AI systems to interact seamlessly with various data sources and tools, facilitating secure, two-way connections.
