@@ -179,7 +179,6 @@ Search for news articles about AI startups from the last 7 days and extract the 
 
 ## Acknowledgments ✨
 
-- [Tavily](https://tavily.com) for their powerful search API
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
 - [Anthropic](https://anthropic.com) for Claude Desktop
 
