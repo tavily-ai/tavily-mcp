@@ -2,6 +2,7 @@
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
+[![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)](https://smithery.ai/server/@tavily-ai/tavily-mcp)
 
 ![Tavily MCP Demo](./assets/mcp-demo.gif)
 
@@ -37,6 +38,14 @@ Before you begin, ensure you have:
 To install the tavily-mcp server, you can use the following methods:
 1. Running with NPX 
 2. Git installation
+
+### Installing via Smithery
+
+To install Tavily MCP Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@tavily-ai/tavily-mcp):
+
+```bash
+npx -y @smithery/cli install @tavily-ai/tavily-mcp --client claude
+```
 
 ### 1. Running with NPX 
 
