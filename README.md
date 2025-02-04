@@ -3,6 +3,13 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 
+> 🔌 **Compatible with both [Cursor](https://cursor.sh) and [Claude Desktop](https://claude.ai/desktop)!**
+>
+> Tavily MCP is also compatible with any MCP client
+>
+> 📚 **Check out our [tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server!**
+
+
 ![Tavily MCP Demo](./assets/mcp-demo.gif)
 
 The Model Context Protocol (MCP) is an open standard that enables AI systems to interact seamlessly with various data sources and tools, facilitating secure, two-way connections.
@@ -21,7 +28,7 @@ Before you begin, ensure you have:
 
 - [Tavily API key](https://app.tavily.com/home)
   - If you don't have a Tavily API key, you can sign up for a free account [here](https://app.tavily.com/home)
-- [Claude Desktop](https://claude.ai/download)
+- [Claude Desktop](https://claude.ai/download) or [Cursor](https://cursor.sh)
 - [Node.js](https://nodejs.org/) (v20 or higher)
   - You can verify your Node.js installation by running:
     - `node --version`
@@ -41,12 +48,41 @@ To install the tavily-mcp server, you can use the following methods:
 ### 1. Running with NPX 
 
 ```bash
-npx -y tavily-mcp@0.1.2    
+npx -y tavily-mcp@0.1.3  
 ```
 
 Although you can launch a server on its own, it's not particularly helpful in isolation. Instead, you should integrate it into an MCP client. Below is an example of how to configure the Claude Desktop app to work with the tavily-mcp server.
 
-### Configuring the Claude Desktop app ⚙️
+
+## Configuring MCP Clients ⚙️
+
+This repository will explain how to configure both [Cursor](https://cursor.sh) and [Claude Desktop](https://claude.ai/desktop) to work with the tavily-mcp server.
+
+### Configuring Cursor 🖥️
+
+> **Note**: Requires Cursor version 0.45.6 or higher
+
+To set up the Tavily MCP server in Cursor:
+
+1. Open Cursor Settings
+2. Navigate to Features > MCP Servers
+3. Click on the "+ Add New MCP Server" button
+4. Fill out the following information:
+   - **Name**: Enter a nickname for the server (e.g., "tavily-mcp")
+   - **Type**: Select "command" as the type
+   - **Command**: Enter the command to run the server:
+     ```bash
+     env TAVILY_API_KEY=your-api-key npx -y tavily-mcp@0.1.3
+     ```
+     > **Important**: Replace `your-api-key` with your Tavily API key. You can get one at [app.tavily.com/home](https://app.tavily.com/home)
+
+After adding the server, it should appear in the list of MCP servers. You may need to manually press the refresh button in the top right corner of the MCP server to populate the tool list.
+
+The Composer Agent will automatically use the Tavily MCP tools when relevant to your queries. It is better to explicitly request to use the tools by describing what you want to do (e.g., "User tavily-search to search the web for the latest news on AI"). On mac press command + L to open the chat, select the composer option at the top of the screen, beside the submit button select agent and submit the query when ready.
+
+![Cursor Interface Example](./assets/cursor-reference.png)
+
+### Configuring the Claude Desktop app 🖥️
 ### For macOS:
 
 ```bash
