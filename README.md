@@ -5,7 +5,10 @@
 
 > 🔌 **Compatible with both [Cursor](https://cursor.sh) and [Claude Desktop](https://claude.ai/desktop)!**
 >
-> Tavily MCP is also compatible with any MCP clinet
+> Tavily MCP is also compatible with any MCP client
+>
+> 📚 **Check out our [tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server!**
+
 
 ![Tavily MCP Demo](./assets/mcp-demo.gif)
 
