@@ -16,8 +16,7 @@ if (!API_KEY) {
 
 
 interface TavilyResponse {
-  // Response structure from Tavily API
-  query: string;
+  query?: string;  // Made optional since extract endpoint doesn't return query
   follow_up_questions?: Array<string>;
   answer?: string;
   images?: Array<string | {
@@ -37,7 +36,7 @@ interface TavilyResponse {
 class TavilyClient {
   // Core client properties
   private server: Server;
-  private axiosInstance;
+  private axiosInstance: ReturnType<typeof axios.create>;
   private baseURLs = {
     search: 'https://api.tavily.com/search',
     extract: 'https://api.tavily.com/extract'
@@ -201,20 +200,20 @@ class TavilyClient {
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
         let response: TavilyResponse;
-        const args = request.params.arguments ?? {};
+        const args = request.params.arguments as Record<string, unknown> ?? {};
 
         switch (request.params.name) {
           case "tavily-search":
             response = await this.search({
-              query: args.query,
-              search_depth: args.search_depth,
-              topic: args.topic,
-              days: args.days,
-              time_range: args.time_range,
-              max_results: args.max_results,
-              include_images: args.include_images,
-              include_image_descriptions: args.include_image_descriptions,
-              include_raw_content: args.include_raw_content,
+              query: args.query as string,
+              search_depth: args.search_depth as 'basic' | 'advanced' | undefined,
+              topic: args.topic as 'general' | 'news' | undefined,
+              days: args.days as number | undefined,
+              time_range: args.time_range as 'day' | 'week' | 'month' | 'year' | 'd' | 'w' | 'm' | 'y' | undefined,
+              max_results: args.max_results as number | undefined,
+              include_images: args.include_images as boolean | undefined,
+              include_image_descriptions: args.include_image_descriptions as boolean | undefined,
+              include_raw_content: args.include_raw_content as boolean | undefined,
               include_domains: Array.isArray(args.include_domains) ? args.include_domains : [],
               exclude_domains: Array.isArray(args.exclude_domains) ? args.exclude_domains : []
             });
@@ -222,9 +221,9 @@ class TavilyClient {
           
           case "tavily-extract":
             response = await this.extract({
-              urls: args.urls,
-              extract_depth: args.extract_depth,
-              include_images: args.include_images
+              urls: args.urls as string[],
+              extract_depth: args.extract_depth as 'basic' | 'advanced' | undefined,
+              include_images: args.include_images as boolean | undefined
             });
             break;
 
@@ -263,10 +262,22 @@ class TavilyClient {
     console.error("Tavily MCP server running on stdio");
   }
 
-  async search(params: any): Promise<TavilyResponse> {
+  async search(params: {
+    query: string;
+    search_depth?: 'basic' | 'advanced';
+    topic?: 'general' | 'news';
+    days?: number;
+    time_range?: 'day' | 'week' | 'month' | 'year' | 'd' | 'w' | 'm' | 'y';
+    max_results?: number;
+    include_images?: boolean;
+    include_image_descriptions?: boolean;
+    include_raw_content?: boolean;
+    include_domains?: string[];
+    exclude_domains?: string[];
+  }): Promise<TavilyResponse> {
     try {
-      // Choose endpoint based on whether it's an extract request
-      const endpoint = params.url ? this.baseURLs.extract : this.baseURLs.search;
+      // Always use search endpoint for search requests
+      const endpoint = this.baseURLs.search;
       
       // Add topic: "news" if query contains the word "news"
       const searchParams = {
@@ -287,7 +298,11 @@ class TavilyClient {
     }
   }
 
-  async extract(params: any): Promise<TavilyResponse> {
+  async extract(params: {
+    urls: string[];
+    extract_depth?: 'basic' | 'advanced';
+    include_images?: boolean;
+  }): Promise<TavilyResponse> {
     try {
       const response = await this.axiosInstance.post(this.baseURLs.extract, {
         ...params,
