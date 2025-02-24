@@ -44,6 +44,7 @@ Before you begin, ensure you have:
 To install the tavily-mcp server, you can use the following methods:
 1. Running with NPX 
 2. Git installation
+3. Running with Docker
 
 ### 1. Running with NPX 
 
@@ -151,6 +152,45 @@ Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com
         "TAVILY_API_KEY": "your-api-key-here"
       }
     }
+  }
+}
+```
+
+### 3. Running with Docker
+
+1. Clone the repository:
+```bash
+git clone https://github.com/tavily-ai/tavily-mcp.git
+cd tavily-mcp
+```
+
+2. Build Docker image:
+```bash
+docker build -t tavily-mcp .
+```
+
+### Configuring the Claude Desktop app ⚙️
+Follow the configuration steps outlined in the [Configuring the Claude Desktop app](#configuring-the-claude-desktop-app-️) section above, using the below JSON configuration.
+
+Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com/api-keys).
+
+```json
+{
+  "mcpServers": {
+    "tavily-search": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "TAVILY_API_KEY",
+        "tavily-mcp"
+      ],
+      "env": {
+        "TAVILY_API_KEY": "your-api-key-here"
+      }
+    },
   }
 }
 ```
