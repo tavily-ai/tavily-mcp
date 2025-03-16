@@ -58,6 +58,60 @@ Although you can launch a server on its own, it's not particularly helpful in is
 
 This repository will explain how to configure both [Cursor](https://cursor.sh) and [Claude Desktop](https://claude.ai/desktop) to work with the tavily-mcp server.
 
+
+### Configuring Cline 🤖
+
+The easiest way to set up the Tavily MCP server in Cline is through the marketplace with a single click:
+
+1. Open Cline in VS Code
+2. Click on the Cline icon in the sidebar
+3. Navigate to the "MCP Servers" tab ( 4 squares )
+4. Search "Tavily" and click "install"
+5. When prompted, enter your Tavily API key
+
+Alternatively, you can manually set up the Tavily MCP server in Cline:
+
+1. Open the Cline MCP settings file:
+
+   ### For macOS:
+   ```bash
+   # Using Visual Studio Code
+   code ~/Library/Application\ Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json
+   
+   # Or using TextEdit
+   open -e ~/Library/Application\ Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json
+   ```
+
+   ### For Windows:
+   ```bash
+   code %APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json
+   ```
+
+2. Add the Tavily server configuration to the file:
+
+   Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com/api-keys).
+
+   ```json
+   {
+     "mcpServers": {
+       "tavily-mcp": {
+         "command": "npx",
+         "args": ["-y", "tavily-mcp@0.1.3"],
+         "env": {
+           "TAVILY_API_KEY": "your-api-key-here"
+         },
+         "disabled": false,
+         "autoApprove": []
+       }
+     }
+   }
+   ```
+
+3. Save the file and restart Cline if it's already running.
+
+4. When using Cline, you'll now have access to the Tavily MCP tools. You can ask Cline to use the tavily-search and tavily-extract tools directly in your conversations.
+
+
 ### Configuring Cursor 🖥️
 
 > **Note**: Requires Cursor version 0.45.6 or higher
@@ -217,4 +271,3 @@ Search for news articles about AI startups from the last 7 days and extract the 
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
 - [Anthropic](https://anthropic.com) for Claude Desktop
-
