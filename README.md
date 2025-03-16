@@ -65,8 +65,9 @@ The easiest way to set up the Tavily MCP server in Cline is through the marketpl
 
 1. Open Cline in VS Code
 2. Click on the Cline icon in the sidebar
-3. Navigate to the "Marketplace" tab
-4. Find and click on "Tavily MCP" to install it with one click
+3. Navigate to the "MCP Servers" tab ( 4 squares )
+4. Search "Tavily" and click "install"
+5. When prompted, enter your Tavily API key
 
 Alternatively, you can manually set up the Tavily MCP server in Cline:
 
