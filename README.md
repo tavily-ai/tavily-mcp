@@ -3,12 +3,14 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 
-> 🔌 **Compatible with both [Cursor](https://cursor.sh) and [Claude Desktop](https://claude.ai/desktop)!**
+> 🔌 **Compatible with [Cline](https://github.com/cline/cline), [Cursor](https://cursor.sh), [Claude Desktop](https://claude.ai/desktop), and any other MCP Clients!**
 >
 > Tavily MCP is also compatible with any MCP client
 >
-> 📚 **Check out our [tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server!**
-
+> 📚  [tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server!
+> 
+> 📚  [tutorial](https://medium.com/@dustin_36183/connect-your-coding-assistant-to-the-web-integrating-tavily-mcp-with-cline-in-vs-code-5f923a4983d1) Integrating Tavily MCP with Cline in VS Code ( Demo + Example Use-Cases)
+>
 
 ![Tavily MCP Demo](./assets/mcp-demo.gif)
 
