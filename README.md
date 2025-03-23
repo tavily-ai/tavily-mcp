@@ -2,6 +2,7 @@
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
+![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
 
 > 🔌 **Compatible with [Cline](https://github.com/cline/cline), [Cursor](https://cursor.sh), [Claude Desktop](https://claude.ai/desktop), and any other MCP Clients!**
 >
@@ -43,14 +44,18 @@ Before you begin, ensure you have:
 
 ## Tavily MCP server installation ⚡
 
-To install the tavily-mcp server, you can use the following methods:
-1. Running with NPX 
-2. Git installation
-
-### 1. Running with NPX 
+### Running with NPX 
 
 ```bash
 npx -y tavily-mcp@0.1.4  
+```
+
+### Installing via Smithery
+
+To install Tavily MCP Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@tavily-ai/tavily-mcp):
+
+```bash
+npx -y @smithery/cli install @tavily-ai/tavily-mcp --client claude
 ```
 
 Although you can launch a server on its own, it's not particularly helpful in isolation. Instead, you should integrate it into an MCP client. Below is an example of how to configure the Claude Desktop app to work with the tavily-mcp server.
