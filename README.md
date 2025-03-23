@@ -50,7 +50,7 @@ To install the tavily-mcp server, you can use the following methods:
 ### 1. Running with NPX 
 
 ```bash
-npx -y tavily-mcp@0.1.3  
+npx -y tavily-mcp@0.1.4  
 ```
 
 Although you can launch a server on its own, it's not particularly helpful in isolation. Instead, you should integrate it into an MCP client. Below is an example of how to configure the Claude Desktop app to work with the tavily-mcp server.
@@ -98,7 +98,7 @@ Alternatively, you can manually set up the Tavily MCP server in Cline:
      "mcpServers": {
        "tavily-mcp": {
          "command": "npx",
-         "args": ["-y", "tavily-mcp@0.1.3"],
+         "args": ["-y", "tavily-mcp@0.1.4"],
          "env": {
            "TAVILY_API_KEY": "your-api-key-here"
          },
@@ -128,7 +128,7 @@ To set up the Tavily MCP server in Cursor:
    - **Type**: Select "command" as the type
    - **Command**: Enter the command to run the server:
      ```bash
-     env TAVILY_API_KEY=your-api-key npx -y tavily-mcp@0.1.3
+     env TAVILY_API_KEY=your-api-key npx -y tavily-mcp@0.1.4
      ```
      > **Important**: Replace `your-api-key` with your Tavily API key. You can get one at [app.tavily.com/home](https://app.tavily.com/home)
 
