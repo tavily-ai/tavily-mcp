@@ -49,7 +49,7 @@ Before you begin, ensure you have:
 ### Running with NPX 
 
 ```bash
-npx -y tavily-mcp@0.1.4  
+npx -y tavily-mcp@0.2.0  
 ```
 
 ### Installing via Smithery
@@ -105,7 +105,7 @@ Alternatively, you can manually set up the Tavily MCP server in Cline:
      "mcpServers": {
        "tavily-mcp": {
          "command": "npx",
-         "args": ["-y", "tavily-mcp@0.1.4"],
+         "args": ["-y", "tavily-mcp@0.2.0"],
          "env": {
            "TAVILY_API_KEY": "your-api-key-here"
          },
@@ -135,7 +135,7 @@ To set up the Tavily MCP server in Cursor:
    - **Type**: Select "command" as the type
    - **Command**: Enter the command to run the server:
      ```bash
-     env TAVILY_API_KEY=your-api-key npx -y tavily-mcp@0.1.4
+     env TAVILY_API_KEY=your-api-key npx -y tavily-mcp@0.2.0
      ```
      > **Important**: Replace `your-api-key` with your Tavily API key. You can get one at [app.tavily.com/home](https://app.tavily.com/home)
 
@@ -173,7 +173,7 @@ Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com
   "mcpServers": {
     "tavily-mcp": {
       "command": "npx",
-      "args": ["-y", "tavily-mcp@0.1.2"],
+      "args": ["-y", "tavily-mcp@0.2.0"],
       "env": {
         "TAVILY_API_KEY": "your-api-key-here"
       }
