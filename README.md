@@ -5,7 +5,7 @@
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 ![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
 
- ## 🎉 **Introducing [tavily-crawl]((https://docs.tavily.com/documentation/api-reference/endpoint/crawl)) + [tavily-map](https://docs.tavily.com/documentation/api-reference/endpoint/map) in v0.2.0!** 🎉
+ ## 🎉 **Introducing [tavily-crawl](https://docs.tavily.com/documentation/api-reference/endpoint/crawl) + [tavily-map](https://docs.tavily.com/documentation/api-reference/endpoint/map) in v0.2.0!** 🎉
 
 
 ![MCP demo](./assets/mcp_demo_2.gif)
