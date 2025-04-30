@@ -1,29 +1,31 @@
-# Tavily MCP Server 🚀
+# ![Tavily Crawl Beta](./assets/Banner_NEW.png)
+
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 ![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
 
-> 🔌 **Compatible with [Cline](https://github.com/cline/cline), [Cursor](https://cursor.sh), [Claude Desktop](https://claude.ai/desktop), and any other MCP Clients!**
->
-> Tavily MCP is also compatible with any MCP client
->
-> 📚  [tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server!
-> 
-> 📚  [tutorial](https://medium.com/@dustin_36183/connect-your-coding-assistant-to-the-web-integrating-tavily-mcp-with-cline-in-vs-code-5f923a4983d1) Integrating Tavily MCP with Cline in VS Code ( Demo + Example Use-Cases)
->
+ ## 🎉 **Introducing [tavily-crawl]((https://docs.tavily.com/documentation/api-reference/endpoint/crawl)) + [tavily-map](https://docs.tavily.com/documentation/api-reference/endpoint/map) in v0.2.0!** 🎉
 
-![Tavily MCP Demo](./assets/mcp-demo.gif)
+
+![MCP demo](./assets/mcp_demo_2.gif)
 
 The Model Context Protocol (MCP) is an open standard that enables AI systems to interact seamlessly with various data sources and tools, facilitating secure, two-way connections.
 
 Developed by Anthropic, the Model Context Protocol (MCP) enables AI assistants like Claude to seamlessly integrate with Tavily's advanced search and data extraction capabilities. This integration provides AI models with real-time access to web information, complete with sophisticated filtering options and domain-specific search features.
 
 The Tavily MCP server provides:
-- Seamless interaction with the tavily-search and tavily-extract tools
+- search, extract, map, crawl tools
 - Real-time web search capabilities through the tavily-search tool
 - Intelligent data extraction from web pages via the tavily-extract tool
+- Powerful web mapping tool that creates a structured map of website 
+- Web crawler that systematically explores websites 
 
+🔌 Tavily MCP is compatible with [Cline](https://github.com/cline/cline), [Cursor](https://cursor.sh), [Claude Desktop](https://claude.ai/desktop), and any other MCP clients!
+
+### 📚 Helpful Resources
+- [Tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server
+- [Tutorial](https://medium.com/@dustin_36183/connect-your-coding-assistant-to-the-web-integrating-tavily-mcp-with-cline-in-vs-code-5f923a4983d1) on integrating Tavily MCP with Cline in VS Code
 
 ## Prerequisites 🔧
 
@@ -278,3 +280,6 @@ Search for news articles about AI startups from the last 7 days and extract the 
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
 - [Anthropic](https://anthropic.com) for Claude Desktop
+
+
+# UPDATE https://github.com/modelcontextprotocol/servers?tab=readme-ov-file to say we do crawl now !!!
