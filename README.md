@@ -65,8 +65,67 @@ Although you can launch a server on its own, it's not particularly helpful in is
 
 ## Configuring MCP Clients ⚙️
 
-This repository will explain how to configure both [Cursor](https://cursor.sh) and [Claude Desktop](https://claude.ai/desktop) to work with the tavily-mcp server.
+This repository will explain how to configure [VS Code](https://code.visualstudio.com), [Cursor](https://cursor.sh) and [Claude Desktop](https://claude.ai/desktop) to work with the tavily-mcp server.
 
+### Configuring VS Code 💻
+
+For one-click installation, click one of the install buttons below:
+
+[![Install with NPX in VS Code](https://img.shields.io/badge/VS_Code-NPM-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=tavily&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22tavily-mcp%400.1.4%22%5D%2C%22env%22%3A%7B%22TAVILY_API_KEY%22%3A%22%24%7Binput%3Atavily_api_key%7D%22%7D%7D&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22tavily_api_key%22%2C%22description%22%3A%22Tavily+API+Key%22%2C%22password%22%3Atrue%7D%5D) [![Install with NPX in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-NPM-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=tavily&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22tavily-mcp%400.1.4%22%5D%2C%22env%22%3A%7B%22TAVILY_API_KEY%22%3A%22%24%7Binput%3Atavily_api_key%7D%22%7D%7D&inputs=%5B%7B%22type%22%3A%22promptString%22%2C%22id%22%3A%22tavily_api_key%22%2C%22description%22%3A%22Tavily+API+Key%22%2C%22password%22%3Atrue%7D%5D&quality=insiders)
+
+### Manual Installation
+
+First check if there are install buttons at the top of this section that match your needs. If you prefer manual installation, follow these steps:
+
+Add the following JSON block to your User Settings (JSON) file in VS Code. You can do this by pressing `Ctrl + Shift + P` (or `Cmd + Shift + P` on macOS) and typing `Preferences: Open User Settings (JSON)`.
+
+```json
+{
+  "mcp": {
+    "inputs": [
+      {
+        "type": "promptString",
+        "id": "tavily_api_key",
+        "description": "Tavily API Key",
+        "password": true
+      }
+    ],
+    "servers": {
+      "tavily": {
+        "command": "npx",
+        "args": ["-y", "tavily-mcp@0.1.4"],
+        "env": {
+          "TAVILY_API_KEY": "${input:tavily_api_key}"
+        }
+      }
+    }
+  }
+}
+```
+
+Optionally, you can add it to a file called `.vscode/mcp.json` in your workspace:
+
+```json
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "tavily_api_key",
+      "description": "Tavily API Key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "tavily": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@0.1.4"],
+      "env": {
+        "TAVILY_API_KEY": "${input:tavily_api_key}"
+      }
+    }
+  }
+}
+```
 
 ### Configuring Cline 🤖
 
@@ -280,6 +339,3 @@ Search for news articles about AI startups from the last 7 days and extract the 
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
 - [Anthropic](https://anthropic.com) for Claude Desktop
-
-
-# UPDATE https://github.com/modelcontextprotocol/servers?tab=readme-ov-file to say we do crawl now !!!
