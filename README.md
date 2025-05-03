@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/tavily-ai-tavily-mcp-badge.png)](https://mseep.ai/app/tavily-ai-tavily-mcp)
+
 # Tavily MCP Server 🚀
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
