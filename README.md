@@ -92,7 +92,7 @@ Add the following JSON block to your User Settings (JSON) file in VS Code. You c
     "servers": {
       "tavily": {
         "command": "npx",
-        "args": ["-y", "tavily-mcp@0.1.4"],
+        "args": ["-y", "tavily-mcp@0.2.0"],
         "env": {
           "TAVILY_API_KEY": "${input:tavily_api_key}"
         }
@@ -117,7 +117,7 @@ Optionally, you can add it to a file called `.vscode/mcp.json` in your workspace
   "servers": {
     "tavily": {
       "command": "npx",
-      "args": ["-y", "tavily-mcp@0.1.4"],
+      "args": ["-y", "tavily-mcp@0.2.0"],
       "env": {
         "TAVILY_API_KEY": "${input:tavily_api_key}"
       }
