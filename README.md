@@ -21,7 +21,6 @@ The Tavily MCP server provides:
 - Powerful web mapping tool that creates a structured map of website 
 - Web crawler that systematically explores websites 
 
-🔌 Tavily MCP is compatible with [Cline](https://github.com/cline/cline), [Cursor](https://cursor.sh), [Claude Desktop](https://claude.ai/desktop), and any other MCP clients!
 
 ### 📚 Helpful Resources
 - [Tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server
