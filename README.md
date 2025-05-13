@@ -1,29 +1,30 @@
-# Tavily MCP Server 🚀
+# ![Tavily Crawl Beta](./assets/Banner_NEW.png)
+
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 ![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
 
-> 🔌 **Compatible with [VS Code](https://code.visualstudio.com/),  [Cline](https://github.com/cline/cline), [Cursor](https://cursor.sh), [Claude Desktop](https://claude.ai/desktop), and any other MCP Clients!**
->
-> Tavily MCP is also compatible with any MCP client
->
-> 📚  [tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server!
-> 
-> 📚  [tutorial](https://medium.com/@dustin_36183/connect-your-coding-assistant-to-the-web-integrating-tavily-mcp-with-cline-in-vs-code-5f923a4983d1) Integrating Tavily MCP with Cline in VS Code ( Demo + Example Use-Cases)
->
+ ## 🎉 **Introducing [tavily-crawl](https://docs.tavily.com/documentation/api-reference/endpoint/crawl) + [tavily-map](https://docs.tavily.com/documentation/api-reference/endpoint/map) in v0.2.0!** 🎉
 
-![Tavily MCP Demo](./assets/mcp-demo.gif)
+
+![MCP demo](./assets/demo_new.gif)
 
 The Model Context Protocol (MCP) is an open standard that enables AI systems to interact seamlessly with various data sources and tools, facilitating secure, two-way connections.
 
 Developed by Anthropic, the Model Context Protocol (MCP) enables AI assistants like Claude to seamlessly integrate with Tavily's advanced search and data extraction capabilities. This integration provides AI models with real-time access to web information, complete with sophisticated filtering options and domain-specific search features.
 
 The Tavily MCP server provides:
-- Seamless interaction with the tavily-search and tavily-extract tools
+- search, extract, map, crawl tools
 - Real-time web search capabilities through the tavily-search tool
 - Intelligent data extraction from web pages via the tavily-extract tool
+- Powerful web mapping tool that creates a structured map of website 
+- Web crawler that systematically explores websites 
 
+
+### 📚 Helpful Resources
+- [Tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server
+- [Tutorial](https://medium.com/@dustin_36183/connect-your-coding-assistant-to-the-web-integrating-tavily-mcp-with-cline-in-vs-code-5f923a4983d1) on integrating Tavily MCP with Cline in VS Code
 
 ## Prerequisites 🔧
 
@@ -47,7 +48,7 @@ Before you begin, ensure you have:
 ### Running with NPX 
 
 ```bash
-npx -y tavily-mcp@0.1.4  
+npx -y tavily-mcp@0.2.0  
 ```
 
 ### Installing via Smithery
@@ -91,7 +92,7 @@ Add the following JSON block to your User Settings (JSON) file in VS Code. You c
     "servers": {
       "tavily": {
         "command": "npx",
-        "args": ["-y", "tavily-mcp@0.1.4"],
+        "args": ["-y", "tavily-mcp@0.2.0"],
         "env": {
           "TAVILY_API_KEY": "${input:tavily_api_key}"
         }
@@ -116,7 +117,7 @@ Optionally, you can add it to a file called `.vscode/mcp.json` in your workspace
   "servers": {
     "tavily": {
       "command": "npx",
-      "args": ["-y", "tavily-mcp@0.1.4"],
+      "args": ["-y", "tavily-mcp@0.2.0"],
       "env": {
         "TAVILY_API_KEY": "${input:tavily_api_key}"
       }
@@ -162,7 +163,7 @@ Alternatively, you can manually set up the Tavily MCP server in Cline:
      "mcpServers": {
        "tavily-mcp": {
          "command": "npx",
-         "args": ["-y", "tavily-mcp@0.1.4"],
+         "args": ["-y", "tavily-mcp@0.2.0"],
          "env": {
            "TAVILY_API_KEY": "your-api-key-here"
          },
@@ -192,7 +193,7 @@ To set up the Tavily MCP server in Cursor:
    - **Type**: Select "command" as the type
    - **Command**: Enter the command to run the server:
      ```bash
-     env TAVILY_API_KEY=your-api-key npx -y tavily-mcp@0.1.4
+     env TAVILY_API_KEY=your-api-key npx -y tavily-mcp@0.2.0
      ```
      > **Important**: Replace `your-api-key` with your Tavily API key. You can get one at [app.tavily.com/home](https://app.tavily.com/home)
 
@@ -230,7 +231,7 @@ Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com
   "mcpServers": {
     "tavily-mcp": {
       "command": "npx",
-      "args": ["-y", "tavily-mcp@0.1.2"],
+      "args": ["-y", "tavily-mcp@0.2.0"],
       "env": {
         "TAVILY_API_KEY": "your-api-key-here"
       }

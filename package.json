@@ -1,6 +1,6 @@
 {
   "name": "tavily-mcp",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "MCP server for advanced web search using Tavily",
   "type": "module",
   "bin": {
@@ -20,6 +20,7 @@
     "tavily-mcp",
     "tavily",
     "mcp",
+    "crawl",
     "model-context-protocol",
     "websearch",
     "claude",
@@ -42,10 +43,12 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "0.6.0",
     "dotenv": "^16.4.5",
-    "axios": "^1.6.7"
+    "axios": "^1.6.7",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
+    "@types/yargs": "^17.0.32",
     "typescript": "^5.3.3"
   }
 }
