@@ -6,6 +6,8 @@ import {CallToolRequestSchema, ListToolsRequestSchema, Tool} from "@modelcontext
 import axios from "axios";
 import dotenv from "dotenv";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 
 dotenv.config();
 
@@ -64,7 +66,7 @@ class TavilyClient {
     this.server = new Server(
       {
         name: "tavily-mcp",
-        version: "0.1.0",
+        version: "0.2.0",
       },
       {
         capabilities: {
@@ -588,10 +590,56 @@ function formatMapResults(response: TavilyMapResponse): string {
   return output.join('\n');
 }
 
-export async function serve(): Promise<void> {
-  const client = new TavilyClient();
-  await client.run();
+function listTools(): void {
+  const tools = [
+    {
+      name: "tavily-search",
+      description: "A real-time web search tool powered by Tavily's AI engine. Features include customizable search depth (basic/advanced), domain filtering, time-based filtering, and support for both general and news-specific searches. Returns comprehensive results with titles, URLs, content snippets, and optional image results."
+    },
+    {
+      name: "tavily-extract",
+      description: "Extracts and processes content from specified URLs with advanced parsing capabilities. Supports both basic and advanced extraction modes, with the latter providing enhanced data retrieval including tables and embedded content. Ideal for data collection, content analysis, and research tasks."
+    },
+    {
+      name: "tavily-crawl",
+      description: "A sophisticated web crawler that systematically explores websites starting from a base URL. Features include configurable depth and breadth limits, domain filtering, path pattern matching, and category-based filtering. Perfect for comprehensive site analysis, content discovery, and structured data collection."
+    },
+    {
+      name: "tavily-map",
+      description: "Creates detailed site maps by analyzing website structure and navigation paths. Offers configurable exploration depth, domain restrictions, and category filtering. Ideal for site audits, content organization analysis, and understanding website architecture and navigation patterns."
+    }
+  ];
+
+  console.log("Available tools:");
+  tools.forEach(tool => {
+    console.log(`\n- ${tool.name}`);
+    console.log(`  Description: ${tool.description}`);
+  });
+  process.exit(0);
 }
 
+// Add this interface before the command line parsing
+interface Arguments {
+  'list-tools': boolean;
+  _: (string | number)[];
+  $0: string;
+}
+
+// Modify the command line parsing section to use proper typing
+const argv = yargs(hideBin(process.argv))
+  .option('list-tools', {
+    type: 'boolean',
+    description: 'List all available tools and exit',
+    default: false
+  })
+  .help()
+  .parse() as Arguments;
+
+// List tools if requested
+if (argv['list-tools']) {
+  listTools();
+}
+
+// Otherwise start the server
 const server = new TavilyClient();
 server.run().catch(console.error);

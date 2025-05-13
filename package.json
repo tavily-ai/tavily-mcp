@@ -43,10 +43,12 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "0.6.0",
     "dotenv": "^16.4.5",
-    "axios": "^1.6.7"
+    "axios": "^1.6.7",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
+    "@types/yargs": "^17.0.32",
     "typescript": "^5.3.3"
   }
 }
