@@ -241,7 +241,7 @@ class TavilyClient {
                 default: 50,
                 minimum: 1
               },
-              query: {
+              instructions: {
                 type: "string",
                 description: "Natural language instructions for the crawler"
               },
@@ -309,7 +309,7 @@ class TavilyClient {
                 default: 50,
                 minimum: 1
               },
-              query: {
+              instructions: {
                 type: "string",
                 description: "Natural language instructions for the crawler"
               },
@@ -383,7 +383,7 @@ class TavilyClient {
               max_depth: args.max_depth,
               max_breadth: args.max_breadth,
               limit: args.limit,
-              query: args.query,
+              instructions: args.instructions,
               select_paths: Array.isArray(args.select_paths) ? args.select_paths : [],
               select_domains: Array.isArray(args.select_domains) ? args.select_domains : [],
               allow_external: args.allow_external,
@@ -403,7 +403,7 @@ class TavilyClient {
               max_depth: args.max_depth,
               max_breadth: args.max_breadth,
               limit: args.limit,
-              query: args.query,
+              instructions: args.instructions,
               select_paths: Array.isArray(args.select_paths) ? args.select_paths : [],
               select_domains: Array.isArray(args.select_domains) ? args.select_domains : [],
               allow_external: args.allow_external,
