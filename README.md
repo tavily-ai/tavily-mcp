@@ -48,7 +48,7 @@ Before you begin, ensure you have:
 ### Running with NPX 
 
 ```bash
-npx -y tavily-mcp@0.2.1  
+npx -y tavily-mcp@0.2.0  
 ```
 
 ### Installing via Smithery
