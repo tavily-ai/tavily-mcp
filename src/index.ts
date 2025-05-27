@@ -637,12 +637,10 @@ const argv = yargs(hideBin(process.argv))
   .option('host', {
     type: 'string',
     description: 'host to bind server to. Default is 127.0.0.1, Use 0.0.0.0 to bind to all interfaces',
-    default: '127.0.0.1'
   })
   .option('port', {
     type: 'number',
     description: 'The port to listen on for SSE and HTTP transport',
-    default: 3000
   })
   .help()
   .parse() as Arguments;
@@ -655,8 +653,8 @@ if (argv['list-tools']) {
 if (argv.host || argv.port) {
   // http-server is used to serve the MCP server over HTTP and SSE
   await startSseAndStreamableHttpMcpServer({
-    host: argv.host,
-    port: argv.port,
+    host: argv.host || '127.0.0.1',
+    port: Number(argv.port) || 3000,
     createMcpServer: async (params) => {
       const { headers } = params ?? {};
       const tavilyClient = new TavilyClient(
