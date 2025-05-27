@@ -8,13 +8,9 @@ import dotenv from "dotenv";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { startSseAndStreamableHttpMcpServer } from "mcp-http-server";
 
 dotenv.config();
-
-const API_KEY = process.env.TAVILY_API_KEY;
-if (!API_KEY) {
-  throw new Error("TAVILY_API_KEY environment variable is required");
-}
 
 
 interface TavilyResponse {
@@ -62,7 +58,7 @@ class TavilyClient {
     map: 'https://api.tavily.com/map'
   };
 
-  constructor() {
+  constructor(private apiKey: string) {
     this.server = new Server(
       {
         name: "tavily-mcp",
@@ -81,12 +77,16 @@ class TavilyClient {
       headers: {
         'accept': 'application/json',
         'content-type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
+        'Authorization': `Bearer ${this.apiKey}`
       }
     });
 
     this.setupHandlers();
     this.setupErrorHandling();
+  }
+
+  get mcpServer(): Server {
+    return this.server;
   }
 
   private setupErrorHandling(): void {
@@ -459,7 +459,7 @@ class TavilyClient {
       // Add topic: "news" if query contains the word "news"
       const searchParams = {
         ...params,
-        api_key: API_KEY,
+        api_key: this.apiKey,
         topic: params.query.toLowerCase().includes('news') ? 'news' : undefined
       };
       
@@ -479,7 +479,7 @@ class TavilyClient {
     try {
       const response = await this.axiosInstance.post(this.baseURLs.extract, {
         ...params,
-        api_key: API_KEY
+        api_key: this.apiKey
       });
       return response.data;
     } catch (error: any) {
@@ -496,7 +496,7 @@ class TavilyClient {
     try {
       const response = await this.axiosInstance.post(this.baseURLs.crawl, {
         ...params,
-        api_key: API_KEY
+        api_key: this.apiKey
       });
       return response.data;
     } catch (error: any) {
@@ -513,7 +513,7 @@ class TavilyClient {
     try {
       const response = await this.axiosInstance.post(this.baseURLs.map, {
         ...params,
-        api_key: API_KEY
+        api_key: this.apiKey
       });
       return response.data;
     } catch (error: any) {
@@ -621,6 +621,8 @@ function listTools(): void {
 // Add this interface before the command line parsing
 interface Arguments {
   'list-tools': boolean;
+  'host': string;
+  'port': number;
   _: (string | number)[];
   $0: string;
 }
@@ -632,6 +634,16 @@ const argv = yargs(hideBin(process.argv))
     description: 'List all available tools and exit',
     default: false
   })
+  .option('host', {
+    type: 'string',
+    description: 'host to bind server to. Default is 127.0.0.1, Use 0.0.0.0 to bind to all interfaces',
+    default: '127.0.0.1'
+  })
+  .option('port', {
+    type: 'number',
+    description: 'The port to listen on for SSE and HTTP transport',
+    default: 3000
+  })
   .help()
   .parse() as Arguments;
 
@@ -640,6 +652,26 @@ if (argv['list-tools']) {
   listTools();
 }
 
-// Otherwise start the server
-const server = new TavilyClient();
-server.run().catch(console.error);
+if (argv.host || argv.port) {
+  // http-server is used to serve the MCP server over HTTP and SSE
+  await startSseAndStreamableHttpMcpServer({
+    host: argv.host,
+    port: argv.port,
+    createMcpServer: async (params) => {
+      const { headers } = params ?? {};
+      const tavilyClient = new TavilyClient(
+        headers?.["x-tavily-api-key"] as string
+      );
+      return tavilyClient.mcpServer as any;
+    },
+  });
+} else {
+  // Otherwise start the stdio server
+  const API_KEY = process.env.TAVILY_API_KEY;
+  if (!API_KEY) {
+    throw new Error("TAVILY_API_KEY environment variable is required");
+  }
+
+  const server = new TavilyClient(API_KEY);
+  server.run().catch(console.error);
+}

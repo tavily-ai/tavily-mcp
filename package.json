@@ -42,6 +42,7 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "0.6.0",
+    "mcp-http-server": "1.1.4",
     "dotenv": "^16.4.5",
     "axios": "^1.6.7",
     "yargs": "^17.7.2"
