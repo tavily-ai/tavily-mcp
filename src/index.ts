@@ -534,11 +534,6 @@ function formatResults(response: TavilyResponse): string {
   // Include answer if available
   if (response.answer) {
     output.push(`Answer: ${response.answer}`);
-    output.push('\nSources:');
-    response.results.forEach(result => {
-      output.push(`- ${result.title}: ${result.url}`);
-    });
-    output.push('');
   }
 
   // Format detailed search results
@@ -551,6 +546,21 @@ function formatResults(response: TavilyResponse): string {
       output.push(`Raw Content: ${result.raw_content}`);
     }
   });
+
+    // Add images section if available
+    if (response.images && response.images.length > 0) {
+      output.push('\nImages:');
+      response.images.forEach((image, index) => {
+        if (typeof image === 'string') {
+          output.push(`\n[${index + 1}] URL: ${image}`);
+        } else {
+          output.push(`\n[${index + 1}] URL: ${image.url}`);
+          if (image.description) {
+            output.push(`   Description: ${image.description}`);
+          }
+        }
+      });
+    }  
 
   return output.join('\n');
 }
