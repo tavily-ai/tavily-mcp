@@ -655,12 +655,13 @@ if (argv.host || argv.port) {
   await startSseAndStreamableHttpMcpServer({
     host: argv.host || '127.0.0.1',
     port: Number(argv.port) || 3000,
+    // @ts-ignore
     createMcpServer: async (params) => {
       const { headers } = params ?? {};
       const tavilyClient = new TavilyClient(
         headers?.["x-tavily-api-key"] as string
       );
-      return tavilyClient.mcpServer as any;
+      return tavilyClient.mcpServer;
     },
   });
 } else {
