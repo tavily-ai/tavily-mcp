@@ -18,8 +18,8 @@ The Tavily MCP server provides:
 - search, extract, map, crawl tools
 - Real-time web search capabilities through the tavily-search tool
 - Intelligent data extraction from web pages via the tavily-extract tool
-- Powerful web mapping tool that creates a structured map of website 
-- Web crawler that systematically explores websites 
+- Powerful web mapping tool that creates a structured map of website
+- Web crawler that systematically explores websites
 
 
 ### 📚 Helpful Resources
@@ -38,18 +38,45 @@ Before you begin, ensure you have:
     - `node --version`
 - [Git](https://git-scm.com/downloads) installed (only needed if using Git installation method)
   - On macOS: `brew install git`
-  - On Linux: 
+  - On Linux:
     - Debian/Ubuntu: `sudo apt install git`
     - RedHat/CentOS: `sudo yum install git`
   - On Windows: Download [Git for Windows](https://git-scm.com/download/win)
 
 ## Tavily MCP server installation ⚡
 
-### Running with NPX 
+### Running with NPX
 
 ```bash
-npx -y tavily-mcp@0.2.1  
+# Using environment variable (default)
+npx -y tavily-mcp@0.2.1
+
+# Using --api-key flag
+npx -y tavily-mcp@0.2.1 --api-key YOUR_API_KEY
 ```
+
+### Running with SSE / Streamable HTTP Server
+
+```bash
+# Using environment variable
+npx -y tavily-mcp@0.2.1 --port 3000
+
+# Using --api-key flag
+npx -y tavily-mcp@0.2.1 --port 3000 --api-key YOUR_API_KEY
+
+# Streamable HTTP MCP Server listening at http://127.0.0.1:3000/mcp
+# Streamable SSE MCP Server listening at http://127.0.0.1:3000/sse
+```
+
+### CLI Options
+
+The tavily-mcp server supports the following command-line options:
+
+- `--api-key <key>` - Tavily API key (alternative to TAVILY_API_KEY environment variable)
+- `--port <number>` - Port to listen on for SSE and HTTP transport
+- `--host <string>` - Host to bind server to (default: 127.0.0.1, use 0.0.0.0 to bind to all interfaces)
+- `--list-tools` - List all available tools and exit
+- `--help` - Show help
 
 ### Installing via Smithery
 
@@ -144,7 +171,7 @@ Alternatively, you can manually set up the Tavily MCP server in Cline:
    ```bash
    # Using Visual Studio Code
    code ~/Library/Application\ Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json
-   
+
    # Or using TextEdit
    open -e ~/Library/Application\ Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json
    ```
@@ -210,7 +237,7 @@ The Composer Agent will automatically use the Tavily MCP tools when relevant to 
 # Create the config file if it doesn't exist
 touch "$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 
-# Opens the config file in TextEdit 
+# Opens the config file in TextEdit
 open -e "$HOME/Library/Application Support/Claude/claude_desktop_config.json"
 
 # Alternative method using Visual Studio Code (requires VS Code to be installed)
@@ -257,6 +284,19 @@ npm install
 ```bash
 npm run build
 ```
+
+4. Run the server:
+```bash
+# Using environment variable
+node build/index.js
+
+# Using --api-key flag
+node build/index.js --api-key YOUR_API_KEY
+
+# With SSE/HTTP server
+node build/index.js --port 3000 --api-key YOUR_API_KEY
+```
+
 ### Configuring the Claude Desktop app ⚙️
 Follow the configuration steps outlined in the [Configuring the Claude Desktop app](#configuring-the-claude-desktop-app-️) section above, using the below JSON configuration.
 
@@ -301,7 +341,7 @@ Search for news articles about AI startups from the last 7 days.
 Search for climate change research on nature.com and sciencedirect.com
 ```
 
-### Tavily Extract Examples 
+### Tavily Extract Examples
 
 1. **Extract Article Content**:
 ```
@@ -324,9 +364,9 @@ Search for news articles about AI startups from the last 7 days and extract the 
    - Verify the npm installation by running `npm --verison`
    - Check Claude Desktop configuration syntax by running `code ~/Library/Application\ Support/Claude/claude_desktop_config.json`
    - Ensure Node.js is properly installed by running `node --version`
-   
+
 2. **NPX related issues**
-  - If you encounter errors related to `npx`, you may need to use the full path to the npx executable instead. 
+  - If you encounter errors related to `npx`, you may need to use the full path to the npx executable instead.
   - You can find this path by running `which npx` in your terminal, then replace the `"command":  "npx"` line with `"command": "/full/path/to/npx"` in your configuration.
 
 3. **API Key Issues**
