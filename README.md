@@ -48,16 +48,35 @@ Before you begin, ensure you have:
 ### Running with NPX
 
 ```bash
+# Using environment variable (default)
 npx -y tavily-mcp@0.2.1
+
+# Using --api-key flag
+npx -y tavily-mcp@0.2.1 --api-key YOUR_API_KEY
 ```
 
 ### Running with SSE / Streamable HTTP Server
 
 ```bash
+# Using environment variable
 npx -y tavily-mcp@0.2.1 --port 3000
+
+# Using --api-key flag
+npx -y tavily-mcp@0.2.1 --port 3000 --api-key YOUR_API_KEY
+
 # Streamable HTTP MCP Server listening at http://127.0.0.1:3000/mcp
 # Streamable SSE MCP Server listening at http://127.0.0.1:3000/sse
 ```
+
+### CLI Options
+
+The tavily-mcp server supports the following command-line options:
+
+- `--api-key <key>` - Tavily API key (alternative to TAVILY_API_KEY environment variable)
+- `--port <number>` - Port to listen on for SSE and HTTP transport
+- `--host <string>` - Host to bind server to (default: 127.0.0.1, use 0.0.0.0 to bind to all interfaces)
+- `--list-tools` - List all available tools and exit
+- `--help` - Show help
 
 ### Installing via Smithery
 
@@ -265,6 +284,19 @@ npm install
 ```bash
 npm run build
 ```
+
+4. Run the server:
+```bash
+# Using environment variable
+node build/index.js
+
+# Using --api-key flag
+node build/index.js --api-key YOUR_API_KEY
+
+# With SSE/HTTP server
+node build/index.js --port 3000 --api-key YOUR_API_KEY
+```
+
 ### Configuring the Claude Desktop app ⚙️
 Follow the configuration steps outlined in the [Configuring the Claude Desktop app](#configuring-the-claude-desktop-app-️) section above, using the below JSON configuration.
 

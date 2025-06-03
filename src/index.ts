@@ -633,6 +633,7 @@ interface Arguments {
   'list-tools': boolean;
   'host': string;
   'port': number;
+  'api-key': string;
   _: (string | number)[];
   $0: string;
 }
@@ -652,6 +653,10 @@ const argv = yargs(hideBin(process.argv))
     type: 'number',
     description: 'The port to listen on for SSE and HTTP transport',
   })
+  .option('api-key', {
+    type: 'string',
+    description: 'Tavily API key (alternative to TAVILY_API_KEY environment variable)',
+  })
   .help()
   .parse() as Arguments;
 
@@ -668,17 +673,21 @@ if (argv.host || argv.port) {
     // @ts-ignore
     createMcpServer: async (params) => {
       const { headers } = params ?? {};
-      const tavilyClient = new TavilyClient(
-        headers?.["x-tavily-api-key"] as string
-      );
+      // Use CLI api-key if provided, otherwise check headers
+      const apiKey = argv['api-key'] || headers?.["x-tavily-api-key"] as string;
+      if (!apiKey) {
+        throw new Error("API key is required. Use --api-key flag or x-tavily-api-key header");
+      }
+      const tavilyClient = new TavilyClient(apiKey);
       return tavilyClient.mcpServer;
     },
   });
 } else {
   // Otherwise start the stdio server
-  const API_KEY = process.env.TAVILY_API_KEY;
+  // Use CLI api-key if provided, otherwise check environment variable
+  const API_KEY = argv['api-key'] || process.env.TAVILY_API_KEY;
   if (!API_KEY) {
-    throw new Error("TAVILY_API_KEY environment variable is required");
+    throw new Error("TAVILY_API_KEY environment variable or --api-key flag is required");
   }
 
   const server = new TavilyClient(API_KEY);
