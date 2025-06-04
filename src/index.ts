@@ -66,7 +66,7 @@ class TavilyClient {
     this.server = new Server(
       {
         name: "tavily-mcp",
-        version: "0.2.1",
+        version: "0.2.2",
       },
       {
         capabilities: {
@@ -182,6 +182,12 @@ class TavilyClient {
                 items: { type: "string" },
                 description: "List of domains to specifically exclude, if the user asks to exclude a domain set this to the domain of the site",
                 default: []
+              },
+              country: {
+                type: "string",
+                enum: ['afghanistan', 'albania', 'algeria', 'andorra', 'angola', 'argentina', 'armenia', 'australia', 'austria', 'azerbaijan', 'bahamas', 'bahrain', 'bangladesh', 'barbados', 'belarus', 'belgium', 'belize', 'benin', 'bhutan', 'bolivia', 'bosnia and herzegovina', 'botswana', 'brazil', 'brunei', 'bulgaria', 'burkina faso', 'burundi', 'cambodia', 'cameroon', 'canada', 'cape verde', 'central african republic', 'chad', 'chile', 'china', 'colombia', 'comoros', 'congo', 'costa rica', 'croatia', 'cuba', 'cyprus', 'czech republic', 'denmark', 'djibouti', 'dominican republic', 'ecuador', 'egypt', 'el salvador', 'equatorial guinea', 'eritrea', 'estonia', 'ethiopia', 'fiji', 'finland', 'france', 'gabon', 'gambia', 'georgia', 'germany', 'ghana', 'greece', 'guatemala', 'guinea', 'haiti', 'honduras', 'hungary', 'iceland', 'india', 'indonesia', 'iran', 'iraq', 'ireland', 'israel', 'italy', 'jamaica', 'japan', 'jordan', 'kazakhstan', 'kenya', 'kuwait', 'kyrgyzstan', 'latvia', 'lebanon', 'lesotho', 'liberia', 'libya', 'liechtenstein', 'lithuania', 'luxembourg', 'madagascar', 'malawi', 'malaysia', 'maldives', 'mali', 'malta', 'mauritania', 'mauritius', 'mexico', 'moldova', 'monaco', 'mongolia', 'montenegro', 'morocco', 'mozambique', 'myanmar', 'namibia', 'nepal', 'netherlands', 'new zealand', 'nicaragua', 'niger', 'nigeria', 'north korea', 'north macedonia', 'norway', 'oman', 'pakistan', 'panama', 'papua new guinea', 'paraguay', 'peru', 'philippines', 'poland', 'portugal', 'qatar', 'romania', 'russia', 'rwanda', 'saudi arabia', 'senegal', 'serbia', 'singapore', 'slovakia', 'slovenia', 'somalia', 'south africa', 'south korea', 'south sudan', 'spain', 'sri lanka', 'sudan', 'sweden', 'switzerland', 'syria', 'taiwan', 'tajikistan', 'tanzania', 'thailand', 'togo', 'trinidad and tobago', 'tunisia', 'turkey', 'turkmenistan', 'uganda', 'ukraine', 'united arab emirates', 'united kingdom', 'united states', 'uruguay', 'uzbekistan', 'venezuela', 'vietnam', 'yemen', 'zambia', 'zimbabwe'],
+                description: "Boost search results from a specific country. This will prioritize content from the selected country in the search results. Available only if topic is general.",
+                default: "basic"
               }
             },
             required: ["query"]
@@ -208,7 +214,13 @@ class TavilyClient {
                 type: "boolean", 
                 description: "Include a list of images extracted from the urls in the response",
                 default: false,
-              }
+              },
+              format: {
+                type: "string",
+                enum: ["markdown","text"],
+                description: "The format of the extracted web page content. markdown returns content in markdown format. text returns plain text and may increase latency.",
+                default: "markdown"
+              },
             },
             required: ["urls"]
           }
@@ -276,7 +288,13 @@ class TavilyClient {
                 enum: ["basic", "advanced"],
                 description: "Advanced extraction retrieves more data, including tables and embedded content, with higher success but may increase latency",
                 default: "basic"
-              }
+              },
+              format: {
+                type: "string",
+                enum: ["markdown","text"],
+                description: "The format of the extracted web page content. markdown returns content in markdown format. text returns plain text and may increase latency.",
+                default: "markdown"
+              },
             },
             required: ["url"]
           }
@@ -354,6 +372,11 @@ class TavilyClient {
 
         switch (request.params.name) {
           case "tavily-search":
+            // If country is set, ensure topic is general
+            if (args.country) {
+              args.topic = "general";
+            }
+            
             response = await this.search({
               query: args.query,
               search_depth: args.search_depth,
@@ -365,7 +388,8 @@ class TavilyClient {
               include_image_descriptions: args.include_image_descriptions,
               include_raw_content: args.include_raw_content,
               include_domains: Array.isArray(args.include_domains) ? args.include_domains : [],
-              exclude_domains: Array.isArray(args.exclude_domains) ? args.exclude_domains : []
+              exclude_domains: Array.isArray(args.exclude_domains) ? args.exclude_domains : [],
+              country: args.country
             });
             break;
           
@@ -373,7 +397,8 @@ class TavilyClient {
             response = await this.extract({
               urls: args.urls,
               extract_depth: args.extract_depth,
-              include_images: args.include_images
+              include_images: args.include_images,
+              format: args.format
             });
             break;
 
@@ -388,7 +413,8 @@ class TavilyClient {
               select_domains: Array.isArray(args.select_domains) ? args.select_domains : [],
               allow_external: args.allow_external,
               categories: Array.isArray(args.categories) ? args.categories : [],
-              extract_depth: args.extract_depth
+              extract_depth: args.extract_depth,
+              format: args.format
             });
             return {
               content: [{
@@ -453,14 +479,11 @@ class TavilyClient {
 
   async search(params: any): Promise<TavilyResponse> {
     try {
-      // Choose endpoint based on whether it's an extract request
-      const endpoint = params.url ? this.baseURLs.extract : this.baseURLs.search;
-      
-      // Add topic: "news" if query contains the word "news"
+      const endpoint =  this.baseURLs.search;
+
       const searchParams = {
         ...params,
         api_key: API_KEY,
-        topic: params.query.toLowerCase().includes('news') ? 'news' : undefined
       };
       
       const response = await this.axiosInstance.post(endpoint, searchParams);
