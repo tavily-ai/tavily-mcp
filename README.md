@@ -5,7 +5,7 @@
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 ![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
 
- ## 🎉 **Introducing [tavily-crawl](https://docs.tavily.com/documentation/api-reference/endpoint/crawl) + [tavily-map](https://docs.tavily.com/documentation/api-reference/endpoint/map) in v0.2.2!** 🎉
+ ## 🎉 **Introducing [tavily-crawl](https://docs.tavily.com/documentation/api-reference/endpoint/crawl) + [tavily-map](https://docs.tavily.com/documentation/api-reference/endpoint/map) in v0.2.3!** 🎉
 
 
 ![MCP demo](./assets/demo_new.gif)
@@ -48,7 +48,7 @@ Before you begin, ensure you have:
 ### Running with NPX 
 
 ```bash
-npx -y tavily-mcp@0.2.2  
+npx -y tavily-mcp@0.2.3  
 ```
 
 ### Installing via Smithery
@@ -92,7 +92,7 @@ Add the following JSON block to your User Settings (JSON) file in VS Code. You c
     "servers": {
       "tavily": {
         "command": "npx",
-        "args": ["-y", "tavily-mcp@0.2.2"],
+        "args": ["-y", "tavily-mcp@0.2.3"],
         "env": {
           "TAVILY_API_KEY": "${input:tavily_api_key}"
         }
@@ -117,7 +117,7 @@ Optionally, you can add it to a file called `.vscode/mcp.json` in your workspace
   "servers": {
     "tavily": {
       "command": "npx",
-      "args": ["-y", "tavily-mcp@0.2.2"],
+      "args": ["-y", "tavily-mcp@0.2.3"],
       "env": {
         "TAVILY_API_KEY": "${input:tavily_api_key}"
       }
@@ -163,7 +163,7 @@ Alternatively, you can manually set up the Tavily MCP server in Cline:
      "mcpServers": {
        "tavily-mcp": {
          "command": "npx",
-         "args": ["-y", "tavily-mcp@0.2.2"],
+         "args": ["-y", "tavily-mcp@0.2.3"],
          "env": {
            "TAVILY_API_KEY": "your-api-key-here"
          },
@@ -193,7 +193,7 @@ To set up the Tavily MCP server in Cursor:
    - **Type**: Select "command" as the type
    - **Command**: Enter the command to run the server:
      ```bash
-     env TAVILY_API_KEY=your-api-key npx -y tavily-mcp@0.2.2
+     env TAVILY_API_KEY=your-api-key npx -y tavily-mcp@0.2.3
      ```
      > **Important**: Replace `your-api-key` with your Tavily API key. You can get one at [app.tavily.com/home](https://app.tavily.com/home)
 
@@ -231,7 +231,7 @@ Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com
   "mcpServers": {
     "tavily-mcp": {
       "command": "npx",
-      "args": ["-y", "tavily-mcp@0.2.2"],
+      "args": ["-y", "tavily-mcp@0.2.3"],
       "env": {
         "TAVILY_API_KEY": "your-api-key-here"
       }
