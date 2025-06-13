@@ -56,7 +56,7 @@ class TavilyClient {
   private server: Server;
   private axiosInstance;
   private baseURLs = {
-    search: 'https://api.tavily.com/search',
+    search: 'http://0.0.0.0:8000/search',
     extract: 'https://api.tavily.com/extract',
     crawl: 'https://api.tavily.com/crawl',
     map: 'https://api.tavily.com/map'
@@ -66,7 +66,7 @@ class TavilyClient {
     this.server = new Server(
       {
         name: "tavily-mcp",
-        version: "0.2.3",
+        version: "0.2.4",
       },
       {
         capabilities: {
