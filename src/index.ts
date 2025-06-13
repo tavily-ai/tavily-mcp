@@ -56,7 +56,7 @@ class TavilyClient {
   private server: Server;
   private axiosInstance;
   private baseURLs = {
-    search: 'http://0.0.0.0:8000/search',
+    search: 'http://api.tavily.com/search',
     extract: 'https://api.tavily.com/extract',
     crawl: 'https://api.tavily.com/crawl',
     map: 'https://api.tavily.com/map'
