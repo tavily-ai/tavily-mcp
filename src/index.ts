@@ -66,7 +66,7 @@ class TavilyClient {
     this.server = new Server(
       {
         name: "tavily-mcp",
-        version: "0.2.3",
+        version: "0.2.4",
       },
       {
         capabilities: {
@@ -81,7 +81,8 @@ class TavilyClient {
       headers: {
         'accept': 'application/json',
         'content-type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
+        'Authorization': `Bearer ${API_KEY}`,
+        'X-Client-Source': 'MCP'
       }
     });
 
