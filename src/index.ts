@@ -42,6 +42,7 @@ interface TavilyCrawlResponse {
   results: Array<{
     url: string;
     raw_content: string;
+    favicon?: string;
   }>;
   response_time: number;
 }
@@ -626,6 +627,9 @@ function formatCrawlResults(response: TavilyCrawlResponse): string {
         ? page.raw_content.substring(0, 200) + "..." 
         : page.raw_content;
       output.push(`Content: ${contentPreview}`);
+    }
+    if (page.favicon) {
+      output.push(`Favicon: ${page.favicon}`);
     }
   });
   
