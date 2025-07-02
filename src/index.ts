@@ -33,6 +33,7 @@ interface TavilyResponse {
     score: number;
     published_date?: string;
     raw_content?: string;
+    favicon?: string;
   }>;
 }
 
@@ -580,6 +581,9 @@ function formatResults(response: TavilyResponse): string {
     output.push(`Content: ${result.content}`);
     if (result.raw_content) {
       output.push(`Raw Content: ${result.raw_content}`);
+    }
+    if (result.favicon) {
+      output.push(`Favicon: ${result.favicon}`);
     }
   });
 
