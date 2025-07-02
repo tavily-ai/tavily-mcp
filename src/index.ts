@@ -42,6 +42,7 @@ interface TavilyCrawlResponse {
   results: Array<{
     url: string;
     raw_content: string;
+    favicon?: string;
   }>;
   response_time: number;
 }
@@ -307,6 +308,11 @@ class TavilyClient {
                 description: "The format of the extracted web page content. markdown returns content in markdown format. text returns plain text and may increase latency.",
                 default: "markdown"
               },
+              include_favicon: { 
+                type: "boolean", 
+                description: "Whether to include the favicon URL for each result",
+                default: false,
+              },
             },
             required: ["url"]
           }
@@ -428,7 +434,8 @@ class TavilyClient {
               allow_external: args.allow_external,
               categories: Array.isArray(args.categories) ? args.categories : [],
               extract_depth: args.extract_depth,
-              format: args.format
+              format: args.format,
+              include_favicon: args.include_favicon
             });
             return {
               content: [{
@@ -620,6 +627,9 @@ function formatCrawlResults(response: TavilyCrawlResponse): string {
         ? page.raw_content.substring(0, 200) + "..." 
         : page.raw_content;
       output.push(`Content: ${contentPreview}`);
+    }
+    if (page.favicon) {
+      output.push(`Favicon: ${page.favicon}`);
     }
   });
   
