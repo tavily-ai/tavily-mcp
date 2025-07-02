@@ -66,7 +66,7 @@ class TavilyClient {
     this.server = new Server(
       {
         name: "tavily-mcp",
-        version: "0.2.4",
+        version: "0.2.5",
       },
       {
         capabilities: {
@@ -296,6 +296,11 @@ class TavilyClient {
                 description: "The format of the extracted web page content. markdown returns content in markdown format. text returns plain text and may increase latency.",
                 default: "markdown"
               },
+              include_favicon: { 
+                type: "boolean", 
+                description: "Whether to include the favicon URL for each result",
+                default: false,
+              },
             },
             required: ["url"]
           }
@@ -415,7 +420,8 @@ class TavilyClient {
               allow_external: args.allow_external,
               categories: Array.isArray(args.categories) ? args.categories : [],
               extract_depth: args.extract_depth,
-              format: args.format
+              format: args.format,
+              include_favicon: args.include_favicon
             });
             return {
               content: [{
