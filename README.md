@@ -7,10 +7,6 @@
 
 ![MCP demo](./assets/demo_new.gif)
 
-The Model Context Protocol (MCP) is an open standard that enables AI systems to interact seamlessly with various data sources and tools, facilitating secure, two-way connections.
-
-Developed by Anthropic, the Model Context Protocol (MCP) enables AI assistants like Claude to seamlessly integrate with Tavily's advanced search and data extraction capabilities. This integration provides AI models with real-time access to web information, complete with sophisticated filtering options and domain-specific search features.
-
 The Tavily MCP server provides:
 - search, extract, map, crawl tools
 - Real-time web search capabilities through the tavily-search tool
@@ -23,7 +19,118 @@ The Tavily MCP server provides:
 - [Tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server
 - [Tutorial](https://medium.com/@dustin_36183/connect-your-coding-assistant-to-the-web-integrating-tavily-mcp-with-cline-in-vs-code-5f923a4983d1) on integrating Tavily MCP with Cline in VS Code
 
-## Prerequisites 🔧
+## Remote MCP Server
+
+Connect directly to Tavily's remote MCP server instead of running it locally. This provides a seamless experience without requiring local installation or configuration.
+
+Simply use the remote MCP server URL with your Tavily API key:
+
+``` 
+https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key> 
+```
+ Get your Tavily API key from [tavily.com](https://www.tavily.com/).
+
+
+### Connect to Cursor
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=tavily-remote-mcp&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AudGF2aWx5LmNvbS9tY3AvP3RhdmlseUFwaUtleT08eW91ci1hcGkta2V5PiJ9)
+
+Click the ⬆️ Add to Cursor ⬆️ button, this will do most of the work for you but you will still need to edit the configuration to add your API-KEY. You can get a Tavily API key [here](https://www.tavily.com/).
+
+
+once you click the button you should be redirect to Cursor ...
+
+### Step 1
+Click the install button
+
+![](assets/cursor-step1.png)
+
+
+### Step 2
+You should see the MCP is now installed, if the blue slide is not already turned on, manually turn it on. You also need to edit the configuration to include your own Tavily API key.
+![](assets/cursor-step2.png)
+
+### Step 3
+You will then be redirected to your `mcp.json` file where you have to add `your-api-key`.
+
+```json
+{
+  "mcpServers": {
+    "tavily-remote-mcp": {
+      "command": "npx -y mcp-remote https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>",
+      "env": {}
+    }
+  }
+}
+```
+
+### Connect to Claude Desktop
+
+Claude desktop now supports adding `integrations` which is currently in beta. An integration in this case is the Tavily Remote MCP, below I will explain how to add the MCP as an `integration` in Claude desktop.
+
+### Step 1 
+open claude desktop, click the button with the two sliders and then navigate to add integrations.
+![](assets/claude-step1.png)
+
+### Step 2
+click `Add integrations`
+![](assets/claude-step2.png)
+
+### Step 3
+Name the integration and insert the Tavily remote MCP url with your API key. You can get a Tavily API key [here](https://www.tavily.com/). Click `Add` to confirm.
+![](assets/claude-step3.png)
+
+### Step 4
+Retrun to the chat screen and you will see the Tavily Remote MCP is now connected to Claude desktop.
+![](assets/claude-step4.png)
+
+### OpenAI 
+Allow models to use remote MCP servers to perform tasks.
+- You first need to export your OPENAI_API_KEY
+- You must also add your Tavily API-key to `<your-api-key>`, you can get a Tavily API key [here](https://www.tavily.com/)
+
+```python
+from openai import OpenAI
+
+client = OpenAI()
+
+resp = client.responses.create(
+    model="gpt-4.1",
+    tools=[
+        {
+            "type": "mcp",
+            "server_label": "tavily",
+            "server_url": "https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>",
+            "require_approval": "never",
+        },
+    ],
+    input="Do you have access to the tavily mcp server?",
+)
+
+print(resp.output_text)
+```
+
+### Clients that don't support remote MCPs
+
+mcp-remote is a lightweight bridge that lets MCP clients that can only talk to local (stdio) servers securely connect to remote MCP servers over HTTP + SSE with OAuth-based auth, so you can host and update your server in the cloud while existing clients keep working. It serves as an experimental stop-gap until popular MCP clients natively support remote, authorized servers.
+
+```json
+{
+    "tavily-remote": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>"
+      ]
+    }
+}
+```
+
+
+
+## Local MCP 
+
+### Prerequisites 🔧
 
 Before you begin, ensure you have:
 
@@ -176,30 +283,6 @@ Alternatively, you can manually set up the Tavily MCP server in Cline:
 4. When using Cline, you'll now have access to the Tavily MCP tools. You can ask Cline to use the tavily-search and tavily-extract tools directly in your conversations.
 
 
-### Configuring Cursor 🖥️
-
-> **Note**: Requires Cursor version 0.45.6 or higher
-
-To set up the Tavily MCP server in Cursor:
-
-1. Open Cursor Settings
-2. Navigate to Features > MCP Servers
-3. Click on the "+ Add New MCP Server" button
-4. Fill out the following information:
-   - **Name**: Enter a nickname for the server (e.g., "tavily-mcp")
-   - **Type**: Select "command" as the type
-   - **Command**: Enter the command to run the server:
-     ```bash
-     env TAVILY_API_KEY=your-api-key npx -y tavily-mcp@latest
-     ```
-     > **Important**: Replace `your-api-key` with your Tavily API key. You can get one at [app.tavily.com/home](https://app.tavily.com/home)
-
-After adding the server, it should appear in the list of MCP servers. You may need to manually press the refresh button in the top right corner of the MCP server to populate the tool list.
-
-The Composer Agent will automatically use the Tavily MCP tools when relevant to your queries. It is better to explicitly request to use the tools by describing what you want to do (e.g., "User tavily-search to search the web for the latest news on AI"). On mac press command + L to open the chat, select the composer option at the top of the screen, beside the submit button select agent and submit the query when ready.
-
-![Cursor Interface Example](./assets/cursor-reference.png)
-
 ### Configuring the Claude Desktop app 🖥️
 ### For macOS:
 
@@ -272,64 +355,6 @@ Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com
   }
 }
 ```
-
-## Usage in Claude Desktop App 🎯
-
-Once the installation is complete, and the Claude desktop app is configured, you must completely close and re-open the Claude desktop app to see the tavily-mcp server. You should see a hammer icon in the bottom left of the app, indicating available MCP tools, you can click on the hammer icon to see more detial on the tavily-search and tavily-extract tools.
-
-![Alt text](./assets/claude-desktop-ref.png)
-
-Now claude will have complete access to the tavily-mcp server, including the tavily-search and tavily-extract tools. If you insert the below examples into the Claude desktop app, you should see the tavily-mcp server tools in action.
-
-### Tavily Search Examples
-
-1. **General Web Search**:
-```
-Can you search for recent developments in quantum computing?
-```
-
-2. **News Search**:
-```
-Search for news articles about AI startups from the last 7 days.
-```
-
-3. **Domain-Specific Search**:
-```
-Search for climate change research on nature.com and sciencedirect.com
-```
-
-### Tavily Extract Examples 
-
-1. **Extract Article Content**:
-```
-Extract the main content from this article: https://example.com/article
-```
-
-### ✨ Combine Search and Extract ✨
-
-You can also combine the tavily-search and tavily-extract tools to perform more complex tasks.
-
-```
-Search for news articles about AI startups from the last 7 days and extract the main content from each article to generate a detailed report.
-```
-
-## Troubleshooting 🛠️
-
-### Common Issues
-
-1. **Server Not Found**
-   - Verify the npm installation by running `npm --verison`
-   - Check Claude Desktop configuration syntax by running `code ~/Library/Application\ Support/Claude/claude_desktop_config.json`
-   - Ensure Node.js is properly installed by running `node --version`
-   
-2. **NPX related issues**
-  - If you encounter errors related to `npx`, you may need to use the full path to the npx executable instead. 
-  - You can find this path by running `which npx` in your terminal, then replace the `"command":  "npx"` line with `"command": "/full/path/to/npx"` in your configuration.
-
-3. **API Key Issues**
-   - Confirm your Tavily API key is valid
-   - Check the API key is correctly set in the config
-   - Verify no spaces or quotes around the API key
 
 ## Acknowledgments ✨
 

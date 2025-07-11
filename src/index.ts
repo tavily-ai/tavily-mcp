@@ -68,13 +68,11 @@ class TavilyClient {
     this.server = new Server(
       {
         name: "tavily-mcp",
-        version: "0.2.5",
+        version: "0.2.8",
       },
       {
         capabilities: {
-          resources: {},
           tools: {},
-          prompts: {},
         },
       }
     );
