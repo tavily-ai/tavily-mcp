@@ -141,6 +141,16 @@ class TavilyClient {
                 description: "The time range back from the current date to include in the search results. This feature is available for both 'general' and 'news' search topics",
                 enum: ["day", "week", "month", "year", "d", "w", "m", "y"],
               },
+              start_date: {
+                type: "string",
+                description: "Will return all results after the specified start date. Required to be written in the format YYYY-MM-DD.",
+                default: "",
+              },
+              end_date: { 
+                type: "string",
+                description: "Will return all results before the specified end date. Required to be written in the format YYYY-MM-DD",
+                default: "",
+              },
               max_results: { 
                 type: "number", 
                 description: "The maximum number of search results to return",
