@@ -19,13 +19,13 @@ COPY package.json package-lock.json ./
 RUN npm ci --production --ignore-scripts
 
 # Copy built files
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/build ./build
 
 # Ensure executable permissions
-RUN chmod +x dist/index.js
+RUN chmod +x build/index.js
 
 # Set HTTP transport mode by default
 ENV TRANSPORT=http
 
 EXPOSE 8080
-ENTRYPOINT ["node", "dist/index.js"]
+ENTRYPOINT ["node", "build/index.js"]
