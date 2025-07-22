@@ -13,7 +13,7 @@ startCommand:
       tavilyApiKey:
         type: string
         title: "Tavily API Key"
-        description: "API key for Tavily MCP server"
+        description: "API key for Tavily MCP server. Get one from https://app.tavily.com/home"
   exampleConfig:
     tavilyApiKey: "tvly-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
