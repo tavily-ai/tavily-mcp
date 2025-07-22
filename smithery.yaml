@@ -1,7 +1,9 @@
-# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+# Smithery configuration file: https://smithery.ai/docs/build/project-config
+
+runtime: container
 
 startCommand:
-  type: stdio
+  type: http
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
@@ -10,8 +12,11 @@ startCommand:
     properties:
       tavilyApiKey:
         type: string
-        description: The API key for the Tavily MCP server.
-  commandFunction:
-    # A function that produces the CLI command to start the MCP on stdio.
-    |-
-    config => ({ command: 'node', args: ['build/index.js'], env: { TAVILY_API_KEY: config.tavilyApiKey } })
+        title: "Tavily API Key"
+        description: "API key for Tavily MCP server"
+  exampleConfig:
+    tavilyApiKey: "tvly-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
