@@ -1,7 +1,7 @@
 {
   "name": "tavily-mcp",
-  "version": "0.2.9",
-  "description": "MCP server for advanced web search using Tavily",
+  "version": "0.3.0",
+  "description": "MCP server for advanced web search using Tavily - works both locally and on Cloudflare Workers",
   "type": "module",
   "bin": {
     "tavily-mcp": "./build/index.js"
@@ -14,7 +14,14 @@
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "cf-typegen": "wrangler types",
+    "type-check": "tsc --noEmit",
+    "test-local": "npm run build && node build/index.js --list-tools",
+    "test-mcp": "npm run build && npx @modelcontextprotocol/inspector build/index.js"
   },
   "keywords": [
     "tavily-mcp",
@@ -36,19 +43,25 @@
     "tavily-extract",
     "web-extraction",
     "data-extraction",
-    "search-integration"
+    "search-integration",
+    "cloudflare-workers",
+    "workers",
+    "edge-computing"
   ],
   "author": "Tavily",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "0.6.0",
-    "dotenv": "^16.4.5",
+    "@modelcontextprotocol/sdk": "^1.16.0",
+    "agents": "^0.0.109",
     "axios": "^1.6.7",
-    "yargs": "^17.7.2"
+    "dotenv": "^16.4.5",
+    "yargs": "^17.7.2",
+    "zod": "^4.0.5"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
     "@types/yargs": "^17.0.32",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "wrangler": "^4.22.0"
   }
 }
