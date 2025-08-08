@@ -32,7 +32,7 @@ https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>
 
 
 ### Connect to Cursor
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=postgres&config=JTdCJTIyY29tbWFuZCUyMiUzQSUyMm5weCUyMC15JTIwJTQwbW9kZWxjb250ZXh0cHJvdG9jb2wlMkZzZXJ2ZXItcG9zdGdyZXMlMjBwb3N0Z3Jlc3FsJTNBJTJGJTJGbG9jYWxob3N0JTJGbXlkYiUyMiU3RA%3D%3D)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=postgres&config=eyJjb21tYW5kIjoibnB4IC15IEBtb2RlbGNvbnRleHRwcm90b2NvbC9zZXJ2ZXItcG9zdGdyZXMgcG9zdGdyZXNxbDovL2xvY2FsaG9zdC9teWRiIn0%3D)
 
 Click the ⬆️ Add to Cursor ⬆️ button, this will do most of the work for you but you will still need to edit the configuration to add your API-KEY. You can get a Tavily API key [here](https://www.tavily.com/).
 
