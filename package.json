@@ -14,7 +14,8 @@
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "start:http": "TRANSPORT=http node build/index.js"
   },
   "keywords": [
     "tavily-mcp",
@@ -41,9 +42,9 @@
   "author": "Tavily",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "0.6.0",
-    "dotenv": "^16.4.5",
+    "@modelcontextprotocol/sdk": "^1.16.0",
     "axios": "^1.6.7",
+    "dotenv": "^16.4.5",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
