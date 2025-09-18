@@ -293,7 +293,7 @@ class TavilyClient {
               allow_external: {
                 type: "boolean",
                 description: "Whether to return external links in the final response",
-                default: false
+                default: true
               },
               extract_depth: {
                 type: "string",
@@ -357,13 +357,13 @@ class TavilyClient {
               select_domains: {
                 type: "array",
                 items: { type: "string" },
-                description: "Regex patterns to select crawling to specific domains or subdomains (e.g., ^docs\\.example\\.com$)",
+                description: "Regex patterns to restrict crawling to specific domains or subdomains (e.g., ^docs\\.example\\.com$)",
                 default: []
               },
               allow_external: {
                 type: "boolean",
                 description: "Whether to return external links in the final response",
-                default: false
+                default: true
               }
             },
             required: ["url"]
