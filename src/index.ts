@@ -248,7 +248,7 @@ class TavilyClient {
         },
         {
           name: "tavily-crawl",
-          description: "A powerful web crawler that initiates a structured web crawl starting from a specified base URL. The crawler expands from that point like a tree, following internal links across pages. You can control how deep and wide it goes, and guide it to focus on specific sections of the site.",
+          description: "A powerful web crawler that initiates a structured web crawl starting from a specified base URL. The crawler expands from that point like a graph, following internal links across pages. You can control how deep and wide it goes, and guide it to focus on specific sections of the site.",
           inputSchema: {
             type: "object",
             properties: {
@@ -276,7 +276,7 @@ class TavilyClient {
               },
               instructions: {
                 type: "string",
-                description: "Natural language instructions for the crawler"
+                description: "Natural language instructions for the crawler. Instructions specify which types of pages the crawler should return."
               },
               select_paths: {
                 type: "array",
@@ -287,22 +287,13 @@ class TavilyClient {
               select_domains: {
                 type: "array",
                 items: { type: "string" },
-                description: "Regex patterns to select crawling to specific domains or subdomains (e.g., ^docs\\.example\\.com$)",
+                description: "Regex patterns to restrict crawling to specific domains or subdomains (e.g., ^docs\\.example\\.com$)",
                 default: []
               },
               allow_external: {
                 type: "boolean",
-                description: "Whether to allow following links that go to external domains",
+                description: "Whether to return external links in the final response",
                 default: false
-              },
-              categories: {
-                type: "array",
-                items: { 
-                  type: "string",
-                  enum: ["Careers", "Blog", "Documentation", "About", "Pricing", "Community", "Developers", "Contact", "Media"]
-                },
-                description: "Filter URLs using predefined categories like documentation, blog, api, etc",
-                default: []
               },
               extract_depth: {
                 type: "string",
@@ -371,17 +362,8 @@ class TavilyClient {
               },
               allow_external: {
                 type: "boolean",
-                description: "Whether to allow following links that go to external domains",
+                description: "Whether to return external links in the final response",
                 default: false
-              },
-              categories: {
-                type: "array",
-                items: { 
-                  type: "string",
-                  enum: ["Careers", "Blog", "Documentation", "About", "Pricing", "Community", "Developers", "Contact", "Media"]
-                },
-                description: "Filter URLs using predefined categories like documentation, blog, api, etc",
-                default: []
               }
             },
             required: ["url"]
@@ -440,7 +422,6 @@ class TavilyClient {
               select_paths: Array.isArray(args.select_paths) ? args.select_paths : [],
               select_domains: Array.isArray(args.select_domains) ? args.select_domains : [],
               allow_external: args.allow_external,
-              categories: Array.isArray(args.categories) ? args.categories : [],
               extract_depth: args.extract_depth,
               format: args.format,
               include_favicon: args.include_favicon
@@ -461,8 +442,7 @@ class TavilyClient {
               instructions: args.instructions,
               select_paths: Array.isArray(args.select_paths) ? args.select_paths : [],
               select_domains: Array.isArray(args.select_domains) ? args.select_domains : [],
-              allow_external: args.allow_external,
-              categories: Array.isArray(args.categories) ? args.categories : []
+              allow_external: args.allow_external
             });
             return {
               content: [{
