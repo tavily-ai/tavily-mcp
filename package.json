@@ -1,6 +1,6 @@
 {
   "name": "tavily-mcp",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "MCP server for advanced web search using Tavily",
   "type": "module",
   "bin": {
