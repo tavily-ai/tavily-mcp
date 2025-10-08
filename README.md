@@ -30,6 +30,12 @@ https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>
 ```
  Get your Tavily API key from [tavily.com](https://www.tavily.com/).
 
+Alternatively, you can pass your API key through an Authorization header if the MCP client supports this:
+
+```
+Authorization: Bearer <your-api-key>
+```
+
 
 ### Connect to Cursor
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=tavily-remote-mcp&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AudGF2aWx5LmNvbS9tY3AvP3RhdmlseUFwaUtleT08eW91ci1hcGkta2V5PiIsImVudiI6e319)
