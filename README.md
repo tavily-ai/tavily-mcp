@@ -171,6 +171,151 @@ npx -y @smithery/cli install @tavily-ai/tavily-mcp --client claude
 
 Although you can launch a server on its own, it's not particularly helpful in isolation. Instead, you should integrate it into an MCP client. Below is an example of how to configure the Claude Desktop app to work with the tavily-mcp server.
 
+## Environment Variable Configuration 🔧
+
+You can configure default values for all tool parameters using environment variables. This allows you to set global defaults that apply to all tools, which can be overridden on a per-call basis.
+
+### Configuration Priority
+
+The configuration priority (from highest to lowest) is:
+1. **Tool call parameters** - Parameters explicitly provided in the tool call
+2. **Environment variables** - Global defaults set via environment variables
+3. **Hardcoded defaults** - Built-in default values in the code
+
+### Available Environment Variables
+
+All environment variables follow the naming convention: `TAVILY_DEFAULT_{PARAMETER_NAME}`
+
+#### Search Tool Parameters
+
+```bash
+TAVILY_DEFAULT_SEARCH_DEPTH=advanced           # Options: basic, advanced
+TAVILY_DEFAULT_TOPIC=general                   # Options: general, news
+TAVILY_DEFAULT_DAYS=7                          # Number of days for news search
+TAVILY_DEFAULT_MAX_RESULTS=15                  # Number between 5-20
+TAVILY_DEFAULT_INCLUDE_IMAGES=true             # Options: true, false
+TAVILY_DEFAULT_INCLUDE_IMAGE_DESCRIPTIONS=true # Options: true, false
+TAVILY_DEFAULT_INCLUDE_RAW_CONTENT=false       # Options: true, false
+TAVILY_DEFAULT_INCLUDE_FAVICON=true            # Options: true, false
+TAVILY_DEFAULT_COUNTRY=united states           # Country name in lowercase
+```
+
+#### Extract Tool Parameters
+
+```bash
+TAVILY_DEFAULT_EXTRACT_DEPTH=advanced          # Options: basic, advanced
+TAVILY_DEFAULT_FORMAT=markdown                 # Options: markdown, text
+TAVILY_DEFAULT_INCLUDE_IMAGES=false            # Options: true, false
+TAVILY_DEFAULT_INCLUDE_FAVICON=true            # Options: true, false
+```
+
+#### Crawl Tool Parameters
+
+```bash
+TAVILY_DEFAULT_MAX_DEPTH=2                     # Integer (minimum 1)
+TAVILY_DEFAULT_MAX_BREADTH=30                  # Integer (minimum 1)
+TAVILY_DEFAULT_LIMIT=100                       # Integer (minimum 1)
+TAVILY_DEFAULT_ALLOW_EXTERNAL=false            # Options: true, false
+TAVILY_DEFAULT_EXTRACT_DEPTH=advanced          # Options: basic, advanced
+TAVILY_DEFAULT_FORMAT=text                     # Options: markdown, text
+TAVILY_DEFAULT_INCLUDE_FAVICON=true            # Options: true, false
+```
+
+#### Map Tool Parameters
+
+```bash
+TAVILY_DEFAULT_MAX_DEPTH=3                     # Integer (minimum 1)
+TAVILY_DEFAULT_MAX_BREADTH=50                  # Integer (minimum 1)
+TAVILY_DEFAULT_LIMIT=200                       # Integer (minimum 1)
+TAVILY_DEFAULT_ALLOW_EXTERNAL=true             # Options: true, false
+```
+
+### Example Configuration
+
+Here's an example of how to configure the Tavily MCP server with custom defaults:
+
+#### VS Code Configuration with Environment Variables
+
+```json
+{
+  "mcp": {
+    "inputs": [
+      {
+        "type": "promptString",
+        "id": "tavily_api_key",
+        "description": "Tavily API Key",
+        "password": true
+      }
+    ],
+    "servers": {
+      "tavily": {
+        "command": "npx",
+        "args": ["-y", "tavily-mcp@latest"],
+        "env": {
+          "TAVILY_API_KEY": "${input:tavily_api_key}",
+          "TAVILY_DEFAULT_SEARCH_DEPTH": "advanced",
+          "TAVILY_DEFAULT_MAX_RESULTS": "15",
+          "TAVILY_DEFAULT_INCLUDE_IMAGES": "true",
+          "TAVILY_DEFAULT_EXTRACT_DEPTH": "advanced",
+          "TAVILY_DEFAULT_FORMAT": "markdown"
+        }
+      }
+    }
+  }
+}
+```
+
+#### Claude Desktop Configuration with Environment Variables
+
+```json
+{
+  "mcpServers": {
+    "tavily-mcp": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "env": {
+        "TAVILY_API_KEY": "your-api-key-here",
+        "TAVILY_DEFAULT_SEARCH_DEPTH": "advanced",
+        "TAVILY_DEFAULT_MAX_RESULTS": "15",
+        "TAVILY_DEFAULT_INCLUDE_IMAGES": "true",
+        "TAVILY_DEFAULT_MAX_DEPTH": "2",
+        "TAVILY_DEFAULT_MAX_BREADTH": "30",
+        "TAVILY_DEFAULT_LIMIT": "100"
+      }
+    }
+  }
+}
+```
+
+#### Cline Configuration with Environment Variables
+
+```json
+{
+  "mcpServers": {
+    "tavily-mcp": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "env": {
+        "TAVILY_API_KEY": "your-api-key-here",
+        "TAVILY_DEFAULT_SEARCH_DEPTH": "advanced",
+        "TAVILY_DEFAULT_MAX_RESULTS": "20",
+        "TAVILY_DEFAULT_INCLUDE_RAW_CONTENT": "true",
+        "TAVILY_DEFAULT_EXTRACT_DEPTH": "advanced"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+### Notes on Environment Variables
+
+- **Boolean values** can be specified as: `true`/`false`, `1`/`0`, or `yes`/`no` (case-insensitive)
+- **Numeric values** should be specified as plain integers (e.g., `15`, not `"15"`)
+- **String values** should be specified as-is without quotes in JSON (e.g., `"advanced"`)
+- Environment variables only set **defaults** - you can still override them in individual tool calls
+- If an environment variable is not set or has an invalid value, the hardcoded default will be used
 
 ## Configuring MCP Clients ⚙️
 

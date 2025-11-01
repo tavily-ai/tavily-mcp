@@ -16,6 +16,133 @@ if (!API_KEY) {
   throw new Error("TAVILY_API_KEY environment variable is required");
 }
 
+// Configuration defaults from environment variables
+interface DefaultConfig {
+  // Search parameters
+  search_depth?: string;
+  topic?: string;
+  days?: number;
+  max_results?: number;
+  include_images?: boolean;
+  include_image_descriptions?: boolean;
+  include_raw_content?: boolean;
+  include_favicon?: boolean;
+  country?: string;
+
+  // Extract/Crawl parameters
+  extract_depth?: string;
+  format?: string;
+
+  // Crawl/Map parameters
+  max_depth?: number;
+  max_breadth?: number;
+  limit?: number;
+  allow_external?: boolean;
+}
+
+function parseEnvBoolean(value: string | undefined): boolean | undefined {
+  if (!value) return undefined;
+  const lower = value.toLowerCase();
+  if (lower === "true" || lower === "1" || lower === "yes") return true;
+  if (lower === "false" || lower === "0" || lower === "no") return false;
+  return undefined;
+}
+
+function parseEnvNumber(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const num = parseInt(value, 10);
+  return isNaN(num) ? undefined : num;
+}
+
+function parseEnvString(value: string | undefined): string | undefined {
+  return value || undefined;
+}
+
+function loadDefaultConfig(): DefaultConfig {
+  return {
+    // Search parameters
+    search_depth: parseEnvString(process.env.TAVILY_DEFAULT_SEARCH_DEPTH),
+    topic: parseEnvString(process.env.TAVILY_DEFAULT_TOPIC),
+    days: parseEnvNumber(process.env.TAVILY_DEFAULT_DAYS),
+    max_results: parseEnvNumber(process.env.TAVILY_DEFAULT_MAX_RESULTS),
+    include_images: parseEnvBoolean(process.env.TAVILY_DEFAULT_INCLUDE_IMAGES),
+    include_image_descriptions: parseEnvBoolean(
+      process.env.TAVILY_DEFAULT_INCLUDE_IMAGE_DESCRIPTIONS,
+    ),
+    include_raw_content: parseEnvBoolean(
+      process.env.TAVILY_DEFAULT_INCLUDE_RAW_CONTENT,
+    ),
+    include_favicon: parseEnvBoolean(
+      process.env.TAVILY_DEFAULT_INCLUDE_FAVICON,
+    ),
+    country: parseEnvString(process.env.TAVILY_DEFAULT_COUNTRY),
+
+    // Extract/Crawl parameters
+    extract_depth: parseEnvString(process.env.TAVILY_DEFAULT_EXTRACT_DEPTH),
+    format: parseEnvString(process.env.TAVILY_DEFAULT_FORMAT),
+
+    // Crawl/Map parameters
+    max_depth: parseEnvNumber(process.env.TAVILY_DEFAULT_MAX_DEPTH),
+    max_breadth: parseEnvNumber(process.env.TAVILY_DEFAULT_MAX_BREADTH),
+    limit: parseEnvNumber(process.env.TAVILY_DEFAULT_LIMIT),
+    allow_external: parseEnvBoolean(process.env.TAVILY_DEFAULT_ALLOW_EXTERNAL),
+  };
+}
+
+const DEFAULT_CONFIG = loadDefaultConfig();
+
+// Helper function to merge args with environment defaults
+// Priority: provided args > environment variables > hardcoded defaults
+function mergeWithDefaults(args: any, toolName: string): any {
+  const merged = { ...args };
+
+  // Apply defaults based on tool type
+  if (toolName === "tavily-search") {
+    merged.search_depth =
+      args.search_depth ?? DEFAULT_CONFIG.search_depth ?? "basic";
+    merged.topic = args.topic ?? DEFAULT_CONFIG.topic ?? "general";
+    merged.days = args.days ?? DEFAULT_CONFIG.days ?? 3;
+    merged.max_results = args.max_results ?? DEFAULT_CONFIG.max_results ?? 10;
+    merged.include_images =
+      args.include_images ?? DEFAULT_CONFIG.include_images ?? false;
+    merged.include_image_descriptions =
+      args.include_image_descriptions ??
+      DEFAULT_CONFIG.include_image_descriptions ??
+      false;
+    merged.include_raw_content =
+      args.include_raw_content ?? DEFAULT_CONFIG.include_raw_content ?? false;
+    merged.include_favicon =
+      args.include_favicon ?? DEFAULT_CONFIG.include_favicon ?? false;
+    merged.country = args.country ?? DEFAULT_CONFIG.country ?? "";
+  } else if (toolName === "tavily-extract") {
+    merged.extract_depth =
+      args.extract_depth ?? DEFAULT_CONFIG.extract_depth ?? "basic";
+    merged.include_images =
+      args.include_images ?? DEFAULT_CONFIG.include_images ?? false;
+    merged.format = args.format ?? DEFAULT_CONFIG.format ?? "markdown";
+    merged.include_favicon =
+      args.include_favicon ?? DEFAULT_CONFIG.include_favicon ?? false;
+  } else if (toolName === "tavily-crawl") {
+    merged.max_depth = args.max_depth ?? DEFAULT_CONFIG.max_depth ?? 1;
+    merged.max_breadth = args.max_breadth ?? DEFAULT_CONFIG.max_breadth ?? 20;
+    merged.limit = args.limit ?? DEFAULT_CONFIG.limit ?? 50;
+    merged.allow_external =
+      args.allow_external ?? DEFAULT_CONFIG.allow_external ?? true;
+    merged.extract_depth =
+      args.extract_depth ?? DEFAULT_CONFIG.extract_depth ?? "basic";
+    merged.format = args.format ?? DEFAULT_CONFIG.format ?? "markdown";
+    merged.include_favicon =
+      args.include_favicon ?? DEFAULT_CONFIG.include_favicon ?? false;
+  } else if (toolName === "tavily-map") {
+    merged.max_depth = args.max_depth ?? DEFAULT_CONFIG.max_depth ?? 1;
+    merged.max_breadth = args.max_breadth ?? DEFAULT_CONFIG.max_breadth ?? 20;
+    merged.limit = args.limit ?? DEFAULT_CONFIG.limit ?? 50;
+    merged.allow_external =
+      args.allow_external ?? DEFAULT_CONFIG.allow_external ?? true;
+  }
+
+  return merged;
+}
 
 interface TavilyResponse {
   // Response structure from Tavily API
@@ -376,7 +503,10 @@ class TavilyClient {
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
         let response: TavilyResponse;
-        const args = request.params.arguments ?? {};
+        const rawArgs = request.params.arguments ?? {};
+
+        // Merge with environment defaults
+        const args = mergeWithDefaults(rawArgs, request.params.name);
 
         switch (request.params.name) {
           case "tavily-search":
@@ -391,6 +521,8 @@ class TavilyClient {
               topic: args.topic,
               days: args.days,
               time_range: args.time_range,
+              start_date: args.start_date,
+              end_date: args.end_date,
               max_results: args.max_results,
               include_images: args.include_images,
               include_image_descriptions: args.include_image_descriptions,
