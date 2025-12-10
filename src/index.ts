@@ -16,6 +16,12 @@ if (!API_KEY) {
   throw new Error("TAVILY_API_KEY environment variable is required");
 }
 
+type UsageValue = number | string | null | undefined;
+
+interface UsageInfo {
+  total_credits?: UsageValue;
+  [key: string]: UsageValue;
+}
 
 interface TavilyResponse {
   // Response structure from Tavily API
@@ -35,6 +41,7 @@ interface TavilyResponse {
     raw_content?: string;
     favicon?: string;
   }>;
+  usage?: UsageInfo;
 }
 
 interface TavilyCrawlResponse {
@@ -45,12 +52,14 @@ interface TavilyCrawlResponse {
     favicon?: string;
   }>;
   response_time: number;
+  usage?: UsageInfo;
 }
 
 interface TavilyMapResponse {
   base_url: string;
   results: string[];
   response_time: number;
+  usage?: UsageInfo;
 }
 
 class TavilyClient {
@@ -204,6 +213,11 @@ class TavilyClient {
                 type: "boolean", 
                 description: "Whether to include the favicon URL for each result",
                 default: false,
+              },
+              include_usage: {
+                type: "boolean",
+                description: "Whether to include credit usage information in the response. Credit usage may be reported as 0 until certain thresholds are reached.",
+                default: false,
               }
             },
             required: ["query"]
@@ -242,6 +256,11 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              include_usage: {
+                type: "boolean",
+                description: "Whether to include credit usage information in the response. Credit usage may be reported as 0 until certain thresholds are reached.",
+                default: false,
+              }
             },
             required: ["urls"]
           }
@@ -312,6 +331,11 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              include_usage: {
+                type: "boolean",
+                description: "Whether to include credit usage information in the response. Credit usage may be reported as 0 until certain thresholds are reached.",
+                default: false,
+              }
             },
             required: ["url"]
           }
@@ -364,6 +388,11 @@ class TavilyClient {
                 type: "boolean",
                 description: "Whether to return external links in the final response",
                 default: true
+              },
+              include_usage: {
+                type: "boolean",
+                description: "Whether to include credit usage information in the response. Credit usage may be reported as 0 until certain thresholds are reached.",
+                default: false,
               }
             },
             required: ["url"]
@@ -398,7 +427,8 @@ class TavilyClient {
               include_domains: Array.isArray(args.include_domains) ? args.include_domains : [],
               exclude_domains: Array.isArray(args.exclude_domains) ? args.exclude_domains : [],
               country: args.country,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              include_usage: args.include_usage
             });
             break;
           
@@ -408,7 +438,8 @@ class TavilyClient {
               extract_depth: args.extract_depth,
               include_images: args.include_images,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              include_usage: args.include_usage
             });
             break;
 
@@ -424,7 +455,8 @@ class TavilyClient {
               allow_external: args.allow_external,
               extract_depth: args.extract_depth,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              include_usage: args.include_usage
             });
             return {
               content: [{
@@ -442,7 +474,8 @@ class TavilyClient {
               instructions: args.instructions,
               select_paths: Array.isArray(args.select_paths) ? args.select_paths : [],
               select_domains: Array.isArray(args.select_domains) ? args.select_domains : [],
-              allow_external: args.allow_external
+              allow_external: args.allow_external,
+              include_usage: args.include_usage
             });
             return {
               content: [{
@@ -492,6 +525,7 @@ class TavilyClient {
 
       const searchParams = {
         ...params,
+        include_usage: params?.include_usage ?? false,
         api_key: API_KEY,
       };
       
@@ -511,6 +545,7 @@ class TavilyClient {
     try {
       const response = await this.axiosInstance.post(this.baseURLs.extract, {
         ...params,
+        include_usage: params?.include_usage ?? false,
         api_key: API_KEY
       });
       return response.data;
@@ -528,6 +563,7 @@ class TavilyClient {
     try {
       const response = await this.axiosInstance.post(this.baseURLs.crawl, {
         ...params,
+        include_usage: params?.include_usage ?? false,
         api_key: API_KEY
       });
       return response.data;
@@ -545,6 +581,7 @@ class TavilyClient {
     try {
       const response = await this.axiosInstance.post(this.baseURLs.map, {
         ...params,
+        include_usage: params?.include_usage ?? false,
         api_key: API_KEY
       });
       return response.data;
@@ -597,6 +634,8 @@ function formatResults(response: TavilyResponse): string {
       });
     }  
 
+  appendUsage(output, response.usage);
+
   return output.join('\n');
 }
 
@@ -621,6 +660,8 @@ function formatCrawlResults(response: TavilyCrawlResponse): string {
     }
   });
   
+  appendUsage(output, response.usage);
+
   return output.join('\n');
 }
 
@@ -635,7 +676,30 @@ function formatMapResults(response: TavilyMapResponse): string {
     output.push(`\n[${index + 1}] URL: ${page}`);
   });
   
+  appendUsage(output, response.usage);
+
   return output.join('\n');
+}
+
+function appendUsage(output: string[], usage?: UsageInfo): void {
+  if (!usage) {
+    return;
+  }
+
+  const entries = Object.entries(usage).filter(([, value]) => value !== undefined && value !== null);
+
+  if (!entries.length) {
+    return;
+  }
+
+  output.push('\nUsage:');
+  for (const [key, value] of entries) {
+    output.push(`${formatUsageKey(key)}: ${value}`);
+  }
+}
+
+function formatUsageKey(key: string): string {
+  return key.replace(/_/g, ' ');
 }
 
 function listTools(): void {

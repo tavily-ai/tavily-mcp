@@ -19,6 +19,43 @@ The Tavily MCP server provides:
 - [Tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server
 - [Tutorial](https://medium.com/@dustin_36183/connect-your-coding-assistant-to-the-web-integrating-tavily-mcp-with-cline-in-vs-code-5f923a4983d1) on integrating Tavily MCP with Cline in VS Code
 
+## `include_usage` parameter
+
+All Tavily API endpoints (`/search`, `/extract`, `/crawl`, `/map`) now accept an optional boolean `include_usage` flag. When set to `true`, the response includes a `usage` object that reports credit consumption for that request. The flag defaults to `false` so existing workflows remain fully backward compatible.
+
+> Credit usage may be reported as `0` until certain usage thresholds are reached. The exact behavior can vary by endpoint.
+
+### API endpoints
+
+- `/search`: pass `include_usage` in the request body to echo per-search credit usage in the response.
+- `/extract`: supports the same optional flag alongside your list of URLs.
+- `/crawl` and `/map`: include the flag to retrieve crawl/map credit consumption.
+
+### SDK usage
+
+#### Python SDK
+```python
+from tavily import TavilyClient
+
+client = TavilyClient(api_key="YOUR_TAVILY_API_KEY")
+response = client.search(query="latest AI research", include_usage=True)
+print(response["usage"])
+```
+
+#### JavaScript SDK
+```javascript
+import { TavilyClient } from "tavily";
+
+const client = new TavilyClient({ apiKey: process.env.TAVILY_API_KEY });
+const response = await client.search({ query: "agentic workflows", include_usage: true });
+console.log(response.usage);
+```
+
+### MCP tools and integrations
+
+- **Anthropic / Claude integrations**: when invoking `tavily-search`, `tavily-extract`, `tavily-crawl`, or `tavily-map`, include `"include_usage": true` in the tool arguments to receive usage data in the streamed response.
+- **OpenAI Responses / Assistants API**: add `include_usage: true` to the Tavily tool arguments when creating tool calls so the returned messages contain the usage object.
+
 ## Remote MCP Server
 
 Connect directly to Tavily's remote MCP server instead of running it locally. This provides a seamless experience without requiring local installation or configuration.
