@@ -22,6 +22,7 @@ interface TavilyResponse {
   query: string;
   follow_up_questions?: Array<string>;
   answer?: string;
+  usage?: number;
   images?: Array<string | {
     url: string;
     description?: string;
@@ -45,12 +46,14 @@ interface TavilyCrawlResponse {
     favicon?: string;
   }>;
   response_time: number;
+  usage?: number;
 }
 
 interface TavilyMapResponse {
   base_url: string;
   results: string[];
   response_time: number;
+  usage?: number;
 }
 
 class TavilyClient {
@@ -204,6 +207,11 @@ class TavilyClient {
                 type: "boolean", 
                 description: "Whether to include the favicon URL for each result",
                 default: false,
+              },
+              include_usage: {
+                type: "boolean",
+                description: "Include credit usage details in the response (may be 0 if minimum thresholds are not met). See https://github.com/tavily-ai/new-docs/blob/main/docs/credits-pricing.md",
+                default: false
               }
             },
             required: ["query"]
@@ -242,6 +250,11 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              include_usage: {
+                type: "boolean",
+                description: "Include credit usage details in the response (may be 0 if minimum thresholds are not met). See https://github.com/tavily-ai/new-docs/blob/main/docs/credits-pricing.md",
+                default: false
+              }
             },
             required: ["urls"]
           }
@@ -312,6 +325,11 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              include_usage: {
+                type: "boolean",
+                description: "Include credit usage details in the response (may be 0 if minimum thresholds are not met). See https://github.com/tavily-ai/new-docs/blob/main/docs/credits-pricing.md",
+                default: false
+              }
             },
             required: ["url"]
           }
@@ -364,6 +382,11 @@ class TavilyClient {
                 type: "boolean",
                 description: "Whether to return external links in the final response",
                 default: true
+              },
+              include_usage: {
+                type: "boolean",
+                description: "Include credit usage details in the response (may be 0 if minimum thresholds are not met). See https://github.com/tavily-ai/new-docs/blob/main/docs/credits-pricing.md",
+                default: false
               }
             },
             required: ["url"]
@@ -398,7 +421,8 @@ class TavilyClient {
               include_domains: Array.isArray(args.include_domains) ? args.include_domains : [],
               exclude_domains: Array.isArray(args.exclude_domains) ? args.exclude_domains : [],
               country: args.country,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              include_usage: args.include_usage ?? false
             });
             break;
           
@@ -408,7 +432,8 @@ class TavilyClient {
               extract_depth: args.extract_depth,
               include_images: args.include_images,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              include_usage: args.include_usage ?? false
             });
             break;
 
@@ -424,7 +449,8 @@ class TavilyClient {
               allow_external: args.allow_external,
               extract_depth: args.extract_depth,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              include_usage: args.include_usage ?? false
             });
             return {
               content: [{
@@ -442,7 +468,8 @@ class TavilyClient {
               instructions: args.instructions,
               select_paths: Array.isArray(args.select_paths) ? args.select_paths : [],
               select_domains: Array.isArray(args.select_domains) ? args.select_domains : [],
-              allow_external: args.allow_external
+              allow_external: args.allow_external,
+              include_usage: args.include_usage ?? false
             });
             return {
               content: [{
@@ -563,6 +590,10 @@ function formatResults(response: TavilyResponse): string {
   // Format API response into human-readable text
   const output: string[] = [];
 
+  if (typeof response.usage === "number") {
+    output.push(`Credits Used: ${response.usage}`);
+  }
+
   // Include answer if available
   if (response.answer) {
     output.push(`Answer: ${response.answer}`);
@@ -605,6 +636,9 @@ function formatCrawlResults(response: TavilyCrawlResponse): string {
   
   output.push(`Crawl Results:`);
   output.push(`Base URL: ${response.base_url}`);
+  if (typeof response.usage === "number") {
+    output.push(`Credits Used: ${response.usage}`);
+  }
   
   output.push('\nCrawled Pages:');
   response.results.forEach((page, index) => {
@@ -629,6 +663,9 @@ function formatMapResults(response: TavilyMapResponse): string {
   
   output.push(`Site Map Results:`);
   output.push(`Base URL: ${response.base_url}`);
+  if (typeof response.usage === "number") {
+    output.push(`Credits Used: ${response.usage}`);
+  }
   
   output.push('\nMapped Pages:');
   response.results.forEach((page, index) => {

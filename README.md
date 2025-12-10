@@ -14,6 +14,25 @@ The Tavily MCP server provides:
 - Powerful web mapping tool that creates a structured map of website 
 - Web crawler that systematically explores websites 
 
+## include_usage parameter
+
+All Tavily endpoints (`/search`, `/extract`, `/crawl`, `/map`) and their MCP tool equivalents accept an optional boolean `include_usage` parameter. When set to `true`, Tavily returns a `usage` field in the response that shows how many credits were billed for that specific call. The field is omitted when `include_usage` is `false`, preserving backwards compatibility.
+
+- Type: boolean
+- Optional: yes (defaults to `false`)
+- Applies to: Tavily API, JavaScript SDK (this MCP server), and the Tavily Python SDK (`include_usage=True`)
+- Credit usage may return `0` if the minimum billing thresholds are not met
+
+JavaScript SDK example:
+`await client.search({ query: "latest ai safety updates", include_usage: true });`
+
+Python SDK example:
+`client.search(query="latest ai safety updates", include_usage=True)`
+
+See [Credits & Pricing](https://github.com/tavily-ai/new-docs/blob/main/docs/credits-pricing.md) for more details on how usage is calculated.
+
+> **Tip:** When using Tavily from other platforms (OpenAI Responses API, Anthropic Claude Desktop, etc.), include `include_usage: true` in the tool arguments whenever you need credit data in the response payload.
+
 
 ### 📚 Helpful Resources
 - [Tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server
@@ -114,6 +133,8 @@ resp = client.responses.create(
 
 print(resp.output_text)
 ```
+
+When invoking Tavily tools through the OpenAI Responses API, add `include_usage: true` to the tool call arguments (e.g., inside the structured tool invocation payload) whenever you want the Tavily response to contain the `usage` field.
 
 ### Clients that don't support remote MCPs
 
@@ -325,6 +346,8 @@ Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com
   }
 }
 ```
+
+When triggering Tavily tools from Claude Desktop (Anthropic), include `include_usage: true` in the tool arguments to receive the credit usage block in the response. Leave it unset or `false` to retain the previous behavior without usage data.
 
 ### 2. Git Installation
 
