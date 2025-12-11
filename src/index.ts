@@ -22,7 +22,7 @@ interface TavilyResponse {
   query: string;
   follow_up_questions?: Array<string>;
   answer?: string;
-  usage?: number;
+  usage?: { usage: number };
   images?: Array<string | {
     url: string;
     description?: string;
@@ -46,14 +46,14 @@ interface TavilyCrawlResponse {
     favicon?: string;
   }>;
   response_time: number;
-  usage?: number;
+  usage?: { usage: number };
 }
 
 interface TavilyMapResponse {
   base_url: string;
   results: string[];
   response_time: number;
-  usage?: number;
+  usage?: { usage: number };
 }
 
 class TavilyClient {
@@ -210,7 +210,7 @@ class TavilyClient {
               },
               include_usage: {
                 type: "boolean",
-                description: "Include credit usage details in the response (may be 0 if minimum thresholds are not met). See https://github.com/tavily-ai/new-docs/blob/main/docs/credits-pricing.md",
+                description: "Whether to include credit usage information in the response.",
                 default: false
               }
             },
@@ -252,7 +252,7 @@ class TavilyClient {
               },
               include_usage: {
                 type: "boolean",
-                description: "Include credit usage details in the response (may be 0 if minimum thresholds are not met). See https://github.com/tavily-ai/new-docs/blob/main/docs/credits-pricing.md",
+                description: "Whether to include credit usage information in the response. NOTE:The value may be 0 if the total successful URL extractions has not yet reached 5 calls. See our Credits & Pricing documentation for details",
                 default: false
               }
             },
@@ -327,7 +327,7 @@ class TavilyClient {
               },
               include_usage: {
                 type: "boolean",
-                description: "Include credit usage details in the response (may be 0 if minimum thresholds are not met). See https://github.com/tavily-ai/new-docs/blob/main/docs/credits-pricing.md",
+                description: "Whether to include credit usage information in the response. NOTE:The value may be 0 if the total use of /extract and /map calls has not yet reached minimum needed. See our Credits & Pricing documentation for details.",
                 default: false
               }
             },
@@ -385,7 +385,7 @@ class TavilyClient {
               },
               include_usage: {
                 type: "boolean",
-                description: "Include credit usage details in the response (may be 0 if minimum thresholds are not met). See https://github.com/tavily-ai/new-docs/blob/main/docs/credits-pricing.md",
+                description: "Whether to include credit usage information in the response.NOTE:The value may be 0 if the total successful pages mapped has not yet reached 10 calls. See our Credits & Pricing documentation for details.",
                 default: false
               }
             },
@@ -590,8 +590,8 @@ function formatResults(response: TavilyResponse): string {
   // Format API response into human-readable text
   const output: string[] = [];
 
-  if (typeof response.usage === "number") {
-    output.push(`Credits Used: ${response.usage}`);
+  if (typeof response.usage?.usage === "number") {
+    output.push(`Credits Used: ${response.usage.usage}`);
   }
 
   // Include answer if available
@@ -636,8 +636,8 @@ function formatCrawlResults(response: TavilyCrawlResponse): string {
   
   output.push(`Crawl Results:`);
   output.push(`Base URL: ${response.base_url}`);
-  if (typeof response.usage === "number") {
-    output.push(`Credits Used: ${response.usage}`);
+  if (typeof response.usage?.usage === "number") {
+    output.push(`Credits Used: ${response.usage.usage}`);
   }
   
   output.push('\nCrawled Pages:');
@@ -663,8 +663,8 @@ function formatMapResults(response: TavilyMapResponse): string {
   
   output.push(`Site Map Results:`);
   output.push(`Base URL: ${response.base_url}`);
-  if (typeof response.usage === "number") {
-    output.push(`Credits Used: ${response.usage}`);
+  if (typeof response.usage?.usage === "number") {
+    output.push(`Credits Used: ${response.usage.usage}`);
   }
   
   output.push('\nMapped Pages:');
