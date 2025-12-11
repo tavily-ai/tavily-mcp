@@ -22,7 +22,8 @@ interface TavilyResponse {
   query: string;
   follow_up_questions?: Array<string>;
   answer?: string;
-  usage?: { usage: number };
+  usage?: { credits: number };
+  request_id?: string;
   images?: Array<string | {
     url: string;
     description?: string;
@@ -46,14 +47,16 @@ interface TavilyCrawlResponse {
     favicon?: string;
   }>;
   response_time: number;
-  usage?: { usage: number };
+  usage?: { credits: number };
+  request_id?: string;
 }
 
 interface TavilyMapResponse {
   base_url: string;
   results: string[];
   response_time: number;
-  usage?: { usage: number };
+  usage?: { credits: number };
+  request_id?: string;
 }
 
 class TavilyClient {
@@ -590,10 +593,6 @@ function formatResults(response: TavilyResponse): string {
   // Format API response into human-readable text
   const output: string[] = [];
 
-  if (typeof response.usage?.usage === "number") {
-    output.push(`Credits Used: ${response.usage.usage}`);
-  }
-
   // Include answer if available
   if (response.answer) {
     output.push(`Answer: ${response.answer}`);
@@ -628,6 +627,14 @@ function formatResults(response: TavilyResponse): string {
       });
     }  
 
+  if (typeof response.usage?.credits === "number") {
+    output.push(`\nCredits Used: ${response.usage.credits}`);
+  }
+
+  if (response.request_id) {
+    output.push(`Request ID: ${response.request_id}`);
+  }
+
   return output.join('\n');
 }
 
@@ -636,9 +643,6 @@ function formatCrawlResults(response: TavilyCrawlResponse): string {
   
   output.push(`Crawl Results:`);
   output.push(`Base URL: ${response.base_url}`);
-  if (typeof response.usage?.usage === "number") {
-    output.push(`Credits Used: ${response.usage.usage}`);
-  }
   
   output.push('\nCrawled Pages:');
   response.results.forEach((page, index) => {
@@ -655,6 +659,14 @@ function formatCrawlResults(response: TavilyCrawlResponse): string {
     }
   });
   
+  if (typeof response.usage?.credits === "number") {
+    output.push(`\nCredits Used: ${response.usage.credits}`);
+  }
+  
+  if (response.request_id) {
+    output.push(`Request ID: ${response.request_id}`);
+  }
+  
   return output.join('\n');
 }
 
@@ -663,14 +675,19 @@ function formatMapResults(response: TavilyMapResponse): string {
   
   output.push(`Site Map Results:`);
   output.push(`Base URL: ${response.base_url}`);
-  if (typeof response.usage?.usage === "number") {
-    output.push(`Credits Used: ${response.usage.usage}`);
-  }
   
   output.push('\nMapped Pages:');
   response.results.forEach((page, index) => {
     output.push(`\n[${index + 1}] URL: ${page}`);
   });
+  
+  if (typeof response.usage?.credits === "number") {
+    output.push(`\nCredits Used: ${response.usage.credits}`);
+  }
+  
+  if (response.request_id) {
+    output.push(`Request ID: ${response.request_id}`);
+  }
   
   return output.join('\n');
 }
