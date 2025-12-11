@@ -255,7 +255,7 @@ class TavilyClient {
               },
               include_usage: {
                 type: "boolean",
-                description: "Whether to include credit usage information in the response. NOTE:The value may be 0 if the total successful URL extractions has not yet reached 5 calls. See our Credits & Pricing documentation for details",
+                description: "Whether to include credit usage information in the response.",
                 default: false
               }
             },
@@ -330,7 +330,7 @@ class TavilyClient {
               },
               include_usage: {
                 type: "boolean",
-                description: "Whether to include credit usage information in the response. NOTE:The value may be 0 if the total use of /extract and /map calls has not yet reached minimum needed. See our Credits & Pricing documentation for details.",
+                description: "Whether to include credit usage information in the response.",
                 default: false
               }
             },
@@ -388,7 +388,7 @@ class TavilyClient {
               },
               include_usage: {
                 type: "boolean",
-                description: "Whether to include credit usage information in the response.NOTE:The value may be 0 if the total successful pages mapped has not yet reached 10 calls. See our Credits & Pricing documentation for details.",
+                description: "Whether to include credit usage information in the response.",
                 default: false
               }
             },
