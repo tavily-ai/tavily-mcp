@@ -35,6 +35,7 @@ interface TavilyResponse {
     raw_content?: string;
     favicon?: string;
   }>;
+  usage?: Record<string, number>;
 }
 
 interface TavilyCrawlResponse {
@@ -45,15 +46,17 @@ interface TavilyCrawlResponse {
     favicon?: string;
   }>;
   response_time: number;
+  usage?: Record<string, number>;
 }
 
 interface TavilyMapResponse {
   base_url: string;
   results: string[];
   response_time: number;
+  usage?: Record<string, number>;
 }
 
-class TavilyClient {
+export class TavilyClient {
   // Core client properties
   private server: Server;
   private axiosInstance;
@@ -68,7 +71,7 @@ class TavilyClient {
     this.server = new Server(
       {
         name: "tavily-mcp",
-        version: "0.2.10",
+        version: "0.7.15",
       },
       {
         capabilities: {
@@ -88,6 +91,13 @@ class TavilyClient {
 
     this.setupHandlers();
     this.setupErrorHandling();
+  }
+
+  /**
+   * Overrides the Axios instance (intended for testing).
+   */
+  setHttpClient(client: any): void {
+    this.axiosInstance = client;
   }
 
   private setupErrorHandling(): void {
@@ -204,6 +214,10 @@ class TavilyClient {
                 type: "boolean", 
                 description: "Whether to include the favicon URL for each result",
                 default: false,
+              },
+              include_usage: {
+                type: "boolean",
+                description: "Optional flag to request credit usage details in the response. Defaults to omitted.",
               }
             },
             required: ["query"]
@@ -242,6 +256,10 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              include_usage: {
+                type: "boolean",
+                description: "Optional flag to request credit usage details in the response. Defaults to omitted.",
+              }
             },
             required: ["urls"]
           }
@@ -312,6 +330,10 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              include_usage: {
+                type: "boolean",
+                description: "Optional flag to request credit usage details in the response. Defaults to omitted.",
+              }
             },
             required: ["url"]
           }
@@ -364,6 +386,10 @@ class TavilyClient {
                 type: "boolean",
                 description: "Whether to return external links in the final response",
                 default: true
+              },
+              include_usage: {
+                type: "boolean",
+                description: "Optional flag to request credit usage details in the response. Defaults to omitted.",
               }
             },
             required: ["url"]
@@ -376,7 +402,7 @@ class TavilyClient {
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
         let response: TavilyResponse;
-        const args = request.params.arguments ?? {};
+        const args: any = request.params.arguments ?? {};
 
         switch (request.params.name) {
           case "tavily-search":
@@ -399,7 +425,7 @@ class TavilyClient {
               exclude_domains: Array.isArray(args.exclude_domains) ? args.exclude_domains : [],
               country: args.country,
               include_favicon: args.include_favicon
-            });
+            }, args.include_usage);
             break;
           
           case "tavily-extract":
@@ -409,7 +435,7 @@ class TavilyClient {
               include_images: args.include_images,
               format: args.format,
               include_favicon: args.include_favicon
-            });
+            }, args.include_usage);
             break;
 
           case "tavily-crawl":
@@ -425,7 +451,7 @@ class TavilyClient {
               extract_depth: args.extract_depth,
               format: args.format,
               include_favicon: args.include_favicon
-            });
+            }, args.include_usage);
             return {
               content: [{
                 type: "text",
@@ -443,7 +469,7 @@ class TavilyClient {
               select_paths: Array.isArray(args.select_paths) ? args.select_paths : [],
               select_domains: Array.isArray(args.select_domains) ? args.select_domains : [],
               allow_external: args.allow_external
-            });
+            }, args.include_usage);
             return {
               content: [{
                 type: "text",
@@ -486,14 +512,22 @@ class TavilyClient {
     console.error("Tavily MCP server running on stdio");
   }
 
-  async search(params: any): Promise<TavilyResponse> {
+  /**
+   * Executes a Tavily search request.
+   * @param params Search parameters forwarded to the API.
+   * @param include_usage Optional flag that, when true, includes credit usage metadata in the response.
+   */
+  async search(params: any, include_usage: boolean | null = null): Promise<TavilyResponse> {
     try {
       const endpoint =  this.baseURLs.search;
 
-      const searchParams = {
+      const searchParams: Record<string, any> = {
         ...params,
         api_key: API_KEY,
       };
+      if (include_usage !== null && include_usage !== undefined) {
+        searchParams.include_usage = include_usage;
+      }
       
       const response = await this.axiosInstance.post(endpoint, searchParams);
       return response.data;
@@ -507,12 +541,22 @@ class TavilyClient {
     }
   }
 
-  async extract(params: any): Promise<TavilyResponse> {
+  /**
+   * Extracts structured content from the Tavily API.
+   * @param params Extraction parameters forwarded to the API.
+   * @param include_usage Optional flag that, when true, includes credit usage metadata in the response.
+   */
+  async extract(params: any, include_usage: boolean | null = null): Promise<TavilyResponse> {
     try {
-      const response = await this.axiosInstance.post(this.baseURLs.extract, {
+      const payload: Record<string, any> = {
         ...params,
         api_key: API_KEY
-      });
+      };
+      if (include_usage !== null && include_usage !== undefined) {
+        payload.include_usage = include_usage;
+      }
+
+      const response = await this.axiosInstance.post(this.baseURLs.extract, payload);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -524,12 +568,22 @@ class TavilyClient {
     }
   }
 
-  async crawl(params: any): Promise<TavilyCrawlResponse> {
+  /**
+   * Kicks off a Tavily crawl request.
+   * @param params Crawl parameters forwarded to the API.
+   * @param include_usage Optional flag that, when true, includes credit usage metadata in the response.
+   */
+  async crawl(params: any, include_usage: boolean | null = null): Promise<TavilyCrawlResponse> {
     try {
-      const response = await this.axiosInstance.post(this.baseURLs.crawl, {
+      const payload: Record<string, any> = {
         ...params,
         api_key: API_KEY
-      });
+      };
+      if (include_usage !== null && include_usage !== undefined) {
+        payload.include_usage = include_usage;
+      }
+
+      const response = await this.axiosInstance.post(this.baseURLs.crawl, payload);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -541,12 +595,22 @@ class TavilyClient {
     }
   }
 
-  async map(params: any): Promise<TavilyMapResponse> {
+  /**
+   * Generates a Tavily site map.
+   * @param params Mapping parameters forwarded to the API.
+   * @param include_usage Optional flag that, when true, includes credit usage metadata in the response.
+   */
+  async map(params: any, include_usage: boolean | null = null): Promise<TavilyMapResponse> {
     try {
-      const response = await this.axiosInstance.post(this.baseURLs.map, {
+      const payload: Record<string, any> = {
         ...params,
         api_key: API_KEY
-      });
+      };
+      if (include_usage !== null && include_usage !== undefined) {
+        payload.include_usage = include_usage;
+      }
+
+      const response = await this.axiosInstance.post(this.baseURLs.map, payload);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -689,5 +753,7 @@ if (argv['list-tools']) {
 }
 
 // Otherwise start the server
-const server = new TavilyClient();
-server.run().catch(console.error);
+if (!process.env.TAVILY_MCP_SKIP_RUN) {
+  const server = new TavilyClient();
+  server.run().catch(console.error);
+}

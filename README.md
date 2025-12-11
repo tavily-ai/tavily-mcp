@@ -13,6 +13,7 @@ The Tavily MCP server provides:
 - Intelligent data extraction from web pages via the tavily-extract tool
 - Powerful web mapping tool that creates a structured map of website 
 - Web crawler that systematically explores websites 
+- Optional `include_usage` flag on every tool to request Tavily credit usage data (omit it to preserve current behavior)
 
 
 ### 📚 Helpful Resources

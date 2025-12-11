@@ -1,6 +1,6 @@
 {
   "name": "tavily-mcp",
-  "version": "0.2.10",
+  "version": "0.7.15",
   "description": "MCP server for advanced web search using Tavily",
   "type": "module",
   "bin": {
@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "test": "npm run build && node --test build/__tests__/*.js",
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
