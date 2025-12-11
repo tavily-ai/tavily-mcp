@@ -242,6 +242,10 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              query: {
+                type: "string",
+                description: "Optional search query for intent-based extraction. When provided, returns only the most relevant content from each URL that matches the query intent."
+              },
             },
             required: ["urls"]
           }
@@ -408,7 +412,8 @@ class TavilyClient {
               extract_depth: args.extract_depth,
               include_images: args.include_images,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              query: args.query
             });
             break;
 
