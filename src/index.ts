@@ -242,6 +242,17 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              query: {
+                type: "string",
+                description: "Optional search query for intent-based extraction. When provided, content will be reranked based on relevance to this query."
+              },
+              chunks_per_source: {
+                type: "integer",
+                description: "Number of top-ranked content chunks to return per source when using intent-based extraction (1-5)",
+                default: 3,
+                minimum: 1,
+                maximum: 5
+              },
             },
             required: ["urls"]
           }
@@ -311,6 +322,13 @@ class TavilyClient {
                 type: "boolean", 
                 description: "Whether to include the favicon URL for each result",
                 default: false,
+              },
+              chunks_per_source: {
+                type: "integer",
+                description: "Number of top-ranked content chunks to return per source (1-5)",
+                default: 3,
+                minimum: 1,
+                maximum: 5
               },
             },
             required: ["url"]
@@ -408,7 +426,9 @@ class TavilyClient {
               extract_depth: args.extract_depth,
               include_images: args.include_images,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              query: args.query,
+              chunks_per_source: args.chunks_per_source
             });
             break;
 
@@ -424,7 +444,8 @@ class TavilyClient {
               allow_external: args.allow_external,
               extract_depth: args.extract_depth,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              chunks_per_source: args.chunks_per_source
             });
             return {
               content: [{
