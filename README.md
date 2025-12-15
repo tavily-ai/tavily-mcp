@@ -362,6 +362,17 @@ Replace `your-api-key-here` with your actual [Tavily API key](https://tavily.com
 }
 ```
 
+## Default Parameters Configuration ⚙️
+
+You can set default parameter values for the `tavily-search` tool using the `TAVILY_DEFAULT_PARAMETERS` environment variable. This allows you to configure default search behavior without specifying these parameters in every request.
+
+### Example Configuration
+
+```bash
+export TAVILY_DEFAULT_PARAMETERS='{"include_images": true}'
+```
+
+
 ## Acknowledgments ✨
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
