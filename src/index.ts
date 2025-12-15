@@ -104,15 +104,15 @@ class TavilyClient {
   private getDefaultParameters(): Record<string, any> {
     /**Get default parameter values from environment variable.
      * 
-     * The environment variable TAVILY_DEFAULT_PARAMETERS should contain a JSON string 
+     * The environment variable DEFAULT_PARAMETERS should contain a JSON string 
      * with parameter names and their default values.
-     * Example: TAVILY_DEFAULT_PARAMETERS='{"search_depth":"basic","topic":"news"}'
+     * Example: DEFAULT_PARAMETERS='{"search_depth":"basic","topic":"news"}'
      * 
      * Returns:
      *   Object with default parameter values, or empty object if env var is not present or invalid.
      */
     try {
-      const parametersEnv = process.env.TAVILY_DEFAULT_PARAMETERS;
+      const parametersEnv = process.env.DEFAULT_PARAMETERS;
       
       if (!parametersEnv) {
         return {};
@@ -122,13 +122,13 @@ class TavilyClient {
       const defaults = JSON.parse(parametersEnv);
       
       if (typeof defaults !== 'object' || defaults === null || Array.isArray(defaults)) {
-        console.warn(`TAVILY_DEFAULT_PARAMETERS is not a valid JSON object: ${parametersEnv}`);
+        console.warn(`DEFAULT_PARAMETERS is not a valid JSON object: ${parametersEnv}`);
         return {};
       }
       
       return defaults;
     } catch (error: any) {
-      console.warn(`Failed to parse TAVILY_DEFAULT_PARAMETERS as JSON: ${error.message}`);
+      console.warn(`Failed to parse DEFAULT_PARAMETERS as JSON: ${error.message}`);
       return {};
     }
   }
