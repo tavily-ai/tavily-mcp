@@ -414,7 +414,6 @@ class TavilyClient {
               format: args.format,
               include_favicon: args.include_favicon,
               query: args.query,
-              chunks_per_source: args.chunks_per_source
             });
             break;
 
@@ -431,7 +430,6 @@ class TavilyClient {
               extract_depth: args.extract_depth,
               format: args.format,
               include_favicon: args.include_favicon,
-              chunks_per_source: args.chunks_per_source
             });
             return {
               content: [{
