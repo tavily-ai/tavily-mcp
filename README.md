@@ -129,7 +129,8 @@ mcp-remote is a lightweight bridge that lets MCP clients that can only talk to l
 }
 ```
 
-**Note:** You can set default parameters for all requests through environment variables. Add a JSON object to the `DEFAULT_PARAMETERS` environment variable. For example:
+**Note:** When using the remote MCP, you can specify default parameters for all requests by including a `DEFAULT_PARAMETERS` header containing a JSON object with your desired defaults. Example:
+
 
 ```json
 {"include_images":true, "search_depth": "basic", "max_results": 10}
