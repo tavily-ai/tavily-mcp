@@ -242,6 +242,10 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              query: {
+                type: "string",
+                description: "User intent query for reranking extracted chunks based on relevance"
+              },
             },
             required: ["urls"]
           }
@@ -408,7 +412,8 @@ class TavilyClient {
               extract_depth: args.extract_depth,
               include_images: args.include_images,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              query: args.query,
             });
             break;
 
@@ -424,7 +429,8 @@ class TavilyClient {
               allow_external: args.allow_external,
               extract_depth: args.extract_depth,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              chunks_per_source: 3,
             });
             return {
               content: [{
