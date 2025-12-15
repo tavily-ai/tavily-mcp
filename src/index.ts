@@ -22,6 +22,8 @@ interface TavilyResponse {
   query: string;
   follow_up_questions?: Array<string>;
   answer?: string;
+  usage?: { credits: number };
+  request_id?: string;
   images?: Array<string | {
     url: string;
     description?: string;
@@ -45,12 +47,16 @@ interface TavilyCrawlResponse {
     favicon?: string;
   }>;
   response_time: number;
+  usage?: { credits: number };
+  request_id?: string;
 }
 
 interface TavilyMapResponse {
   base_url: string;
   results: string[];
   response_time: number;
+  usage?: { credits: number };
+  request_id?: string;
 }
 
 class TavilyClient {
@@ -236,6 +242,11 @@ class TavilyClient {
                 type: "boolean", 
                 description: "Whether to include the favicon URL for each result",
                 default: false,
+              },
+              include_usage: {
+                type: "boolean",
+                description: "Whether to include credit usage information in the response.",
+                default: false
               }
             },
             required: ["query"]
@@ -274,6 +285,11 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              include_usage: {
+                type: "boolean",
+                description: "Whether to include credit usage information in the response.",
+                default: false
+              }
             },
             required: ["urls"]
           }
@@ -344,6 +360,11 @@ class TavilyClient {
                 description: "Whether to include the favicon URL for each result",
                 default: false,
               },
+              include_usage: {
+                type: "boolean",
+                description: "Whether to include credit usage information in the response.",
+                default: false
+              }
             },
             required: ["url"]
           }
@@ -396,6 +417,11 @@ class TavilyClient {
                 type: "boolean",
                 description: "Whether to return external links in the final response",
                 default: true
+              },
+              include_usage: {
+                type: "boolean",
+                description: "Whether to include credit usage information in the response.",
+                default: false
               }
             },
             required: ["url"]
@@ -432,7 +458,8 @@ class TavilyClient {
               country: args.country,
               include_favicon: args.include_favicon,
               start_date: args.start_date,
-              end_date: args.end_date
+              end_date: args.end_date,
+              include_usage: args.include_usage ?? false
             });
             break;
           
@@ -442,7 +469,8 @@ class TavilyClient {
               extract_depth: args.extract_depth,
               include_images: args.include_images,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              include_usage: args.include_usage ?? false
             });
             break;
 
@@ -458,7 +486,8 @@ class TavilyClient {
               allow_external: args.allow_external,
               extract_depth: args.extract_depth,
               format: args.format,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              include_usage: args.include_usage ?? false
             });
             return {
               content: [{
@@ -476,7 +505,8 @@ class TavilyClient {
               instructions: args.instructions,
               select_paths: Array.isArray(args.select_paths) ? args.select_paths : [],
               select_domains: Array.isArray(args.select_domains) ? args.select_domains : [],
-              allow_external: args.allow_external
+              allow_external: args.allow_external,
+              include_usage: args.include_usage ?? false
             });
             return {
               content: [{
@@ -674,6 +704,14 @@ function formatResults(response: TavilyResponse): string {
       });
     }  
 
+  if (typeof response.usage?.credits === "number") {
+    output.push(`\nCredits Used: ${response.usage.credits}`);
+  }
+
+  if (response.request_id) {
+    output.push(`Request ID: ${response.request_id}`);
+  }
+
   return output.join('\n');
 }
 
@@ -698,6 +736,14 @@ function formatCrawlResults(response: TavilyCrawlResponse): string {
     }
   });
   
+  if (typeof response.usage?.credits === "number") {
+    output.push(`\nCredits Used: ${response.usage.credits}`);
+  }
+  
+  if (response.request_id) {
+    output.push(`Request ID: ${response.request_id}`);
+  }
+  
   return output.join('\n');
 }
 
@@ -711,6 +757,14 @@ function formatMapResults(response: TavilyMapResponse): string {
   response.results.forEach((page, index) => {
     output.push(`\n[${index + 1}] URL: ${page}`);
   });
+  
+  if (typeof response.usage?.credits === "number") {
+    output.push(`\nCredits Used: ${response.usage.credits}`);
+  }
+  
+  if (response.request_id) {
+    output.push(`Request ID: ${response.request_id}`);
+  }
   
   return output.join('\n');
 }
