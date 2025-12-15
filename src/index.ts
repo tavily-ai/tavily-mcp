@@ -101,6 +101,38 @@ class TavilyClient {
     });
   }
 
+  private getDefaultParameters(): Record<string, any> {
+    /**Get default parameter values from environment variable.
+     * 
+     * The environment variable TAVILY_DEFAULT_PARAMETERS should contain a JSON string 
+     * with parameter names and their default values.
+     * Example: TAVILY_DEFAULT_PARAMETERS='{"search_depth":"basic","topic":"news"}'
+     * 
+     * Returns:
+     *   Object with default parameter values, or empty object if env var is not present or invalid.
+     */
+    try {
+      const parametersEnv = process.env.TAVILY_DEFAULT_PARAMETERS;
+      
+      if (!parametersEnv) {
+        return {};
+      }
+      
+      // Parse the JSON string
+      const defaults = JSON.parse(parametersEnv);
+      
+      if (typeof defaults !== 'object' || defaults === null || Array.isArray(defaults)) {
+        console.warn(`TAVILY_DEFAULT_PARAMETERS is not a valid JSON object: ${parametersEnv}`);
+        return {};
+      }
+      
+      return defaults;
+    } catch (error: any) {
+      console.warn(`Failed to parse TAVILY_DEFAULT_PARAMETERS as JSON: ${error.message}`);
+      return {};
+    }
+  }
+
   private setupHandlers(): void {
     this.setupToolHandlers();
   }
@@ -402,7 +434,9 @@ class TavilyClient {
               include_domains: Array.isArray(args.include_domains) ? args.include_domains : [],
               exclude_domains: Array.isArray(args.exclude_domains) ? args.exclude_domains : [],
               country: args.country,
-              include_favicon: args.include_favicon
+              include_favicon: args.include_favicon,
+              start_date: args.start_date,
+              end_date: args.end_date
             });
             break;
           
@@ -494,14 +528,57 @@ class TavilyClient {
 
   async search(params: any): Promise<TavilyResponse> {
     try {
-      const endpoint =  this.baseURLs.search;
-
-      const searchParams = {
-        ...params,
+      const endpoint = this.baseURLs.search;
+      
+      const defaults = this.getDefaultParameters();
+      
+      // Prepare the request payload
+      const searchParams: any = {
+        query: params.query,
+        search_depth: params.search_depth,
+        topic: params.topic,
+        days: params.days,
+        time_range: params.time_range,
+        max_results: params.max_results,
+        include_images: params.include_images,
+        include_image_descriptions: params.include_image_descriptions,
+        include_raw_content: params.include_raw_content,
+        include_domains: params.include_domains || [],
+        exclude_domains: params.exclude_domains || [],
+        country: params.country,
+        include_favicon: params.include_favicon,
+        start_date: params.start_date,
+        end_date: params.end_date,
         api_key: API_KEY,
       };
       
-      const response = await this.axiosInstance.post(endpoint, searchParams);
+      // Apply default parameters
+      for (const key in searchParams) {
+        if (key in defaults) {
+          searchParams[key] = defaults[key];
+        }
+      }
+      
+      // We have to set defaults due to the issue with optional parameter types or defaults = None
+      // Because of this, we have to set the time_range to None if start_date or end_date is set 
+      // or else start_date and end_date will always cause errors when sent
+      if ((searchParams.start_date || searchParams.end_date) && (searchParams.time_range || searchParams.days)) {
+        searchParams.days = undefined;
+        searchParams.time_range = undefined;
+      }
+      
+      // Remove empty values
+      const cleanedParams: any = {};
+      for (const key in searchParams) {
+        const value = searchParams[key];
+        // Skip empty strings, null, undefined, and empty arrays
+        if (value !== "" && value !== null && value !== undefined && 
+            !(Array.isArray(value) && value.length === 0)) {
+          cleanedParams[key] = value;
+        }
+      }
+      
+      const response = await this.axiosInstance.post(endpoint, cleanedParams);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {
