@@ -430,6 +430,7 @@ class TavilyClient {
               extract_depth: args.extract_depth,
               format: args.format,
               include_favicon: args.include_favicon,
+              chunks_per_source: 3,
             });
             return {
               content: [{
