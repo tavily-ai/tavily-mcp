@@ -1,6 +1,3 @@
-# ![Tavily Crawl Beta](./assets/Banner_NEW.png)
-
-
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 ![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
