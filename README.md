@@ -32,8 +32,12 @@ Alternatively, you can pass your API key through an Authorization header if the 
 ```
 Authorization: Bearer <your-api-key>
 ```
+**Note:** When using the remote MCP, you can specify default parameters for all requests by including a `DEFAULT_PARAMETERS` header containing a JSON object with your desired defaults. Example:
 
 
+```json
+{"include_images":true, "search_depth": "basic", "max_results": 10}
+```
 ### Connect to Cursor
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=tavily-remote-mcp&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AudGF2aWx5LmNvbS9tY3AvP3RhdmlseUFwaUtleT08eW91ci1hcGkta2V5PiIsImVudiI6e319)
 
@@ -129,12 +133,6 @@ mcp-remote is a lightweight bridge that lets MCP clients that can only talk to l
 }
 ```
 
-**Note:** When using the remote MCP, you can specify default parameters for all requests by including a `DEFAULT_PARAMETERS` header containing a JSON object with your desired defaults. Example:
-
-
-```json
-{"include_images":true, "search_depth": "basic", "max_results": 10}
-```
 
 ## Local MCP 
 
