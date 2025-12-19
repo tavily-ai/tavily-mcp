@@ -153,8 +153,8 @@ class TavilyClient {
               },
               search_depth: {
                 type: "string",
-                enum: ["basic","advanced"],
-                description: "The depth of the search. It can be 'basic' or 'advanced'",
+                enum: ["basic","advanced","fast","ultra-fast"],
+                description: "The depth of the search. It can be 'basic', 'advanced', 'fast', or 'ultra-fast'",
                 default: "basic"
               },
               topic : {
@@ -448,6 +448,7 @@ class TavilyClient {
               format: args.format,
               include_favicon: args.include_favicon,
               query: args.query,
+              chunks_per_source: 3,
             });
             break;
 
