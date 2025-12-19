@@ -153,8 +153,8 @@ class TavilyClient {
               },
               search_depth: {
                 type: "string",
-                enum: ["basic","advanced"],
-                description: "The depth of the search. It can be 'basic' or 'advanced'",
+                enum: ["basic","advanced","fast","ultra-fast"],
+                description: "The depth of the search. It can be 'basic', 'advanced', 'fast', or 'ultra-fast'",
                 default: "basic"
               },
               topic : {
@@ -277,6 +277,11 @@ class TavilyClient {
               query: {
                 type: "string",
                 description: "User intent query for reranking extracted chunks based on relevance"
+              },
+              chunks_per_source: {
+                type: "integer",
+                description: "Number of content chunks to return per source URL",
+                default: 3
               },
             },
             required: ["urls"]
@@ -448,6 +453,7 @@ class TavilyClient {
               format: args.format,
               include_favicon: args.include_favicon,
               query: args.query,
+              chunks_per_source: args.chunks_per_source,
             });
             break;
 
