@@ -153,8 +153,8 @@ class TavilyClient {
               },
               search_depth: {
                 type: "string",
-                enum: ["basic","advanced"],
-                description: "The depth of the search. It can be 'basic' or 'advanced'",
+                enum: ["basic","advanced","fast","ultra-fast"],
+                description: "The depth of the search. It can be 'basic', 'advanced', 'fast' or 'ultra-fast'",
                 default: "basic"
               },
               topic : {
@@ -278,6 +278,12 @@ class TavilyClient {
                 type: "string",
                 description: "User intent query for reranking extracted chunks based on relevance"
               },
+              chunks_per_source: {
+                type: "integer",
+                description: "Number of content chunks to return per source URL",
+                default: 3,
+                minimum: 1
+              },
             },
             required: ["urls"]
           }
@@ -347,6 +353,12 @@ class TavilyClient {
                 type: "boolean", 
                 description: "Whether to include the favicon URL for each result",
                 default: false,
+              },
+              chunks_per_source: {
+                type: "integer",
+                description: "Number of content chunks to return per source URL",
+                default: 3,
+                minimum: 1
               },
             },
             required: ["url"]
@@ -448,6 +460,7 @@ class TavilyClient {
               format: args.format,
               include_favicon: args.include_favicon,
               query: args.query,
+              chunks_per_source: args.chunks_per_source,
             });
             break;
 
@@ -464,7 +477,7 @@ class TavilyClient {
               extract_depth: args.extract_depth,
               format: args.format,
               include_favicon: args.include_favicon,
-              chunks_per_source: 3,
+              chunks_per_source: args.chunks_per_source,
             });
             return {
               content: [{
