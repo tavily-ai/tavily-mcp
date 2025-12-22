@@ -153,8 +153,8 @@ class TavilyClient {
               },
               search_depth: {
                 type: "string",
-                enum: ["basic","advanced"],
-                description: "The depth of the search. It can be 'basic' or 'advanced'",
+                enum: ["basic","advanced","fast","ultra-fast"],
+                description: "The depth of the search. 'basic' for quick results, 'advanced' for more thorough search, 'fast' for optimized low latency with high relevance (BETA), 'ultra-fast' for prioritizing latency above all else (BETA)",
                 default: "basic"
               },
               topic : {
@@ -725,7 +725,7 @@ function listTools(): void {
   const tools = [
     {
       name: "tavily-search",
-      description: "A real-time web search tool powered by Tavily's AI engine. Features include customizable search depth (basic/advanced), domain filtering, time-based filtering, and support for both general and news-specific searches. Returns comprehensive results with titles, URLs, content snippets, and optional image results."
+      description: "A real-time web search tool powered by Tavily's AI engine. Features include customizable search depth (basic/advanced/fast/ultra-fast), domain filtering, time-based filtering, and support for both general and news-specific searches. Returns comprehensive results with titles, URLs, content snippets, and optional image results."
     },
     {
       name: "tavily-extract",
