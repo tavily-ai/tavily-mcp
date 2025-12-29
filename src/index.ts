@@ -154,7 +154,7 @@ class TavilyClient {
               search_depth: {
                 type: "string",
                 enum: ["basic","advanced","fast","ultra-fast"],
-                description: "The depth of the search. 'basic' for quick results, 'advanced' for more thorough search, 'fast' for optimized low latency with high relevance (BETA), 'ultra-fast' for prioritizing latency above all else (BETA)",
+                description: "The depth of the search. 'basic' for generic results, 'advanced' for more thorough search, 'fast' for optimized low latency with high relevance, 'ultra-fast' for prioritizing latency above all else",
                 default: "basic"
               },
               topic : {
