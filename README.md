@@ -139,8 +139,8 @@ The Tavily Remote MCP server supports secure OAuth authentication, allowing you 
 
 **A. Using MCP Inspector:**
 
-1. Open the MCP Inspector and click "Open Auth Settings".
-2. Select the OAuth flow and complete these steps:
+* Open the MCP Inspector and click "Open Auth Settings".
+* Select the OAuth flow and complete these steps:
    1. Metadata discovery
    2. Client registration
    3. Preparing authorization
