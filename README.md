@@ -173,7 +173,9 @@ rm -rf ~/.mcp-auth
 ```
 
 > **Note:**  
-> OAuth authentication is optional. You can still use API key authentication at any time by including your Tavily API key in the URL query parameter (`?tavilyApiKey=...`) or by setting it in the `Authorization` header, as described above.
+> 
+> - After successful OAuth authentication, your default API key (if set) will be used for all operations; otherwise, the first available key will be used.
+> - OAuth authentication is optional. You can still use API key authentication at any time by including your Tavily API key in the URL query parameter (`?tavilyApiKey=...`) or by setting it in the `Authorization` header, as described above.
 
 ## Local MCP 
 
