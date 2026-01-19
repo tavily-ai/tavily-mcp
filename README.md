@@ -38,6 +38,40 @@ Authorization: Bearer <your-api-key>
 ```json
 {"include_images":true, "search_depth": "basic", "max_results": 10}
 ```
+
+## Connect to Claude Code
+
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) is Anthropic's official CLI tool for Claude. You can add the Tavily MCP server using the `claude mcp add` command. There are two ways to authenticate:
+
+#### Option 1: API Key in URL
+
+Pass your API key directly in the URL. Replace `<your-api-key>` with your actual [Tavily API key](https://www.tavily.com/):
+
+```bash
+claude mcp add --transport http tavily https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>
+```
+
+#### Option 2: OAuth Authentication Flow
+
+Add the server without an API key in the URL:
+
+```bash
+claude mcp add --transport http tavily https://mcp.tavily.com/mcp
+```
+
+After adding, you'll need to complete the authentication flow:
+1. Run `claude` to start Claude Code
+2. Type `/mcp` to open the MCP server management
+3. Select the Tavily server and complete the authentication process
+
+**Tip:** Add `--scope user` to either command to make the Tavily MCP server available globally across all your projects:
+
+```bash
+claude mcp add --transport http --scope user tavily https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>
+```
+
+Once configured, you'll have access to the Tavily search, extract, map, and crawl tools.
+
 ### Connect to Cursor
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=tavily-remote-mcp&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AudGF2aWx5LmNvbS9tY3AvP3RhdmlseUFwaUtleT08eW91ci1hcGkta2V5PiIsImVudiI6e319)
 
@@ -132,7 +166,6 @@ mcp-remote is a lightweight bridge that lets MCP clients that can only talk to l
     }
 }
 ```
-
 
 ## Local MCP 
 
