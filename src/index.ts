@@ -12,9 +12,6 @@ import { hideBin } from 'yargs/helpers';
 dotenv.config();
 
 const API_KEY = process.env.TAVILY_API_KEY;
-if (!API_KEY) {
-  throw new Error("TAVILY_API_KEY environment variable is required");
-}
 
 
 interface TavilyResponse {
@@ -410,6 +407,14 @@ class TavilyClient {
     });
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      // Check for API key at request time and return proper JSON-RPC error
+      if (!API_KEY) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          "TAVILY_API_KEY environment variable is required. Please set it before using this MCP server."
+        );
+      }
+
       try {
         let response: TavilyResponse;
         const args = request.params.arguments ?? {};
