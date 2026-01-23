@@ -1,8 +1,7 @@
+# Tavily MCP Server
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 ![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
-
-![MCP demo](./assets/demo_new.gif)
 
 The Tavily MCP server provides:
 - search, extract, map, crawl tools
@@ -103,6 +102,50 @@ You will then be redirected to your `mcp.json` file where you have to add `your-
   }
 }
 ```
+
+### Remote MCP Server OAuth Flow
+
+The Tavily Remote MCP server supports secure OAuth authentication, allowing you to connect and authorize seamlessly with compatible clients.
+
+#### How to Set Up OAuth Authentication
+
+**A. Using MCP Inspector:**
+
+* Open the MCP Inspector and click "Open Auth Settings".
+* Select the OAuth flow and complete these steps:
+   1. Metadata discovery
+   2. Client registration
+   3. Preparing authorization
+   4. Request authorization and obtain the authorization code
+   5. Token request
+   6. Authentication complete
+
+Once finished, you will receive an access token that lets you securely make authenticated requests to the Tavily Remote MCP server.
+
+**B. Using other MCP Clients (Example: Cursor):**
+
+You can configure your MCP client to use OAuth without including your Tavily API key in the URL. For example, in your `mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "tavily-remote-mcp": {
+      "command": "npx mcp-remote https://mcp.stage.tavily.com/mcp",
+      "env": {}
+    }
+  }
+}
+```
+
+If you need to clear stored OAuth credentials and reauthenticate, run:
+
+```bash
+rm -rf ~/.mcp-auth
+```
+
+> **Note:**  
+> - After successful OAuth authentication, your default API key (if set) will be used for all operations; otherwise, the first available key will be used.
+> - OAuth authentication is optional. You can still use API key authentication at any time by including your Tavily API key in the URL query parameter (`?tavilyApiKey=...`) or by setting it in the `Authorization` header, as described above.
 
 ## Local MCP 
 
