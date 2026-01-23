@@ -12,9 +12,6 @@ import { hideBin } from 'yargs/helpers';
 dotenv.config();
 
 const API_KEY = process.env.TAVILY_API_KEY;
-if (!API_KEY) {
-  throw new Error("TAVILY_API_KEY environment variable is required");
-}
 
 
 interface TavilyResponse {
@@ -139,10 +136,10 @@ class TavilyClient {
 
   private setupToolHandlers(): void {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      // Define available tools: tavily-search and tavily-extract
+      // Define available tools: tavily_search and tavily_extract
       const tools: Tool[] = [
         {
-          name: "tavily-search",
+          name: "tavily_search",
           description: "A powerful web search tool that provides comprehensive, real-time results using Tavily's AI search engine. Returns relevant web content with customizable parameters for result count, content type, and domain filtering. Ideal for gathering current information, news, and detailed web content analysis.",
           inputSchema: {
             type: "object",
@@ -242,7 +239,7 @@ class TavilyClient {
           }
         },
         {
-          name: "tavily-extract",
+          name: "tavily_extract",
           description: "A powerful web content extraction tool that retrieves and processes raw content from specified URLs, ideal for data collection, content analysis, and research tasks.",
           inputSchema: {
             type: "object",
@@ -283,7 +280,7 @@ class TavilyClient {
           }
         },
         {
-          name: "tavily-crawl",
+          name: "tavily_crawl",
           description: "A powerful web crawler that initiates a structured web crawl starting from a specified base URL. The crawler expands from that point like a graph, following internal links across pages. You can control how deep and wide it goes, and guide it to focus on specific sections of the site.",
           inputSchema: {
             type: "object",
@@ -353,7 +350,7 @@ class TavilyClient {
           }
         },
         {
-          name: "tavily-map",
+          name: "tavily_map",
           description: "A powerful web mapping tool that creates a structured map of website URLs, allowing you to discover and analyze site structure, content organization, and navigation paths. Perfect for site audits, content discovery, and understanding website architecture.",
           inputSchema: {
             type: "object",
@@ -410,12 +407,20 @@ class TavilyClient {
     });
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      // Check for API key at request time and return proper JSON-RPC error
+      if (!API_KEY) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          "TAVILY_API_KEY environment variable is required. Please set it before using this MCP server."
+        );
+      }
+
       try {
         let response: TavilyResponse;
         const args = request.params.arguments ?? {};
 
         switch (request.params.name) {
-          case "tavily-search":
+          case "tavily_search":
             // If country is set, ensure topic is general
             if (args.country) {
               args.topic = "general";
@@ -440,7 +445,7 @@ class TavilyClient {
             });
             break;
           
-          case "tavily-extract":
+          case "tavily_extract":
             response = await this.extract({
               urls: args.urls,
               extract_depth: args.extract_depth,
@@ -451,7 +456,7 @@ class TavilyClient {
             });
             break;
 
-          case "tavily-crawl":
+          case "tavily_crawl":
             const crawlResponse = await this.crawl({
               url: args.url,
               max_depth: args.max_depth,
@@ -473,7 +478,7 @@ class TavilyClient {
               }]
             };
 
-          case "tavily-map":
+          case "tavily_map":
             const mapResponse = await this.map({
               url: args.url,
               max_depth: args.max_depth,
@@ -724,19 +729,19 @@ function formatMapResults(response: TavilyMapResponse): string {
 function listTools(): void {
   const tools = [
     {
-      name: "tavily-search",
+      name: "tavily_search",
       description: "A real-time web search tool powered by Tavily's AI engine. Features include customizable search depth (basic/advanced/fast/ultra-fast), domain filtering, time-based filtering, and support for both general and news-specific searches. Returns comprehensive results with titles, URLs, content snippets, and optional image results."
     },
     {
-      name: "tavily-extract",
+      name: "tavily_extract",
       description: "Extracts and processes content from specified URLs with advanced parsing capabilities. Supports both basic and advanced extraction modes, with the latter providing enhanced data retrieval including tables and embedded content. Ideal for data collection, content analysis, and research tasks."
     },
     {
-      name: "tavily-crawl",
+      name: "tavily_crawl",
       description: "A sophisticated web crawler that systematically explores websites starting from a base URL. Features include configurable depth and breadth limits, domain filtering, path pattern matching, and category-based filtering. Perfect for comprehensive site analysis, content discovery, and structured data collection."
     },
     {
-      name: "tavily-map",
+      name: "tavily_map",
       description: "Creates detailed site maps by analyzing website structure and navigation paths. Offers configurable exploration depth, domain restrictions, and category filtering. Ideal for site audits, content organization analysis, and understanding website architecture and navigation patterns."
     }
   ];
