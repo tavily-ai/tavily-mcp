@@ -5,11 +5,11 @@
   "description": "MCP server for advanced web search using Tavily",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tavily-ai/tavily-mcp.git"
+    "url": "git+https://github.com/tavily-ai/tavily-mcp.git"
   },
   "type": "module",
   "bin": {
-    "tavily-mcp": "./build/index.js"
+    "tavily-mcp": "build/index.js"
   },
   "files": [
     "build"
