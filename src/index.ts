@@ -221,6 +221,9 @@ class TavilyClient {
               }
             },
             required: ["query"]
+          },
+          annotations: {
+            readOnlyHint: true
           }
         },
         {
@@ -262,6 +265,9 @@ class TavilyClient {
               }
             },
             required: ["urls"]
+          },
+          annotations: {
+            readOnlyHint: true
           }
         },
         {
@@ -332,6 +338,9 @@ class TavilyClient {
               },
             },
             required: ["url"]
+          },
+          annotations: {
+            readOnlyHint: true
           }
         },
         {
@@ -385,6 +394,9 @@ class TavilyClient {
               }
             },
             required: ["url"]
+          },
+          annotations: {
+            readOnlyHint: true
           }
         },
       ];
