@@ -140,7 +140,7 @@ class TavilyClient {
       const tools: Tool[] = [
         {
           name: "tavily_search",
-          description: "Search the web for real-time information about any topic. Use this tool when you need up-to-date information that might not be available in your training data, or when you need to verify current facts. The search results will include relevant snippets and URLs from web pages. This is particularly useful for questions about current events, technology updates, or any topic that requires recent information.",
+          description: "Search the web for current information on any topic. Use for news, facts, or data beyond your knowledge cutoff. Returns snippets and source URLs.",
           inputSchema: {
             type: "object",
             properties: {
