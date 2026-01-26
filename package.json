@@ -1,7 +1,12 @@
 {
   "name": "tavily-mcp",
-  "version": "0.2.13",
+  "version": "0.2.14",
+  "mcpName": "io.github.tavily-ai/tavily-mcp",
   "description": "MCP server for advanced web search using Tavily",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tavily-ai/tavily-mcp.git"
+  },
   "type": "module",
   "bin": {
     "tavily-mcp": "./build/index.js"
