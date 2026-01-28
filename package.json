@@ -1,6 +1,6 @@
 {
   "name": "tavily-mcp",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "mcpName": "io.github.tavily-ai/tavily-mcp",
   "description": "MCP server for advanced web search using Tavily",
   "repository": {

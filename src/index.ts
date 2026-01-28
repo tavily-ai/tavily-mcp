@@ -44,6 +44,13 @@ interface TavilyCrawlResponse {
   response_time: number;
 }
 
+interface TavilyResearchResponse {
+  request_id?: string;
+  status?: string;
+  content?: string;
+  error?: string;
+}
+
 interface TavilyMapResponse {
   base_url: string;
   results: string[];
@@ -58,7 +65,8 @@ class TavilyClient {
     search: 'https://api.tavily.com/search',
     extract: 'https://api.tavily.com/extract',
     crawl: 'https://api.tavily.com/crawl',
-    map: 'https://api.tavily.com/map'
+    map: 'https://api.tavily.com/map',
+    research: 'https://api.tavily.com/research'
   };
 
   constructor() {
@@ -88,7 +96,7 @@ class TavilyClient {
   }
 
   private setupErrorHandling(): void {
-    this.server.onerror = (error) => {
+    this.server.onerror = (error: any) => {
       console.error("[MCP Error]", error);
     };
 
@@ -340,8 +348,8 @@ class TavilyClient {
           inputSchema: {
             type: "object",
             properties: {
-              url: { 
-                type: "string", 
+              url: {
+                type: "string",
                 description: "The root URL to begin the mapping"
               },
               max_depth: {
@@ -387,11 +395,31 @@ class TavilyClient {
             required: ["url"]
           }
         },
+        {
+          name: "tavily_research",
+          description: "Perform comprehensive research on a given topic or question. Use this tool when you need to gather information from multiple sources to answer a question or complete a task. Returns a detailed response based on the research findings.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              input: {
+                type: "string",
+                description: "A comprehensive description of the research task"
+              },
+              model: {
+                type: "string",
+                enum: ["mini", "pro", "auto"],
+                description: "Defines the degree of depth of the research. 'mini' is good for narrow tasks with few subtopics. 'pro' is good for broad tasks with many subtopics. 'auto' automatically selects the best model.",
+                default: "auto"
+              }
+            },
+            required: ["input"]
+          }
+        },
       ];
       return { tools };
     });
 
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       // Check for API key at request time and return proper JSON-RPC error
       if (!API_KEY) {
         throw new McpError(
@@ -477,6 +505,18 @@ class TavilyClient {
               content: [{
                 type: "text",
                 text: formatMapResults(mapResponse)
+              }]
+            };
+
+          case "tavily_research":
+            const researchResponse = await this.research({
+              input: args.input,
+              model: args.model
+            });
+            return {
+              content: [{
+                type: "text",
+                text: formatResearchResults(researchResponse)
               }]
             };
 
@@ -627,6 +667,76 @@ class TavilyClient {
       throw error;
     }
   }
+
+  async research(params: any): Promise<TavilyResearchResponse> {
+    const INITIAL_POLL_INTERVAL = 2000; // 2 seconds in ms
+    const MAX_POLL_INTERVAL = 10000; // 10 seconds in ms
+    const POLL_BACKOFF_FACTOR = 1.5;
+    const MAX_PRO_MODEL_POLL_DURATION = 900000; // 15 minutes in ms
+    const MAX_MINI_MODEL_POLL_DURATION = 300000; // 5 minutes in ms
+
+    try {
+      const response = await this.axiosInstance.post(this.baseURLs.research, {
+        input: params.input,
+        model: params.model || 'auto',
+        api_key: API_KEY
+      });
+
+      const requestId = response.data.request_id;
+      if (!requestId) {
+        return { error: 'No request_id returned from research endpoint' };
+      }
+
+      // For model=auto, use pro timeout since we don't know which model will be used
+      const maxPollDuration = params.model === 'mini'
+        ? MAX_MINI_MODEL_POLL_DURATION
+        : MAX_PRO_MODEL_POLL_DURATION;
+
+      let pollInterval = INITIAL_POLL_INTERVAL;
+      let totalElapsed = 0;
+
+      while (totalElapsed < maxPollDuration) {
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        totalElapsed += pollInterval;
+
+        try {
+          const pollResponse = await this.axiosInstance.get(
+            `${this.baseURLs.research}/${requestId}`
+          );
+
+          const status = pollResponse.data.status;
+
+          if (status === 'completed') {
+            const content = pollResponse.data.content;
+            return {
+              content: content || ''
+            };
+          }
+
+          if (status === 'failed') {
+            return { error: 'Research task failed' };
+          }
+
+        } catch (pollError: any) {
+          if (pollError.response?.status === 404) {
+            return { error: 'Research task not found' };
+          }
+          throw pollError;
+        }
+
+        pollInterval = Math.min(pollInterval * POLL_BACKOFF_FACTOR, MAX_POLL_INTERVAL);
+      }
+
+      return { error: 'Research task timed out' };
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        throw new Error('Invalid API key');
+      } else if (error.response?.status === 429) {
+        throw new Error('Usage limit exceeded');
+      }
+      throw error;
+    }
+  }
 }
 
 function formatResults(response: TavilyResponse): string {
@@ -696,16 +806,24 @@ function formatCrawlResults(response: TavilyCrawlResponse): string {
 
 function formatMapResults(response: TavilyMapResponse): string {
   const output: string[] = [];
-  
+
   output.push(`Site Map Results:`);
   output.push(`Base URL: ${response.base_url}`);
-  
+
   output.push('\nMapped Pages:');
   response.results.forEach((page, index) => {
     output.push(`\n[${index + 1}] URL: ${page}`);
   });
-  
+
   return output.join('\n');
+}
+
+function formatResearchResults(response: TavilyResearchResponse): string {
+  if (response.error) {
+    return `Research Error: ${response.error}`;
+  }
+
+  return response.content || 'No research results available';
 }
 
 function listTools(): void {
@@ -725,6 +843,10 @@ function listTools(): void {
     {
       name: "tavily_map",
       description: "Creates detailed site maps by analyzing website structure and navigation paths. Offers configurable exploration depth, domain restrictions, and category filtering. Ideal for site audits, content organization analysis, and understanding website architecture and navigation patterns."
+    },
+    {
+      name: "tavily_research",
+      description: "Performs comprehensive research on any topic or question by gathering information from multiple sources. Supports different research depths ('mini' for narrow tasks, 'pro' for broad research, 'auto' for automatic selection). Ideal for in-depth analysis, report generation, and answering complex questions requiring synthesis of multiple sources."
     }
   ];
 
