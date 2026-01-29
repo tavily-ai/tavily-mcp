@@ -130,7 +130,7 @@ You can configure your MCP client to use OAuth without including your Tavily API
 {
   "mcpServers": {
     "tavily-remote-mcp": {
-      "command": "npx mcp-remote https://mcp.stage.tavily.com/mcp",
+      "command": "npx mcp-remote https://mcp.tavily.com/mcp",
       "env": {}
     }
   }
