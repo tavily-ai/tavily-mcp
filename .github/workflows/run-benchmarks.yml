@@ -1,0 +1,70 @@
+name: Run Information Density Benchmarks
+
+on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight UTC
+
+jobs:
+  benchmarks:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: benchmarks/requirements.txt
+      
+      - name: Install dependencies
+        run: |
+          cd benchmarks
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run benchmarks
+        env:
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+        run: |
+          cd benchmarks
+          python run_benchmarks.py
+      
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.run_number }}
+          path: benchmarks/results/
+          retention-days: 90
+      
+      - name: Create results summary
+        run: |
+          cd benchmarks/results
+          # Get the latest report
+          LATEST_REPORT=$(ls -t benchmark_report_*.md | head -1)
+          if [ -n "$LATEST_REPORT" ]; then
+            echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+            cat "$LATEST_REPORT" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Commit results to repository (optional)
+        if: github.event_name == 'schedule'  # Only for scheduled runs
+        run: |
+          cd benchmarks/results
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Get latest report
+          LATEST_REPORT=$(ls -t benchmark_report_*.md | head -1)
+          
+          # Copy to a fixed location for easy access
+          if [ -n "$LATEST_REPORT" ]; then
+            cp "$LATEST_REPORT" ../LATEST_RESULTS.md
+            git add ../LATEST_RESULTS.md
+            git commit -m "Update benchmark results [skip ci]" || echo "No changes to commit"
+            git push || echo "Nothing to push"
+          fi

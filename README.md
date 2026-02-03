@@ -15,6 +15,16 @@ The Tavily MCP server provides:
 - [Tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server
 - [Tutorial](https://medium.com/@dustin_36183/connect-your-coding-assistant-to-the-web-integrating-tavily-mcp-with-cline-in-vs-code-5f923a4983d1) on integrating Tavily MCP with Cline in VS Code
 
+## 📊 Benchmarks
+
+Tavily maintains comprehensive benchmarks to demonstrate our **information density** advantage - delivering highly relevant results with minimal token usage. See our [Benchmarks Documentation](BENCHMARKS.md) for:
+
+- **SimpleQA Benchmark**: Factual question answering efficiency
+- **Document Relevance Benchmark**: Search result quality and token optimization
+- **Token Usage Metrics**: Quantified efficiency gains
+
+👉 [View Benchmark Results](BENCHMARKS.md)
+
 ## Remote MCP Server
 
 Connect directly to Tavily's remote MCP server instead of running it locally. This provides a seamless experience without requiring local installation or configuration.

@@ -1,3 +1,9 @@
 node_modules/
 build/
 .env*
+
+# Benchmark results
+benchmarks/results/
+benchmarks/venv/
+benchmarks/__pycache__/
+*.pyc
