@@ -186,7 +186,7 @@ class TavilyClient {
               max_results: { 
                 type: "number", 
                 description: "The maximum number of search results to return",
-                default: 10,
+                default: 5,
                 minimum: 5,
                 maximum: 20
               },
