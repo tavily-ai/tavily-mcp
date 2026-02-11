@@ -143,9 +143,17 @@ If you need to clear stored OAuth credentials and reauthenticate, run:
 rm -rf ~/.mcp-auth
 ```
 
-> **Note:**  
-> - After successful OAuth authentication, your default API key (if set) will be used for all operations; otherwise, the first available key will be used.
+> **Note:**
 > - OAuth authentication is optional. You can still use API key authentication at any time by including your Tavily API key in the URL query parameter (`?tavilyApiKey=...`) or by setting it in the `Authorization` header, as described above.
+
+#### Selecting Which API Key Is Used for OAuth
+
+After successful OAuth authentication, you can control which API key is used by naming it `mcp_auth_default`:
+
+- If you set a key named `mcp_auth_default` in your **personal account**, that key will be used for the auth flow.
+- If you are part of a **team** that has a key named `mcp_auth_default`, that key will be used for the auth flow.
+- If you have **both** a personal key and a team key named `mcp_auth_default`, the **personal key will be prioritized**.
+- If no `mcp_auth_default` key is set, the `default` key in your personal account will be used. If no `default` key is set, the first available key will be used.
 
 ## Local MCP 
 

@@ -111,7 +111,7 @@ class TavilyClient {
      * 
      * The environment variable DEFAULT_PARAMETERS should contain a JSON string 
      * with parameter names and their default values.
-     * Example: DEFAULT_PARAMETERS='{"search_depth":"basic","topic":"news"}'
+     * Example: DEFAULT_PARAMETERS='{"search_depth":"basic","include_images":true}'
      * 
      * Returns:
      *   Object with default parameter values, or empty object if env var is not present or invalid.
@@ -170,7 +170,7 @@ class TavilyClient {
               },
               time_range: {
                 type: "string",
-                description: "The time range back from the current date to include in the search results. This feature is available for both 'general' and 'news' search topics",
+                description: "The time range back from the current date to include in the search results",
                 enum: ["day", "week", "month", "year"]
               },
               start_date: {
@@ -186,7 +186,7 @@ class TavilyClient {
               max_results: { 
                 type: "number", 
                 description: "The maximum number of search results to return",
-                default: 10,
+                default: 5,
                 minimum: 5,
                 maximum: 20
               },
