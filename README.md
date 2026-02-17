@@ -206,6 +206,46 @@ export DEFAULT_PARAMETERS='{"include_images": true}'
 }
 ```
 
+## Stripe Payment Integration 💳
+
+The Tavily MCP server includes Stripe payment integration for processing payments. This is useful if you want to integrate payment processing into your AI-powered applications.
+
+### Available Stripe Tools
+
+- `stripe_create_payment_intent` - Create a payment intent for collecting payments
+- `stripe_get_payment_intent` - Retrieve a payment intent by ID
+- `stripe_create_customer` - Create a new Stripe customer
+- `stripe_get_customer` - Retrieve a customer by ID
+- `stripe_list_charges` - List recent charges
+- `stripe_create_checkout_session` - Create a Stripe checkout session
+- `stripe_get_checkout_session` - Retrieve a checkout session
+
+### Configuration
+
+To enable Stripe functionality, set the `STRIPE_SECRET_KEY` environment variable with your Stripe secret key:
+
+```bash
+export STRIPE_SECRET_KEY="sk_test_your_stripe_secret_key"
+```
+
+### Example usage from Client
+```json
+{
+  "mcpServers": {
+    "tavily-mcp": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "env": {
+        "TAVILY_API_KEY": "your-api-key-here",
+        "STRIPE_SECRET_KEY": "sk_test_your_stripe_secret_key"
+      }
+    }
+  }
+}
+```
+
+> **Security Note:** Never hardcode your Stripe secret key in source code or configuration files that are committed to version control. Always use environment variables.
+
 ## Acknowledgments ✨
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
