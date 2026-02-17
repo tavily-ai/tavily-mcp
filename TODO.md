@@ -4,8 +4,8 @@
 - [x] 1. Add stripe package to package.json dependencies
 - [x] 2. Create src/stripe.ts - Stripe service with environment variable-based API key loading
 - [x] 3. Update src/index.ts - Integrate Stripe service and add MCP tools
-- [ ] 4. Update .env.example or README with STRIPE_SECRET_KEY environment variable instructions
-- [ ] 5. Test the build
+- [x] 4. Update .env.example or README with STRIPE_SECRET_KEY environment variable instructions
+- [x] 5. Test the build
 
 ## Details
 
@@ -37,8 +37,8 @@
 - Added format functions for Stripe responses
 - API key is loaded from environment variable (security fix - no hardcoded keys)
 
-### 4. Documentation - PENDING
-- Add STRIPE_SECRET_KEY to .env.example or update README
+### 4. Documentation - COMPLETED
+- Added STRIPE_SECRET_KEY to README.md (Stripe Payment Integration section)
 
-### 5. Build Testing - PENDING
-- Need to run npm install and npm run build to test
+### 5. Build Testing - COMPLETED
+- npm run build completed successfully
