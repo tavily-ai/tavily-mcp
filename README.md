@@ -255,6 +255,124 @@ export STRIPE_SECRET_KEY="sk_test_your_stripe_secret_key"
 
 > **Security Note:** Never hardcode your Stripe secret key in source code or configuration files that are committed to version control. Always use environment variables.
 
+## Cloudflare MCP Servers
+
+The Tavily MCP server also provides integration with Cloudflare's MCP servers for additional capabilities. These can be added as remote MCP servers to your client configuration.
+
+### Available Cloudflare MCP Servers
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| Observability | `https://observability.mcp.cloudflare.com/mcp` | Monitoring, logs, and metrics |
+| Radar | `https://radar.mcp.cloudflare.com/mcp` | Security analytics and threat data |
+| Browser | `https://browser.mcp.cloudflare.com/mcp` | Web browsing and page rendering |
+
+### Connecting to Cloudflare MCP Servers
+
+#### Claude Desktop
+
+Add Cloudflare MCP servers to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "cloudflare-observability": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-radar": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-browser": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+Or using the remote server approach:
+
+```json
+{
+  "mcpServers": {
+    "cloudflare-observability": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://observability.mcp.cloudflare.com/mcp"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-radar": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://radar.mcp.cloudflare.com/mcp"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-browser": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://browser.mcp.cloudflare.com/mcp"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+#### Cursor
+
+Add Cloudflare MCP servers to your Cursor configuration (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "cloudflare-observability": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-radar": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-browser": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+### Getting a Cloudflare API Token
+
+1. Log in to the [Cloudflare Dashboard](https://dash.cloudflare.com)
+2. Go to Profile > API Tokens
+3. Click "Create Token"
+4. Choose a template or create a custom token
+5. Ensure the token has appropriate permissions for the services you want to use
+
+> **Note:** Some Cloudflare MCP servers may require specific API token permissions. Refer to the Cloudflare MCP server documentation for details.
+
 ## Acknowledgments
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification

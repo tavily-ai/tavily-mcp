@@ -1,44 +1,30 @@
-# TODO: Stripe Integration for tavily-mcp
+# TODO: Cloudflare MCP Integration
 
 ## Tasks
-- [x] 1. Add stripe package to package.json dependencies
-- [x] 2. Create src/stripe.ts - Stripe service with environment variable-based API key loading
-- [x] 3. Update src/index.ts - Integrate Stripe service and add MCP tools
-- [x] 4. Update .env.example or README with STRIPE_SECRET_KEY environment variable instructions
-- [x] 5. Test the build
+- [ ] 1. Create src/cloudflare/observability.ts - Cloudflare Observability MCP integration
+- [ ] 2. Create src/cloudflare/radar.ts - Cloudflare Radar MCP integration  
+- [ ] 3. Create src/cloudflare/browser.ts - Cloudflare Browser MCP integration
+- [ ] 4. Update src/index.ts - Add Cloudflare tools to MCP server
+- [ ] 5. Update README.md - Add Cloudflare MCP servers documentation
+- [ ] 6. Commit and push changes
 
 ## Details
 
-### 1. Add stripe package - COMPLETED
-- Added "stripe" to dependencies in package.json
+### 1. Observability Integration (src/cloudflare/observability.ts)
+- Connect to https://observability.mcp.cloudflare.com/mcp
+- Tools for monitoring, logs, metrics
 
-### 2. Create Stripe service (src/stripe.ts) - COMPLETED
-- Load STRIPE_SECRET_KEY from environment variables
-- Initialize Stripe client properly (ES module syntax)
-- Export functions for:
-  - Creating payment intents
-  - Retrieving payment intents
-  - Creating customers
-  - Retrieving customers
-  - Listing charges
-  - Creating checkout sessions
-  - Retrieving checkout sessions
+### 2. Radar Integration (src/cloudflare/radar.ts)
+- Connect to https://radar.mcp.cloudflare.com/mcp
+- Tools for security analytics, threat data
 
-### 3. Update MCP server (src/index.ts) - COMPLETED
-- Import Stripe service
-- Added new MCP tools:
-  - stripe_create_payment_intent
-  - stripe_get_payment_intent
-  - stripe_create_customer
-  - stripe_get_customer
-  - stripe_list_charges
-  - stripe_create_checkout_session
-  - stripe_get_checkout_session
-- Added format functions for Stripe responses
-- API key is loaded from environment variable (security fix - no hardcoded keys)
+### 3. Browser Integration (src/cloudflare/browser.ts)
+- Connect to https://browser.mcp.cloudflare.com/mcp
+- Tools for web browsing, page rendering
 
-### 4. Documentation - COMPLETED
-- Added STRIPE_SECRET_KEY to README.md (Stripe Payment Integration section)
+### 4. Update index.ts
+- Add Cloudflare tool definitions
+- Add handlers for Cloudflare API calls
 
-### 5. Build Testing - COMPLETED
-- npm run build completed successfully
+### 5. Update README
+- Add Cloudflare MCP servers section with examples
