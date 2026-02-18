@@ -25,6 +25,13 @@ import {
   listCloudflareServers
 } from './cloudflare.js';
 
+// Eleven Labs imports
+import {
+  listElevenLabsServers,
+  isElevenLabsConfigured,
+  getElevenLabsConfig
+} from './elevenlabs.js';
+
 dotenv.config();
 
 const API_KEY = process.env.TAVILY_API_KEY;
@@ -626,6 +633,23 @@ class TavilyClient {
             required: ["service"]
           }
         },
+        // Eleven Labs MCP Server Tools
+        {
+          name: "elevenlabs_list_servers",
+          description: "List available Eleven Labs MCP servers that can be added to your MCP client. Eleven Labs provides text-to-speech and voice synthesis capabilities.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "elevenlabs_get_server_info",
+          description: "Get connection information for the Eleven Labs MCP server. Use this to get the server configuration details and setup instructions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
       ];
       return { tools };
     });
@@ -843,6 +867,23 @@ text: formatResearchResults(researchResponse)
               content: [{
                 type: "text",
                 text: formatCloudflareServerInfo(args.service)
+              }]
+            };
+
+          // Eleven Labs tool handlers
+          case "elevenlabs_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatElevenLabsServers()
+              }]
+            };
+
+          case "elevenlabs_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatElevenLabsServerInfo()
               }]
             };
 
@@ -1348,6 +1389,64 @@ function formatCloudflareServerInfo(service: string): string {
   output.push('');
   output.push('2. Replace "your-api-token" with your Cloudflare API token.');
   output.push('   Get your token from: https://dash.cloudflare.com/profile/api-tokens');
+  
+  return output.join('\n');
+}
+
+// Eleven Labs format functions
+function formatElevenLabsServers(): string {
+  const output: string[] = [];
+  output.push('Available Eleven Labs MCP Server:');
+  output.push('');
+  output.push('Eleven Labs provides text-to-speech and voice synthesis capabilities.');
+  output.push('');
+  
+  const servers = listElevenLabsServers();
+  servers.forEach((server, index) => {
+    output.push(`[${index + 1}] ${server.name}`);
+    output.push(`    Description: ${server.description}`);
+    output.push('');
+  });
+  
+  output.push('To add Eleven Labs MCP server to your MCP client:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "elevenlabs": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@elevenlabs/mcp-server"],');
+  output.push('      "env": { "ELEVENLABS_API_KEY": "your-api-key" }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Get your Eleven Labs API key from: https://elevenlabs.io/app/settings/api-keys');
+  
+  return output.join('\n');
+}
+
+function formatElevenLabsServerInfo(): string {
+  const output: string[] = [];
+  const config = getElevenLabsConfig();
+  
+  output.push('Eleven Labs MCP Server Information:');
+  output.push('');
+  output.push(`Package: ${config.npmPackage}`);
+  output.push(`Command: ${config.npmCommand}`);
+  output.push(`API Key Environment Variable: ${config.apiKeyEnvVar}`);
+  output.push('');
+  output.push('Available Tools:');
+  output.push('  - elevenlabs-text-to-speech: Convert text to speech');
+  output.push('  - elevenlabs-voices: List available voices');
+  output.push('  - elevenlabs-models: List available TTS models');
+  output.push('  - elevenlabs-settings: Get or set user preferences');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Get your API key from https://elevenlabs.io/app/settings/api-keys');
+  output.push(`2. Set the environment variable: ${config.apiKeyEnvVar}=your-api-key`);
+  output.push('3. Add the server to your MCP client configuration');
+  output.push('');
+  output.push('Documentation: https://elevenlabs.io/docs');
+  output.push('GitHub: https://github.com/elevenlabs/elevenlabs-mcp');
   
   return output.join('\n');
 }

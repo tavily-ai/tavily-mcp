@@ -151,6 +151,7 @@ rm -rf ~/.mcp-auth
 ```
 
 > **Note:**
+>
 > - OAuth authentication is optional. You can still use API key authentication at any time by including your Tavily API key in the URL query parameter (`?tavilyApiKey=...`) or by setting it in the `Authorization` header, as described above.
 
 #### Selecting Which API Key Is Used for OAuth
@@ -262,7 +263,7 @@ The Tavily MCP server also provides integration with Cloudflare's MCP servers fo
 ### Available Cloudflare MCP Servers
 
 | Service | URL | Description |
-|---------|-----|-------------|
+| ------- | --- | ----------- |
 | Observability | `https://observability.mcp.cloudflare.com/mcp` | Monitoring, logs, and metrics |
 | Radar | `https://radar.mcp.cloudflare.com/mcp` | Security analytics and threat data |
 | Browser | `https://browser.mcp.cloudflare.com/mcp` | Web browsing and page rendering |
@@ -372,6 +373,71 @@ Add Cloudflare MCP servers to your Cursor configuration (`mcp.json`):
 5. Ensure the token has appropriate permissions for the services you want to use
 
 > **Note:** Some Cloudflare MCP servers may require specific API token permissions. Refer to the Cloudflare MCP server documentation for details.
+
+## Eleven Labs MCP Server
+
+The Tavily MCP server provides integration with Eleven Labs' MCP server for text-to-speech and voice synthesis capabilities.
+
+### Available Eleven Labs Tools
+
+When you add the Eleven Labs MCP server to your client, you'll have access to:
+
+- `elevenlabs-text-to-speech` - Convert text to speech with various voices
+- `elevenlabs-voices` - List available voices for synthesis
+- `elevenlabs-models` - List available TTS models
+- `elevenlabs-settings` - Get or set user preferences
+
+### Connecting to Eleven Labs MCP Server
+
+#### Claude Desktop (Eleven Labs)
+
+Add the Eleven Labs MCP server to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "elevenlabs": {
+      "command": "npx",
+      "args": ["-y", "@elevenlabs/mcp-server"],
+      "env": {
+        "ELEVENLABS_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+#### Cursor (Eleven Labs)
+
+Add the Eleven Labs MCP server to your Cursor configuration (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "elevenlabs": {
+      "command": "npx",
+      "args": ["-y", "@elevenlabs/mcp-server"],
+      "env": {
+        "ELEVENLABS_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### Getting an Eleven Labs API Key
+
+1. Log in to the [Eleven Labs Dashboard](https://elevenlabs.io/app)
+2. Go to Settings > API Keys
+3. Click "Create API Key"
+4. Copy your API key and use it in your MCP client configuration
+
+> **Note:** The Eleven Labs MCP server requires an API key with appropriate permissions for text-to-speech operations.
+
+### Resources
+
+- [Eleven Labs Documentation](https://elevenlabs.io/docs)
+- [Eleven Labs MCP GitHub](https://github.com/elevenlabs/elevenlabs-mcp)
 
 ## Acknowledgments
 
