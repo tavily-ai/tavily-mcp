@@ -19,6 +19,12 @@ import {
   getCheckoutSession
 } from './stripe.js';
 
+// Cloudflare imports
+import {
+  CLOUDFLARE_MCP_SERVERS,
+  listCloudflareServers
+} from './cloudflare.js';
+
 dotenv.config();
 
 const API_KEY = process.env.TAVILY_API_KEY;
@@ -596,6 +602,30 @@ class TavilyClient {
             required: ["session_id"]
           }
         },
+        // Cloudflare MCP Server Tools (Remote Servers)
+        {
+          name: "cloudflare_list_servers",
+          description: "List available Cloudflare MCP servers that can be added to your MCP client. These are remote MCP servers that provide monitoring, analytics, and browsing capabilities.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "cloudflare_get_server_info",
+          description: "Get connection information for a specific Cloudflare MCP server. Use this to get the server URL and configuration details.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              service: {
+                type: "string",
+                enum: ["observability", "radar", "browser"],
+                description: "The Cloudflare service to get info for"
+              }
+            },
+            required: ["service"]
+          }
+        },
       ];
       return { tools };
     });
@@ -795,6 +825,26 @@ text: formatResearchResults(researchResponse)
             } catch (err: any) {
               return { content: [{ type: "text", text: `Stripe error: ${err.message}` }], isError: true };
             }
+
+          // Cloudflare tool handlers
+          case "cloudflare_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatCloudflareServers()
+              }]
+            };
+
+          case "cloudflare_get_server_info":
+            if (!args.service) {
+              throw new McpError(ErrorCode.InvalidRequest, "Service parameter is required. Use 'observability', 'radar', or 'browser'.");
+            }
+            return {
+              content: [{
+                type: "text",
+                text: formatCloudflareServerInfo(args.service)
+              }]
+            };
 
           default:
             throw new McpError(
@@ -1175,6 +1225,130 @@ function formatStripeCheckoutSession(session: any): string {
   if (session.metadata) {
     output.push(`Metadata: ${JSON.stringify(session.metadata)}`);
   }
+  return output.join('\n');
+}
+
+// Cloudflare format functions
+function formatCloudflareServers(): string {
+  const output: string[] = [];
+  output.push('Available Cloudflare MCP Servers:');
+  output.push('');
+  output.push('These are remote MCP servers that you can add to your MCP client configuration.');
+  output.push('');
+  
+  const servers = listCloudflareServers();
+  servers.forEach((server, index) => {
+    output.push(`[${index + 1}] ${server.name}`);
+    output.push(`    URL: ${server.url}`);
+    output.push(`    Description: ${server.description}`);
+    output.push('');
+  });
+  
+  output.push('To add these servers to your MCP client, add them to your configuration file:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "cloudflare-observability": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@cloudflare/mcp-server"],');
+  output.push('      "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Or use the remote server approach with the URLs above.');
+  
+  return output.join('\n');
+}
+
+function formatCloudflareServerInfo(service: string): string {
+  const output: string[] = [];
+  
+  const validServices = ['observability', 'radar', 'browser'];
+  if (!validServices.includes(service)) {
+    return `Invalid service: ${service}. Use one of: observability, radar, browser`;
+  }
+  
+  const serverUrl = CLOUDFLARE_MCP_SERVERS[service as keyof typeof CLOUDFLARE_MCP_SERVERS];
+  
+  output.push(`Cloudflare ${service.charAt(0).toUpperCase() + service.slice(1)} MCP Server:`);
+  output.push(`Server URL: ${serverUrl}`);
+  output.push('');
+  output.push('To connect to this server:');
+  output.push('');
+  output.push('1. Add the following to your MCP client configuration:');
+  
+  if (service === 'observability') {
+    output.push('   Claude Desktop:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-observability": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "@cloudflare/mcp-server"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+    output.push('');
+    output.push('   Or use remote server:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-observability": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "mcp-remote", "https://observability.mcp.cloudflare.com/mcp"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+  } else if (service === 'radar') {
+    output.push('   Claude Desktop:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-radar": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "@cloudflare/mcp-server"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+    output.push('');
+    output.push('   Or use remote server:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-radar": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "mcp-remote", "https://radar.mcp.cloudflare.com/mcp"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+  } else if (service === 'browser') {
+    output.push('   Claude Desktop:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-browser": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "@cloudflare/mcp-server"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+    output.push('');
+    output.push('   Or use remote server:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-browser": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "mcp-remote", "https://browser.mcp.cloudflare.com/mcp"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+  }
+  
+  output.push('');
+  output.push('2. Replace "your-api-token" with your Cloudflare API token.');
+  output.push('   Get your token from: https://dash.cloudflare.com/profile/api-tokens');
+  
   return output.join('\n');
 }
 
