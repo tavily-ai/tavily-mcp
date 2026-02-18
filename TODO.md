@@ -6,8 +6,13 @@
 - [x] 2. Create src/cloudflare/radar.ts - Cloudflare Radar MCP integration  
 - [x] 3. Create src/cloudflare/browser.ts - Cloudflare Browser MCP integration
 - [x] 4. Update src/index.ts - Add Cloudflare tools to MCP server
-- [ ] 5. Update README.md - Add Cloudflare MCP servers documentation
-- [ ] 6. Commit and push changes
+- [x] 5. Update README.md - Add Cloudflare MCP servers documentation
+- [x] 6. Commit changes (Push failed: 403 Permission denied - need write access to repository)
+
+## Commit Status
+
+- Commit made: 58579b6 "Complete Cloudflare MCP integration tasks"
+- Push failed due to 403 Permission denied to ESADavid/tavily-mcp.git
 
 ## Details
 
