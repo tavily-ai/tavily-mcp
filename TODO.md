@@ -1,6 +1,7 @@
 # TODO: Cloudflare MCP Integration
 
 ## Tasks
+
 - [x] 1. Create src/cloudflare/observability.ts - Cloudflare Observability MCP integration
 - [x] 2. Create src/cloudflare/radar.ts - Cloudflare Radar MCP integration  
 - [x] 3. Create src/cloudflare/browser.ts - Cloudflare Browser MCP integration
