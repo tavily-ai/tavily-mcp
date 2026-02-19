@@ -32,6 +32,24 @@ import {
   getElevenLabsConfig
 } from './elevenlabs.js';
 
+// GitHub imports
+import {
+  listGitHubServers,
+  isGitHubConfigured,
+  getGitHubConfig
+} from './github.js';
+
+// AgentQL imports
+import {
+  listAgentQLServers,
+  isAgentQLConfigured,
+  getAgentQLConfig,
+  queryData as agentqlQueryData,
+  getWebElement as agentqlGetWebElement
+} from './agentql.js';
+
+
+
 dotenv.config();
 
 const API_KEY = process.env.TAVILY_API_KEY;
@@ -650,7 +668,115 @@ class TavilyClient {
             properties: {}
           }
         },
+        // GitHub MCP Server Tools
+        {
+          name: "github_list_servers",
+          description: "List available GitHub MCP servers that can be added to your MCP client. GitHub provides code scanning, issues, pull requests, and repository management capabilities.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "github_get_server_info",
+          description: "Get connection information for the GitHub MCP server. Use this to get the server configuration details and setup instructions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // AgentQL MCP Server Tools
+        {
+          name: "agentql_query_data",
+          description: "Extract structured data from any web page using AgentQL's GraphQL-like query language. Provide a URL and a query to get back structured JSON data. Requires AGENTQL_API_KEY environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              url: {
+                type: "string",
+                description: "The URL of the web page to query"
+              },
+              query: {
+                type: "string",
+                description: "The AgentQL query string using GraphQL-like syntax. Example: '{ products[] { name price rating } }'"
+              },
+              wait_for: {
+                type: "number",
+                description: "Number of seconds to wait for the page to load before querying",
+                default: 0
+              },
+              is_scroll_to_bottom_enabled: {
+                type: "boolean",
+                description: "Whether to scroll to the bottom of the page before querying (useful for lazy-loaded content)",
+                default: false
+              },
+              mode: {
+                type: "string",
+                enum: ["standard", "fast"],
+                description: "Query mode: 'standard' for best accuracy, 'fast' for lower latency",
+                default: "standard"
+              },
+              is_screenshot_mode: {
+                type: "boolean",
+                description: "Whether to take a screenshot of the page during querying",
+                default: false
+              }
+            },
+            required: ["url", "query"]
+          }
+        },
+        {
+          name: "agentql_get_web_element",
+          description: "Locate and retrieve specific web elements from a page using AgentQL's query language. Returns element references useful for identifying interactive page components. Requires AGENTQL_API_KEY environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              url: {
+                type: "string",
+                description: "The URL of the web page to query"
+              },
+              query: {
+                type: "string",
+                description: "The AgentQL query string describing the elements to find. Example: '{ search_btn login_form { username_field password_field } }'"
+              },
+              wait_for: {
+                type: "number",
+                description: "Number of seconds to wait for the page to load before querying",
+                default: 0
+              },
+              is_scroll_to_bottom_enabled: {
+                type: "boolean",
+                description: "Whether to scroll to the bottom of the page before querying",
+                default: false
+              },
+              mode: {
+                type: "string",
+                enum: ["standard", "fast"],
+                description: "Query mode: 'standard' for best accuracy, 'fast' for lower latency",
+                default: "standard"
+              },
+              is_screenshot_mode: {
+                type: "boolean",
+                description: "Whether to take a screenshot of the page during querying",
+                default: false
+              }
+            },
+            required: ["url", "query"]
+          }
+        },
+        {
+          name: "agentql_list_servers",
+          description: "List available AgentQL MCP tools and server information. AgentQL provides AI-powered web data extraction using a GraphQL-like query language.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "agentql_get_server_info",
       ];
+
+
       return { tools };
     });
 
@@ -887,7 +1013,43 @@ text: formatResearchResults(researchResponse)
               }]
             };
 
+          // GitHub tool handlers
+          case "github_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatGitHubServers()
+              }]
+            };
+
+          case "github_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatGitHubServerInfo()
+              }]
+            };
+
+          // AgentQL tool handlers
+          case "agentql_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatAgentQLServers()
+              }]
+            };
+
+          case "agentql_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatAgentQLServerInfo()
+              }]
+            };
+
           default:
+
+
             throw new McpError(
               ErrorCode.MethodNotFound,
               `Unknown tool: ${request.params.name}`
@@ -1450,6 +1612,126 @@ function formatElevenLabsServerInfo(): string {
   
   return output.join('\n');
 }
+
+// GitHub format functions
+function formatGitHubServers(): string {
+  const output: string[] = [];
+  output.push('Available GitHub MCP Server:');
+  output.push('');
+  output.push('GitHub provides code scanning, issues, pull requests, and repository management capabilities.');
+  output.push('');
+  
+  const servers = listGitHubServers();
+  servers.forEach((server, index) => {
+    output.push(`[${index + 1}] ${server.name}`);
+    output.push(`    Description: ${server.description}`);
+    output.push('');
+  });
+  
+  output.push('To add GitHub MCP server to your MCP client:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "github": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@github/mcp-server"],');
+  output.push('      "env": { "GITHUB_TOKEN": "your-github-token" }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Get your GitHub token from: https://github.com/settings/tokens');
+  
+  return output.join('\n');
+}
+
+function formatGitHubServerInfo(): string {
+  const output: string[] = [];
+  const config = getGitHubConfig();
+  
+  output.push('GitHub MCP Server Information:');
+  output.push('');
+  output.push(`Package: ${config.npmPackage}`);
+  output.push(`Command: ${config.command}`);
+  output.push(`API Token Environment Variable: GITHUB_TOKEN`);
+  output.push(`Configured: ${config.configured ? 'Yes' : 'No'}`);
+  output.push('');
+  output.push('Available Tools:');
+  output.push('  - github-code-scanning: Security vulnerability detection');
+  output.push('  - github-issues: Create, read, update, and search issues');
+  output.push('  - github-pull-requests: Create, read, update, and search PRs');
+  output.push('  - github-repositories: Manage repositories, branches, and commits');
+  output.push('  - github-search: Search code, issues, PRs, and repositories');
+  output.push('  - github-actions: Manage workflows and runs');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Get your GitHub token from https://github.com/settings/tokens');
+  output.push('2. Set the environment variable: GITHUB_TOKEN=your-github-token');
+  output.push('3. Add the server to your MCP client configuration');
+  output.push('');
+  output.push('Documentation: https://github.com/github/github-mcp-server');
+  
+  return output.join('\n');
+}
+
+// AgentQL format functions
+function formatAgentQLServers(): string {
+  const output: string[] = [];
+  output.push('Available AgentQL MCP Server:');
+  output.push('');
+  output.push('AgentQL provides AI-powered web scraping and data extraction capabilities.');
+  output.push('');
+  
+  const servers = listAgentQLServers();
+  servers.forEach((server, index) => {
+    output.push(`[${index + 1}] ${server.name}`);
+    output.push(`    Description: ${server.description}`);
+    output.push('');
+  });
+  
+  output.push('To add AgentQL MCP server to your MCP client:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "agentql": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@agentql/mcp-server"],');
+  output.push('      "env": { "AGENTQL_API_KEY": "your-api-key" }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Get your AgentQL API key from: https://agentql.com');
+  
+  return output.join('\n');
+}
+
+function formatAgentQLServerInfo(): string {
+  const output: string[] = [];
+  const config = getAgentQLConfig();
+  
+  output.push('AgentQL MCP Server Information:');
+  output.push('');
+  output.push(`Package: ${config.npmPackage}`);
+  output.push(`Command: ${config.command}`);
+  output.push(`API Key Environment Variable: AGENTQL_API_KEY`);
+  output.push(`Configured: ${config.configured ? 'Yes' : 'No'}`);
+  output.push('');
+  output.push('Available Tools:');
+  output.push('  - agentql-query: Execute structured queries against web pages');
+  output.push('  - agentql-scrape: Extract data from websites using AI-powered scraping');
+  output.push('  - agentql-crawl: Crawl websites and extract structured data');
+  output.push('  - agentql-monitor: Monitor websites for changes and data updates');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Get your API key from https://agentql.com');
+  output.push('2. Set the environment variable: AGENTQL_API_KEY=your-api-key');
+  output.push('3. Add the server to your MCP client configuration');
+  output.push('');
+  output.push('GitHub: https://github.com/tinyfish-io/agentql-mcp');
+  
+  return output.join('\n');
+}
+
+
 
 function listTools(): void {
   const tools = [

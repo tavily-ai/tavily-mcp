@@ -393,6 +393,7 @@ When you add the Eleven Labs MCP server to your client, you'll have access to:
 
 Add the Eleven Labs MCP server to your Claude Desktop configuration:
 
+
 ```json
 {
   "mcpServers": {
@@ -410,6 +411,7 @@ Add the Eleven Labs MCP server to your Claude Desktop configuration:
 #### Cursor (Eleven Labs)
 
 Add the Eleven Labs MCP server to your Cursor configuration (`mcp.json`):
+
 
 ```json
 {
@@ -438,6 +440,142 @@ Add the Eleven Labs MCP server to your Cursor configuration (`mcp.json`):
 
 - [Eleven Labs Documentation](https://elevenlabs.io/docs)
 - [Eleven Labs MCP GitHub](https://github.com/elevenlabs/elevenlabs-mcp)
+
+## GitHub MCP Server
+
+The Tavily MCP server provides integration with GitHub's MCP server for code scanning, issues, pull requests, and repository management capabilities.
+
+### Available GitHub Tools
+
+When you add the GitHub MCP server to your client, you'll have access to:
+
+- `github-code-scanning` - Security vulnerability detection
+- `github-issues` - Create, read, update, and search issues
+- `github-pull-requests` - Create, read, update, and search PRs
+- `github-repositories` - Manage repositories, branches, and commits
+- `github-search` - Search code, issues, PRs, and repositories
+- `github-actions` - Manage workflows and runs
+
+### Connecting to GitHub MCP Server
+
+#### Claude Desktop (GitHub)
+
+Add the GitHub MCP server to your Claude Desktop configuration:
+
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@github/mcp-server"],
+      "env": {
+        "GITHUB_TOKEN": "your-github-token"
+      }
+    }
+  }
+}
+```
+
+#### Cursor (GitHub)
+
+Add the GitHub MCP server to your Cursor configuration (`mcp.json`):
+
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@github/mcp-server"],
+      "env": {
+        "GITHUB_TOKEN": "your-github-token"
+      }
+    }
+  }
+}
+```
+
+### Getting a GitHub Token
+
+1. Log in to your GitHub account
+2. Go to Settings > Developer settings > Personal access tokens
+3. Click "Generate new token"
+4. Select the scopes you need (repo, workflow, read:org, etc.)
+5. Copy your token and use it in your MCP client configuration
+
+> **Note:** The GitHub MCP server requires a token with appropriate permissions for the operations you want to perform.
+
+### Resources
+
+- [GitHub MCP Server](https://github.com/github/github-mcp-server)
+
+## AgentQL MCP Server
+
+The Tavily MCP server provides integration with AgentQL's MCP server for AI-powered web scraping and data extraction capabilities.
+
+### Available AgentQL Tools
+
+When you add the AgentQL MCP server to your client, you'll have access to:
+
+- `agentql-query` - Execute structured queries against web pages
+- `agentql-scrape` - Extract data from websites using AI-powered scraping
+- `agentql-crawl` - Crawl websites and extract structured data
+- `agentql-monitor` - Monitor websites for changes and data updates
+
+### Connecting to AgentQL MCP Server
+
+#### Claude Desktop (AgentQL)
+
+Add the AgentQL MCP server to your Claude Desktop configuration:
+
+
+```json
+{
+  "mcpServers": {
+    "agentql": {
+      "command": "npx",
+      "args": ["-y", "@agentql/mcp-server"],
+      "env": {
+        "AGENTQL_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+#### Cursor (AgentQL)
+
+Add the AgentQL MCP server to your Cursor configuration (`mcp.json`):
+
+
+```json
+{
+  "mcpServers": {
+    "agentql": {
+      "command": "npx",
+      "args": ["-y", "@agentql/mcp-server"],
+      "env": {
+        "AGENTQL_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### Getting an AgentQL API Key
+
+1. Visit <https://agentql.com>
+2. Sign up for an account or log in
+3. Navigate to your account settings or API keys section
+4. Generate a new API key
+5. Copy your API key and use it in your MCP client configuration
+
+> **Note:** The AgentQL MCP server requires an API key with appropriate permissions for web scraping operations.
+
+### Resources
+
+- [AgentQL MCP GitHub](https://github.com/tinyfish-io/agentql-mcp)
 
 ## Acknowledgments
 
