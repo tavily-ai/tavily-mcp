@@ -48,6 +48,14 @@ import {
   getWebElement as agentqlGetWebElement
 } from './agentql.js';
 
+// Alby imports
+import {
+  listAlbyServers,
+  isAlbyConfigured,
+  getAlbyConfig,
+  ALBY_MCP_SERVER
+} from './alby.js';
+
 
 
 dotenv.config();
@@ -774,6 +782,29 @@ class TavilyClient {
         },
         {
           name: "agentql_get_server_info",
+          description: "Get connection information and setup instructions for the AgentQL MCP server. Returns npm package name, API key configuration, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // Alby Bitcoin Lightning MCP Server Tools
+        {
+          name: "alby_list_servers",
+          description: "List available Alby MCP tools for Bitcoin Lightning wallet operations. Alby provides NWC-based lightning wallet capabilities including payments, invoices, and balance queries.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "alby_get_server_info",
+          description: "Get connection information and setup instructions for the Alby Bitcoin Lightning MCP server. Returns npm package, NWC connection string configuration, remote server URLs, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        }
       ];
 
 
@@ -1044,6 +1075,63 @@ text: formatResearchResults(researchResponse)
               content: [{
                 type: "text",
                 text: formatAgentQLServerInfo()
+              }]
+            };
+
+          case "agentql_query_data":
+            if (!isAgentQLConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "AgentQL is not configured. Please set AGENTQL_API_KEY environment variable.");
+            }
+            try {
+              const agentqlQueryResult = await agentqlQueryData(
+                args.url,
+                args.query,
+                {
+                  wait_for: args.wait_for,
+                  is_scroll_to_bottom_enabled: args.is_scroll_to_bottom_enabled,
+                  mode: args.mode,
+                  is_screenshot_mode: args.is_screenshot_mode
+                }
+              );
+              return { content: [{ type: "text", text: formatAgentQLQueryResult(agentqlQueryResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `AgentQL error: ${err.message}` }], isError: true };
+            }
+
+          case "agentql_get_web_element":
+            if (!isAgentQLConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "AgentQL is not configured. Please set AGENTQL_API_KEY environment variable.");
+            }
+            try {
+              const agentqlWebElementResult = await agentqlGetWebElement(
+                args.url,
+                args.query,
+                {
+                  wait_for: args.wait_for,
+                  is_scroll_to_bottom_enabled: args.is_scroll_to_bottom_enabled,
+                  mode: args.mode,
+                  is_screenshot_mode: args.is_screenshot_mode
+                }
+              );
+              return { content: [{ type: "text", text: formatAgentQLWebElementResult(agentqlWebElementResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `AgentQL error: ${err.message}` }], isError: true };
+            }
+
+          // Alby tool handlers
+          case "alby_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatAlbyServers()
+              }]
+            };
+
+          case "alby_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatAlbyServerInfo()
               }]
             };
 
@@ -1694,7 +1782,7 @@ function formatAgentQLServers(): string {
   output.push('  "mcpServers": {');
   output.push('    "agentql": {');
   output.push('      "command": "npx",');
-  output.push('      "args": ["-y", "@agentql/mcp-server"],');
+  output.push('      "args": ["-y", "agentql-mcp"],');
   output.push('      "env": { "AGENTQL_API_KEY": "your-api-key" }');
   output.push('    }');
   output.push('  }');
@@ -1716,10 +1804,8 @@ function formatAgentQLServerInfo(): string {
   output.push(`Configured: ${config.configured ? 'Yes' : 'No'}`);
   output.push('');
   output.push('Available Tools:');
-  output.push('  - agentql-query: Execute structured queries against web pages');
-  output.push('  - agentql-scrape: Extract data from websites using AI-powered scraping');
-  output.push('  - agentql-crawl: Crawl websites and extract structured data');
-  output.push('  - agentql-monitor: Monitor websites for changes and data updates');
+  output.push('  - query_data: Extract structured data from any web page using AgentQL query language');
+  output.push('  - get_web_element: Get web elements from a page using natural language queries');
   output.push('');
   output.push('Setup Instructions:');
   output.push('1. Get your API key from https://agentql.com');
@@ -1732,6 +1818,139 @@ function formatAgentQLServerInfo(): string {
 }
 
 
+
+// Alby format functions
+function formatAlbyServers(): string {
+  const output: string[] = [];
+  output.push('Available Alby Bitcoin Lightning MCP Server:');
+  output.push('');
+  output.push('Alby provides Bitcoin Lightning wallet operations via Nostr Wallet Connect (NWC).');
+  output.push('');
+
+  const servers = listAlbyServers();
+  const nwcTools = servers.slice(0, 7);
+  const lightningTools = servers.slice(7);
+
+  output.push('NWC Wallet Tools:');
+  nwcTools.forEach((server, index) => {
+    output.push(`  [${index + 1}] ${server.name}`);
+    output.push(`      ${server.description}`);
+  });
+  output.push('');
+  output.push('Lightning Tools:');
+  lightningTools.forEach((server, index) => {
+    output.push(`  [${index + 8}] ${server.name}`);
+    output.push(`      ${server.description}`);
+  });
+  output.push('');
+  output.push('To add Alby MCP server to your MCP client:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "alby": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@getalby/mcp"],');
+  output.push('      "env": { "NWC_CONNECTION_STRING": "nostr+walletconnect://..." }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Or connect to the remote Alby MCP server:');
+  output.push(`  HTTP Streamable: ${ALBY_MCP_SERVER.remoteUrls.httpStreamable}`);
+  output.push(`  SSE:             ${ALBY_MCP_SERVER.remoteUrls.sse}`);
+  output.push('');
+  output.push('Get your NWC connection string from: https://nwc.getalby.com');
+
+  return output.join('\n');
+}
+
+function formatAlbyServerInfo(): string {
+  const output: string[] = [];
+  const config = getAlbyConfig();
+
+  output.push('Alby Bitcoin Lightning MCP Server Information:');
+  output.push('');
+  output.push(`Package: ${config.npmPackage}`);
+  output.push(`Command: ${config.command} ${config.args.join(' ')}`);
+  output.push(`Auth Environment Variable: NWC_CONNECTION_STRING`);
+  output.push(`Configured: ${config.configured ? 'Yes' : 'No'}`);
+  output.push('');
+  output.push('Remote Server URLs:');
+  output.push(`  HTTP Streamable: ${ALBY_MCP_SERVER.remoteUrls.httpStreamable}`);
+  output.push(`  SSE (deprecated): ${ALBY_MCP_SERVER.remoteUrls.sse}`);
+  output.push('');
+  output.push('Available Tools (11 total):');
+  output.push('  NWC Wallet Tools:');
+  output.push('  - get_balance: Get the balance of the connected lightning wallet');
+  output.push('  - get_info: Get NWC capabilities and wallet/node information');
+  output.push('  - get_wallet_service_info: Get NWC capabilities and supported encryption types');
+  output.push('  - lookup_invoice: Look up a lightning invoice by BOLT-11 or payment hash');
+  output.push('  - make_invoice: Create a lightning invoice');
+  output.push('  - pay_invoice: Pay a lightning invoice');
+  output.push('  - list_transactions: List wallet transactions with optional filtering');
+  output.push('  Lightning Tools:');
+  output.push('  - fetch_l402: Fetch a paid resource protected by L402');
+  output.push('  - fiat_to_sats: Convert fiat currency amounts to satoshis');
+  output.push('  - parse_invoice: Parse a BOLT-11 lightning invoice');
+  output.push('  - request_invoice: Request an invoice from a lightning address');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Get a NWC connection string from https://nwc.getalby.com or any NWC-compatible wallet');
+  output.push('2. Set the environment variable: NWC_CONNECTION_STRING=nostr+walletconnect://...');
+  output.push('3. Add the server to your MCP client configuration');
+  output.push('');
+  output.push('Remote Server Authentication:');
+  output.push('  Bearer: Authorization: Bearer nostr+walletconnect://...');
+  output.push('  Query param: https://mcp.getalby.com/mcp?nwc=ENCODED_NWC_URL');
+  output.push('');
+  output.push('GitHub: https://github.com/getAlby/mcp');
+
+  return output.join('\n');
+}
+
+// AgentQL format helper functions
+function formatAgentQLQueryResult(result: any): string {
+  const output: string[] = [];
+  output.push('AgentQL Query Data Result:');
+  output.push('');
+  if (result.data) {
+    output.push('Data:');
+    output.push(JSON.stringify(result.data, null, 2));
+  }
+  if (result.metadata) {
+    output.push('');
+    output.push('Metadata:');
+    if (result.metadata.request_id) {
+      output.push(`  Request ID: ${result.metadata.request_id}`);
+    }
+    const otherMeta = Object.entries(result.metadata).filter(([k]) => k !== 'request_id');
+    if (otherMeta.length > 0) {
+      otherMeta.forEach(([k, v]) => output.push(`  ${k}: ${JSON.stringify(v)}`));
+    }
+  }
+  return output.join('\n');
+}
+
+function formatAgentQLWebElementResult(result: any): string {
+  const output: string[] = [];
+  output.push('AgentQL Web Element Result:');
+  output.push('');
+  if (result.data) {
+    output.push('Elements:');
+    output.push(JSON.stringify(result.data, null, 2));
+  }
+  if (result.metadata) {
+    output.push('');
+    output.push('Metadata:');
+    if (result.metadata.request_id) {
+      output.push(`  Request ID: ${result.metadata.request_id}`);
+    }
+    const otherMeta = Object.entries(result.metadata).filter(([k]) => k !== 'request_id');
+    if (otherMeta.length > 0) {
+      otherMeta.forEach(([k, v]) => output.push(`  ${k}: ${JSON.stringify(v)}`));
+    }
+  }
+  return output.join('\n');
+}
 
 function listTools(): void {
   const tools = [

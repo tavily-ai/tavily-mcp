@@ -393,7 +393,6 @@ When you add the Eleven Labs MCP server to your client, you'll have access to:
 
 Add the Eleven Labs MCP server to your Claude Desktop configuration:
 
-
 ```json
 {
   "mcpServers": {
@@ -411,7 +410,6 @@ Add the Eleven Labs MCP server to your Claude Desktop configuration:
 #### Cursor (Eleven Labs)
 
 Add the Eleven Labs MCP server to your Cursor configuration (`mcp.json`):
-
 
 ```json
 {
@@ -462,7 +460,6 @@ When you add the GitHub MCP server to your client, you'll have access to:
 
 Add the GitHub MCP server to your Claude Desktop configuration:
 
-
 ```json
 {
   "mcpServers": {
@@ -480,7 +477,6 @@ Add the GitHub MCP server to your Claude Desktop configuration:
 #### Cursor (GitHub)
 
 Add the GitHub MCP server to your Cursor configuration (`mcp.json`):
-
 
 ```json
 {
@@ -518,10 +514,8 @@ The Tavily MCP server provides integration with AgentQL's MCP server for AI-powe
 
 When you add the AgentQL MCP server to your client, you'll have access to:
 
-- `agentql-query` - Execute structured queries against web pages
-- `agentql-scrape` - Extract data from websites using AI-powered scraping
-- `agentql-crawl` - Crawl websites and extract structured data
-- `agentql-monitor` - Monitor websites for changes and data updates
+- `query_data` - Extract structured data from any web page using AgentQL's GraphQL-like query language
+- `get_web_element` - Locate and retrieve specific web elements from a page using natural language queries
 
 ### Connecting to AgentQL MCP Server
 
@@ -529,13 +523,12 @@ When you add the AgentQL MCP server to your client, you'll have access to:
 
 Add the AgentQL MCP server to your Claude Desktop configuration:
 
-
 ```json
 {
   "mcpServers": {
     "agentql": {
       "command": "npx",
-      "args": ["-y", "@agentql/mcp-server"],
+      "args": ["-y", "agentql-mcp"],
       "env": {
         "AGENTQL_API_KEY": "your-api-key"
       }
@@ -548,13 +541,12 @@ Add the AgentQL MCP server to your Claude Desktop configuration:
 
 Add the AgentQL MCP server to your Cursor configuration (`mcp.json`):
 
-
 ```json
 {
   "mcpServers": {
     "agentql": {
       "command": "npx",
-      "args": ["-y", "@agentql/mcp-server"],
+      "args": ["-y", "agentql-mcp"],
       "env": {
         "AGENTQL_API_KEY": "your-api-key"
       }
@@ -576,6 +568,109 @@ Add the AgentQL MCP server to your Cursor configuration (`mcp.json`):
 ### Resources
 
 - [AgentQL MCP GitHub](https://github.com/tinyfish-io/agentql-mcp)
+
+## Alby Bitcoin Lightning MCP Server
+
+The Tavily MCP server provides integration with Alby's MCP server for Bitcoin Lightning wallet operations using Nostr Wallet Connect (NWC).
+
+### Available Alby Tools
+
+When you add the Alby MCP server to your client, you'll have access to:
+
+**NWC Wallet Tools:**
+
+- `get_balance` - Get the balance of the connected lightning wallet
+- `get_info` - Get NWC capabilities and general information about the wallet and underlying lightning node
+- `get_wallet_service_info` - Get NWC capabilities, supported encryption and notification types
+- `lookup_invoice` - Look up lightning invoice details from a BOLT-11 invoice or payment hash
+- `make_invoice` - Create a lightning invoice
+- `pay_invoice` - Pay a lightning invoice
+- `list_transactions` - List all transactions from the connected wallet with optional filtering
+
+**Lightning Tools:**
+
+- `fetch_l402` - Fetch a paid resource protected by L402 (Lightning HTTP 402 Payment Required)
+- `fiat_to_sats` - Convert fiat currency amounts (e.g. USD, EUR) to satoshis
+- `parse_invoice` - Parse a BOLT-11 lightning invoice and return its details
+- `request_invoice` - Request a lightning invoice from a lightning address (LNURL)
+
+### Connecting to Alby MCP Server
+
+#### Option 1: Local (STDIO) — Claude Desktop
+
+Add the Alby MCP server to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "alby": {
+      "command": "npx",
+      "args": ["-y", "@getalby/mcp"],
+      "env": {
+        "NWC_CONNECTION_STRING": "nostr+walletconnect://..."
+      }
+    }
+  }
+}
+```
+
+#### Option 1 (Cursor): Local (STDIO)
+
+Add the Alby MCP server to your Cursor configuration (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "alby": {
+      "command": "npx",
+      "args": ["-y", "@getalby/mcp"],
+      "env": {
+        "NWC_CONNECTION_STRING": "nostr+walletconnect://..."
+      }
+    }
+  }
+}
+```
+
+#### Option 2: Remote Server
+
+Connect directly to Alby's hosted MCP server (no local installation required):
+
+- **HTTP Streamable:** `https://mcp.getalby.com/mcp`
+- **SSE:** `https://mcp.getalby.com/sse`
+
+**Bearer Authentication (preferred):**
+
+```http
+Authorization: Bearer nostr+walletconnect://...
+```
+
+**Query Parameter:**
+
+```text
+https://mcp.getalby.com/mcp?nwc=ENCODED_NWC_URL
+```
+
+#### Claude Code (Remote)
+
+```bash
+claude mcp add --transport http alby https://mcp.getalby.com/mcp --header "Authorization: Bearer nostr+walletconnect://..."
+```
+
+### Getting a NWC Connection String
+
+1. Visit [nwc.getalby.com](https://nwc.getalby.com) or use any NWC-compatible Bitcoin Lightning wallet
+2. Create a new connection and copy the connection string
+3. The connection string starts with `nostr+walletconnect://`
+4. Set it as the `NWC_CONNECTION_STRING` environment variable
+
+> **Security Note:** Your NWC connection string grants access to your Bitcoin Lightning wallet. Never share it or commit it to version control. Always use environment variables.
+
+### Resources
+
+- [Alby MCP GitHub](https://github.com/getAlby/mcp)
+- [Nostr Wallet Connect (NWC)](https://nwc.dev)
+- [Alby Support](https://support.getalby.com)
 
 ## Acknowledgments
 
