@@ -6,6 +6,7 @@
 import { listAlbyServers, isAlbyConfigured, getAlbyConfig, ALBY_MCP_SERVER } from './build/alby.js';
 import { listAgentQLServers, isAgentQLConfigured, getAgentQLConfig, AGENTQL_MCP_SERVER } from './build/agentql.js';
 import { listCloudflareServers, CLOUDFLARE_MCP_SERVERS } from './build/cloudflare.js';
+import { listNetlifyTools, isNetlifyConfigured, getNetlifyConfig, NETLIFY_MCP_SERVER } from './build/netlify.js';
 
 let passed = 0;
 let failed = 0;
@@ -170,6 +171,96 @@ test('listCloudflareServers contains observability, radar, browser', () => {
   assert(names.some(n => n.includes('observability')), 'missing observability');
   assert(names.some(n => n.includes('radar')), 'missing radar');
   assert(names.some(n => n.includes('browser')), 'missing browser');
+});
+
+// ─── NETLIFY TESTS ────────────────────────────────────────────────────────────
+console.log('\n=== NETLIFY INTEGRATION TESTS ===\n');
+
+test('NETLIFY_MCP_SERVER has correct npm package', () => {
+  assertEqual(NETLIFY_MCP_SERVER.npmPackage, '@netlify/mcp', 'npm package name');
+});
+
+test('NETLIFY_MCP_SERVER has correct command', () => {
+  assertEqual(NETLIFY_MCP_SERVER.command, 'npx', 'command should be npx');
+});
+
+test('NETLIFY_MCP_SERVER args include @netlify/mcp', () => {
+  assert(NETLIFY_MCP_SERVER.args.includes('@netlify/mcp'), 'args should include @netlify/mcp');
+});
+
+test('listNetlifyTools returns 16 tools', () => {
+  const tools = listNetlifyTools();
+  assertEqual(tools.length, 16, 'tool count');
+});
+
+test('listNetlifyTools contains all 5 domains', () => {
+  const tools = listNetlifyTools();
+  const domains = [...new Set(tools.map(t => t.domain))];
+  assertEqual(domains.length, 5, 'domain count');
+  assert(domains.includes('project'), 'missing project domain');
+  assert(domains.includes('deploy'), 'missing deploy domain');
+  assert(domains.includes('user'), 'missing user domain');
+  assert(domains.includes('team'), 'missing team domain');
+  assert(domains.includes('extension'), 'missing extension domain');
+});
+
+test('listNetlifyTools contains 9 project tools', () => {
+  const tools = listNetlifyTools();
+  const projectTools = tools.filter(t => t.domain === 'project');
+  assertEqual(projectTools.length, 9, 'project tool count');
+});
+
+test('listNetlifyTools contains 4 deploy tools', () => {
+  const tools = listNetlifyTools();
+  const deployTools = tools.filter(t => t.domain === 'deploy');
+  assertEqual(deployTools.length, 4, 'deploy tool count');
+});
+
+test('listNetlifyTools contains deploy-site tool', () => {
+  const tools = listNetlifyTools();
+  const tool = tools.find(t => t.name === 'deploy-site');
+  assert(tool !== undefined, 'deploy-site tool not found');
+  assertIncludes(tool.description, 'deploy', 'description should mention deploy');
+});
+
+test('listNetlifyTools contains manage-project-env-vars tool', () => {
+  const tools = listNetlifyTools();
+  const tool = tools.find(t => t.name === 'manage-project-env-vars');
+  assert(tool !== undefined, 'manage-project-env-vars tool not found');
+});
+
+test('isNetlifyConfigured returns false when NETLIFY_PERSONAL_ACCESS_TOKEN not set', () => {
+  delete process.env.NETLIFY_PERSONAL_ACCESS_TOKEN;
+  assertEqual(isNetlifyConfigured(), false, 'should be false without env var');
+});
+
+test('isNetlifyConfigured returns true when NETLIFY_PERSONAL_ACCESS_TOKEN is set', () => {
+  process.env.NETLIFY_PERSONAL_ACCESS_TOKEN = 'test-netlify-pat';
+  assertEqual(isNetlifyConfigured(), true, 'should be true with env var');
+  delete process.env.NETLIFY_PERSONAL_ACCESS_TOKEN;
+});
+
+test('getNetlifyConfig returns configured=false without env var', () => {
+  delete process.env.NETLIFY_PERSONAL_ACCESS_TOKEN;
+  const config = getNetlifyConfig();
+  assertEqual(config.configured, false, 'configured should be false');
+  assertEqual(config.npmPackage, '@netlify/mcp', 'npm package');
+});
+
+test('getNetlifyConfig returns configured=true with env var', () => {
+  process.env.NETLIFY_PERSONAL_ACCESS_TOKEN = 'test-netlify-pat';
+  const config = getNetlifyConfig();
+  assertEqual(config.configured, true, 'configured should be true');
+  delete process.env.NETLIFY_PERSONAL_ACCESS_TOKEN;
+});
+
+test('each Netlify tool has name, description, and domain', () => {
+  const tools = listNetlifyTools();
+  for (const tool of tools) {
+    assert(typeof tool.name === 'string' && tool.name.length > 0, `tool missing name: ${JSON.stringify(tool)}`);
+    assert(typeof tool.description === 'string' && tool.description.length > 0, `tool missing description: ${tool.name}`);
+    assert(typeof tool.domain === 'string' && tool.domain.length > 0, `tool missing domain: ${tool.name}`);
+  }
 });
 
 // ─── SUMMARY ──────────────────────────────────────────────────────────────────
