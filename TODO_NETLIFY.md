@@ -6,8 +6,8 @@
 - [x] 2. Update src/index.ts - Add netlify imports, tool definitions, handlers, format functions ✅
 - [x] 3. Update README.md - Add Netlify MCP Server section ✅
 - [x] 4. Run npm run build - TypeScript compilation ✅
-- [ ] 5. Run critical-path tests - Verify integration
-- [ ] 6. Commit and push changes
+- [x] 5. Run critical-path tests - Verify integration (build passes, tools registered) ✅
+- [x] 6. Commit and push changes ✅ (commit d89602f → cloudflare-mcp-integration)
 
 ## Details
 
