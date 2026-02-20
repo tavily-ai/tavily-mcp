@@ -672,6 +672,113 @@ claude mcp add --transport http alby https://mcp.getalby.com/mcp --header "Autho
 - [Nostr Wallet Connect (NWC)](https://nwc.dev)
 - [Alby Support](https://support.getalby.com)
 
+## Netlify MCP Server
+
+The [Netlify MCP Server](https://github.com/netlify/netlify-mcp) enables AI agents to create, manage, and deploy Netlify projects using natural language prompts.
+
+- **npm package:** `@netlify/mcp`
+- **Auth:** Netlify OAuth (default, interactive) or `NETLIFY_PERSONAL_ACCESS_TOKEN` (optional, non-interactive)
+- **Docs:** [Netlify MCP Server Documentation](https://docs.netlify.com/welcome/build-with-ai/netlify-mcp-server/)
+
+### Available Tools (16 tools across 5 domains)
+
+**Project Tools:**
+
+- `get-project` - Get a Netlify project/site by ID or name
+- `get-projects` - List all Netlify projects/sites for the current team
+- `create-new-project` - Create a new Netlify project/site
+- `update-project-name` - Update the name of an existing Netlify project
+- `update-visitor-access-controls` - Modify visitor access controls (password protection, JWT, etc.)
+- `update-project-forms` - Enable or disable Netlify form submissions for a project
+- `get-forms-for-project` - Get all forms associated with a Netlify project
+- `manage-form-submissions` - Manage form submissions (list, delete, etc.)
+- `manage-project-env-vars` - Create, update, or delete environment variables and secrets
+
+**Deploy Tools:**
+
+- `get-deploy` - Get a specific Netlify deploy by deploy ID
+- `get-deploy-for-site` - Get all deploys for a specific Netlify site
+- `deploy-site` - Build and deploy a site to Netlify
+- `deploy-site-remotely` - Deploy a site to Netlify using remote build infrastructure
+
+**User / Team / Extension Tools:**
+
+- `get-user` - Get current authenticated Netlify user information
+- `get-team` - Get Netlify team information and settings
+- `manage-extensions` - Install or uninstall Netlify extensions for a project
+
+### Connecting to Netlify MCP Server
+
+#### Claude Desktop
+
+Add the Netlify MCP server to your Claude Desktop configuration (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "netlify": {
+      "command": "npx",
+      "args": ["-y", "@netlify/mcp"]
+    }
+  }
+}
+```
+
+With optional Personal Access Token (for non-interactive / CI use):
+
+```json
+{
+  "mcpServers": {
+    "netlify": {
+      "command": "npx",
+      "args": ["-y", "@netlify/mcp"],
+      "env": {
+        "NETLIFY_PERSONAL_ACCESS_TOKEN": "your-netlify-pat"
+      }
+    }
+  }
+}
+```
+
+#### Cursor
+
+Add to your Cursor configuration (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "netlify": {
+      "command": "npx",
+      "args": ["-y", "@netlify/mcp"],
+      "env": {
+        "NETLIFY_PERSONAL_ACCESS_TOKEN": "your-netlify-pat"
+      }
+    }
+  }
+}
+```
+
+#### Claude Code (CLI)
+
+```bash
+claude mcp add netlify -- npx -y @netlify/mcp
+```
+
+### Getting a Netlify Personal Access Token
+
+1. Log in to [app.netlify.com](https://app.netlify.com)
+2. Go to **User Settings → Applications → Personal access tokens**
+3. Click **New access token**, give it a name, and copy the token
+4. Set it as the `NETLIFY_PERSONAL_ACCESS_TOKEN` environment variable
+
+> **Note:** A PAT is optional. By default, the Netlify MCP server uses OAuth (interactive browser login). The PAT is only needed for non-interactive or CI/CD environments.
+
+### Resources
+
+- [Netlify MCP GitHub](https://github.com/netlify/netlify-mcp)
+- [Netlify MCP Documentation](https://docs.netlify.com/welcome/build-with-ai/netlify-mcp-server/)
+- [Netlify Personal Access Tokens](https://app.netlify.com/user/applications#personal-access-tokens)
+
 ## Acknowledgments
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification

@@ -56,6 +56,14 @@ import {
   ALBY_MCP_SERVER
 } from './alby.js';
 
+// Netlify imports
+import {
+  listNetlifyTools,
+  isNetlifyConfigured,
+  getNetlifyConfig,
+  NETLIFY_MCP_SERVER
+} from './netlify.js';
+
 
 
 dotenv.config();
@@ -804,6 +812,23 @@ class TavilyClient {
             type: "object",
             properties: {}
           }
+        },
+        // Netlify MCP Server Tools
+        {
+          name: "netlify_list_servers",
+          description: "List available Netlify MCP tools for creating, managing, and deploying Netlify projects. Covers project management, deployments, environment variables, forms, access controls, and extensions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "netlify_get_server_info",
+          description: "Get connection information and setup instructions for the Netlify MCP server. Returns npm package, authentication configuration, available tool domains, and setup guide.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
         }
       ];
 
@@ -1132,6 +1157,23 @@ text: formatResearchResults(researchResponse)
               content: [{
                 type: "text",
                 text: formatAlbyServerInfo()
+              }]
+            };
+
+          // Netlify tool handlers
+          case "netlify_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatNetlifyServers()
+              }]
+            };
+
+          case "netlify_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatNetlifyServerInfo()
               }]
             };
 
@@ -1903,6 +1945,90 @@ function formatAlbyServerInfo(): string {
   output.push('  Query param: https://mcp.getalby.com/mcp?nwc=ENCODED_NWC_URL');
   output.push('');
   output.push('GitHub: https://github.com/getAlby/mcp');
+
+  return output.join('\n');
+}
+
+// Netlify format functions
+function formatNetlifyServers(): string {
+  const output: string[] = [];
+  output.push('Available Netlify MCP Server:');
+  output.push('');
+  output.push('Netlify MCP Server enables AI agents to create, manage, and deploy Netlify projects using natural language.');
+  output.push('');
+
+  const tools = listNetlifyTools();
+  const domains = [...new Set(tools.map(t => t.domain))];
+
+  domains.forEach(domain => {
+    const domainTools = tools.filter(t => t.domain === domain);
+    output.push(`${domain.charAt(0).toUpperCase() + domain.slice(1)} Tools:`);
+    domainTools.forEach((tool, index) => {
+      output.push(`  [${index + 1}] ${tool.name}`);
+      output.push(`      ${tool.description}`);
+    });
+    output.push('');
+  });
+
+  output.push('To add Netlify MCP server to your MCP client:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "netlify": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@netlify/mcp"]');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('With optional PAT for non-interactive use:');
+  output.push('  "mcpServers": {');
+  output.push('    "netlify": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@netlify/mcp"],');
+  output.push('      "env": { "NETLIFY_PERSONAL_ACCESS_TOKEN": "your-pat" }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Get your Netlify PAT from: https://app.netlify.com/user/applications#personal-access-tokens');
+
+  return output.join('\n');
+}
+
+function formatNetlifyServerInfo(): string {
+  const output: string[] = [];
+  const config = getNetlifyConfig();
+
+  output.push('Netlify MCP Server Information:');
+  output.push('');
+  output.push(`Package: ${config.npmPackage}`);
+  output.push(`Command: ${config.command} ${config.args.join(' ')}`);
+  output.push(`Auth Environment Variable: NETLIFY_PERSONAL_ACCESS_TOKEN (optional)`);
+  output.push(`Configured (PAT): ${config.configured ? 'Yes' : 'No (uses OAuth by default)'}`);
+  output.push('');
+  output.push('Available Tool Domains (16 tools across 5 domains):');
+  output.push('  Project tools: get-project, get-projects, create-new-project, update-project-name,');
+  output.push('    update-visitor-access-controls, update-project-forms, get-forms-for-project,');
+  output.push('    manage-form-submissions, manage-project-env-vars');
+  output.push('  Deploy tools: get-deploy, get-deploy-for-site, deploy-site, deploy-site-remotely');
+  output.push('  User tools: get-user');
+  output.push('  Team tools: get-team');
+  output.push('  Extension tools: manage-extensions');
+  output.push('');
+  output.push('Use Cases:');
+  output.push('  - Create, manage, and deploy Netlify projects');
+  output.push('  - Modify access controls for enhanced project security');
+  output.push('  - Install or uninstall Netlify extensions');
+  output.push('  - Fetch user and team information');
+  output.push('  - Enable and manage form submissions');
+  output.push('  - Create and manage environment variables and secrets');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Install Node.js 22 or higher');
+  output.push('2. Add the server to your MCP client configuration (no API key required for OAuth)');
+  output.push('3. Optionally set NETLIFY_PERSONAL_ACCESS_TOKEN for non-interactive use');
+  output.push('');
+  output.push('Documentation: https://docs.netlify.com/welcome/build-with-ai/netlify-mcp-server/');
+  output.push('GitHub: https://github.com/netlify/netlify-mcp');
 
   return output.join('\n');
 }
