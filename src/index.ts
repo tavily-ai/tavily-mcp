@@ -64,6 +64,15 @@ import {
   NETLIFY_MCP_SERVER
 } from './netlify.js';
 
+// J.P. Morgan imports
+import {
+  JPMORGAN_API_SERVER,
+  listJPMorganTools,
+  isJPMorganConfigured,
+  getJPMorganConfig,
+  retrieveBalances as jpmorganRetrieveBalances
+} from './jpmorgan.js';
+
 
 
 dotenv.config();
@@ -829,6 +838,57 @@ class TavilyClient {
             type: "object",
             properties: {}
           }
+        },
+        // J.P. Morgan Account Balances API Tools
+        {
+          name: "jpmorgan_retrieve_balances",
+          description: "Retrieve real-time or historical account balances for one or more J.P. Morgan accounts. Supports date range queries (startDate + endDate, max 31 days) or relative date queries (CURRENT_DAY / PRIOR_DAY). Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              account_ids: {
+                type: "array",
+                items: { type: "string" },
+                description: "List of J.P. Morgan account IDs to query (e.g. ['00000000000000304266256'])"
+              },
+              start_date: {
+                type: "string",
+                description: "Start date in yyyy-MM-dd format. Use with end_date. Cannot be combined with relative_date_type. Max range is 31 days."
+              },
+              end_date: {
+                type: "string",
+                description: "End date in yyyy-MM-dd format. Use with start_date. Cannot be combined with relative_date_type."
+              },
+              relative_date_type: {
+                type: "string",
+                enum: ["CURRENT_DAY", "PRIOR_DAY"],
+                description: "Relative date type. CURRENT_DAY returns today's balance; PRIOR_DAY returns yesterday's. Cannot be combined with start_date/end_date."
+              },
+              environment: {
+                type: "string",
+                enum: ["testing", "production"],
+                description: "Target environment. Use 'testing' for client testing (default), 'production' for live data.",
+                default: "testing"
+              }
+            },
+            required: ["account_ids"]
+          }
+        },
+        {
+          name: "jpmorgan_list_tools",
+          description: "List available J.P. Morgan Account Balances API tools and their descriptions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "jpmorgan_get_server_info",
+          description: "Get connection information and setup instructions for the J.P. Morgan Account Balances API. Returns API endpoints, authentication details, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
         }
       ];
 
@@ -1176,6 +1236,42 @@ text: formatResearchResults(researchResponse)
                 text: formatNetlifyServerInfo()
               }]
             };
+
+          // J.P. Morgan tool handlers
+          case "jpmorgan_list_tools":
+            return {
+              content: [{
+                type: "text",
+                text: formatJPMorganTools()
+              }]
+            };
+
+          case "jpmorgan_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatJPMorganServerInfo()
+              }]
+            };
+
+          case "jpmorgan_retrieve_balances":
+            if (!isJPMorganConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            try {
+              const jpmBalanceResult = await jpmorganRetrieveBalances(
+                {
+                  accountList: (args.account_ids as string[]).map((id: string) => ({ accountId: id })),
+                  startDate: args.start_date,
+                  endDate: args.end_date,
+                  relativeDateType: args.relative_date_type
+                },
+                (args.environment as 'production' | 'testing') || 'testing'
+              );
+              return { content: [{ type: "text", text: formatJPMorganBalances(jpmBalanceResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan API error: ${err.message}` }], isError: true };
+            }
 
           default:
 
@@ -2075,6 +2171,114 @@ function formatAgentQLWebElementResult(result: any): string {
       otherMeta.forEach(([k, v]) => output.push(`  ${k}: ${JSON.stringify(v)}`));
     }
   }
+  return output.join('\n');
+}
+
+// J.P. Morgan format functions
+function formatJPMorganTools(): string {
+  const output: string[] = [];
+  output.push('Available J.P. Morgan Account Balances API Tools:');
+  output.push('');
+  output.push('Access real-time and historical balances for J.P. Morgan accounts.');
+  output.push('');
+
+  const tools = listJPMorganTools();
+  tools.forEach((tool, index) => {
+    output.push(`[${index + 1}] ${tool.name}`);
+    output.push(`    ${tool.description}`);
+    output.push('');
+  });
+
+  output.push('Authentication: OAuth Bearer token (JPMORGAN_ACCESS_TOKEN)');
+  output.push('');
+  output.push('Environments:');
+  output.push(`  Testing OAuth:    ${JPMORGAN_API_SERVER.baseUrls.testingOAuth}`);
+  output.push(`  Production OAuth: ${JPMORGAN_API_SERVER.baseUrls.productionOAuth}`);
+
+  return output.join('\n');
+}
+
+function formatJPMorganServerInfo(): string {
+  const output: string[] = [];
+  const config = getJPMorganConfig();
+
+  output.push('J.P. Morgan Account Balances API Information:');
+  output.push('');
+  output.push(`API Title:   ${JPMORGAN_API_SERVER.title}`);
+  output.push(`Version:     ${JPMORGAN_API_SERVER.version}`);
+  output.push(`Endpoint:    POST ${JPMORGAN_API_SERVER.endpoint}`);
+  output.push(`Auth:        OAuth Bearer token`);
+  output.push(`Env Var:     JPMORGAN_ACCESS_TOKEN`);
+  output.push(`Configured:  ${config.configured ? 'Yes' : 'No'}`);
+  output.push(`Active Env:  ${config.activeEnv}`);
+  output.push(`Active URL:  ${config.activeBaseUrl}`);
+  output.push('');
+  output.push('Available Environments:');
+  output.push(`  Production OAuth: ${JPMORGAN_API_SERVER.baseUrls.productionOAuth}`);
+  output.push(`  Production MTLS:  ${JPMORGAN_API_SERVER.baseUrls.productionMTLS}`);
+  output.push(`  Testing OAuth:    ${JPMORGAN_API_SERVER.baseUrls.testingOAuth}`);
+  output.push(`  Testing MTLS:     ${JPMORGAN_API_SERVER.baseUrls.testingMTLS}`);
+  output.push('');
+  output.push('Available Tools:');
+  output.push('  - retrieve_balances: Query real-time or historical account balances');
+  output.push('');
+  output.push('Query Modes:');
+  output.push('  1. Date Range: startDate + endDate (yyyy-MM-dd, max 31 days apart)');
+  output.push('  2. Relative:   relativeDateType = CURRENT_DAY | PRIOR_DAY');
+  output.push('');
+  output.push('Error Codes:');
+  output.push('  GCA-001/003: Unauthorized Access');
+  output.push('  GCA-005:     Date range exceeds 31 days');
+  output.push('  GCA-018/019: Invalid combination of startDate/endDate + relativeDateType');
+  output.push('  GCA-021:     Account ID is required');
+  output.push('  GCA-025:     No transactions found for date range');
+  output.push('  GCA-026:     Invalid date format (use yyyy-MM-dd)');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Obtain an OAuth access token from the J.P. Morgan Developer Portal');
+  output.push('2. Set the environment variable: JPMORGAN_ACCESS_TOKEN=your-token');
+  output.push('3. Set JPMORGAN_ENV=testing (default) or JPMORGAN_ENV=production');
+  output.push('');
+  output.push('Documentation: https://developer.jpmorgan.com');
+
+  return output.join('\n');
+}
+
+function formatJPMorganBalances(response: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Account Balances:');
+  output.push('');
+
+  if (!response.accountList || response.accountList.length === 0) {
+    output.push('No accounts found in response.');
+    return output.join('\n');
+  }
+
+  response.accountList.forEach((account: any, idx: number) => {
+    output.push(`Account [${idx + 1}]:`);
+    output.push(`  Account ID:   ${account.accountId}`);
+    if (account.accountName) output.push(`  Name:         ${account.accountName}`);
+    if (account.bankName)    output.push(`  Bank:         ${account.bankName}`);
+    if (account.branchId)    output.push(`  Branch ID:    ${account.branchId}`);
+    if (account.currency?.code) output.push(`  Currency:     ${account.currency.code}`);
+    output.push('');
+
+    if (account.balanceList && account.balanceList.length > 0) {
+      output.push('  Balances:');
+      account.balanceList.forEach((bal: any, bidx: number) => {
+        output.push(`    [${bidx + 1}] As Of Date:              ${bal.asOfDate}`);
+        if (bal.currentDay !== undefined) output.push(`        Current Day:             ${bal.currentDay}`);
+        if (bal.openingAvailableAmount !== undefined) output.push(`        Opening Available:       ${bal.openingAvailableAmount}`);
+        if (bal.openingLedgerAmount !== undefined)    output.push(`        Opening Ledger:          ${bal.openingLedgerAmount}`);
+        if (bal.endingAvailableAmount !== undefined)  output.push(`        Ending Available:        ${bal.endingAvailableAmount}`);
+        if (bal.endingLedgerAmount !== undefined)     output.push(`        Ending Ledger:           ${bal.endingLedgerAmount}`);
+      });
+    } else {
+      output.push('  No balance records found.');
+    }
+    output.push('');
+  });
+
   return output.join('\n');
 }
 
