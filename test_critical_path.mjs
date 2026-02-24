@@ -7,9 +7,11 @@ import { listAlbyServers, isAlbyConfigured, getAlbyConfig, ALBY_MCP_SERVER } fro
 import { listAgentQLServers, isAgentQLConfigured, getAgentQLConfig, AGENTQL_MCP_SERVER } from './build/agentql.js';
 import { listCloudflareServers, CLOUDFLARE_MCP_SERVERS } from './build/cloudflare.js';
 import { listNetlifyTools, isNetlifyConfigured, getNetlifyConfig, NETLIFY_MCP_SERVER } from './build/netlify.js';
+import { JPMORGAN_API_SERVER, listJPMorganTools, isJPMorganConfigured, getJPMorganConfig, retrieveBalances as jpmRetrieveBalances } from './build/jpmorgan.js';
 
 let passed = 0;
 let failed = 0;
+const asyncQueue = [];
 
 function test(name, fn) {
   try {
@@ -21,6 +23,11 @@ function test(name, fn) {
     console.log(`         ${err.message}`);
     failed++;
   }
+}
+
+// Async test — queued and run before summary
+function asyncTest(name, fn) {
+  asyncQueue.push({ name, fn });
 }
 
 function assert(condition, message) {
@@ -263,17 +270,142 @@ test('each Netlify tool has name, description, and domain', () => {
   }
 });
 
-// ─── SUMMARY ──────────────────────────────────────────────────────────────────
-console.log('\n=== TEST SUMMARY ===\n');
-console.log(`  Total:  ${passed + failed}`);
-console.log(`  Passed: ${passed}`);
-console.log(`  Failed: ${failed}`);
-console.log('');
+// ─── J.P. MORGAN TESTS ────────────────────────────────────────────────────────
+console.log('\n=== J.P. MORGAN INTEGRATION TESTS ===\n');
 
-if (failed > 0) {
-  console.log('❌ Some tests failed!');
-  process.exit(1);
-} else {
-  console.log('✅ All critical-path tests passed!');
-  process.exit(0);
-}
+test('JPMORGAN_API_SERVER has correct title', () => {
+  assertIncludes(JPMORGAN_API_SERVER.title, 'J.P. Morgan', 'title should mention J.P. Morgan');
+});
+
+test('JPMORGAN_API_SERVER has correct version', () => {
+  assertEqual(JPMORGAN_API_SERVER.version, '1.0.5', 'API version');
+});
+
+test('JPMORGAN_API_SERVER has correct endpoint', () => {
+  assertEqual(JPMORGAN_API_SERVER.endpoint, '/balance', 'endpoint should be /balance');
+});
+
+test('JPMORGAN_API_SERVER has all 4 base URLs', () => {
+  assertIncludes(JPMORGAN_API_SERVER.baseUrls.productionOAuth, 'openbanking.jpmorgan.com', 'production OAuth URL');
+  assertIncludes(JPMORGAN_API_SERVER.baseUrls.productionMTLS, 'apigateway.jpmorgan.com', 'production MTLS URL');
+  assertIncludes(JPMORGAN_API_SERVER.baseUrls.testingOAuth, 'openbankinguat.jpmorgan.com', 'testing OAuth URL');
+  assertIncludes(JPMORGAN_API_SERVER.baseUrls.testingMTLS, 'apigatewayqaf.jpmorgan.com', 'testing MTLS URL');
+});
+
+test('listJPMorganTools returns 1 tool', () => {
+  const tools = listJPMorganTools();
+  assertEqual(tools.length, 1, 'tool count');
+});
+
+test('listJPMorganTools contains retrieve_balances tool', () => {
+  const tools = listJPMorganTools();
+  const tool = tools.find(t => t.name === 'retrieve_balances');
+  assert(tool !== undefined, 'retrieve_balances tool not found');
+  assertIncludes(tool.description, 'balance', 'description should mention balance');
+});
+
+test('isJPMorganConfigured returns false when JPMORGAN_ACCESS_TOKEN not set', () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  assertEqual(isJPMorganConfigured(), false, 'should be false without env var');
+});
+
+test('isJPMorganConfigured returns true when JPMORGAN_ACCESS_TOKEN is set', () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-bearer-token';
+  assertEqual(isJPMorganConfigured(), true, 'should be true with env var');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+test('getJPMorganConfig returns configured=false without env var', () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  const config = getJPMorganConfig();
+  assertEqual(config.configured, false, 'configured should be false');
+  assertEqual(config.activeEnv, 'testing', 'default env should be testing');
+});
+
+test('getJPMorganConfig returns configured=true with env var', () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-bearer-token';
+  const config = getJPMorganConfig();
+  assertEqual(config.configured, true, 'configured should be true');
+  assertIncludes(config.activeBaseUrl, 'jpmorgan.com', 'activeBaseUrl should contain jpmorgan.com');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+test('getJPMorganConfig uses testing OAuth URL by default', () => {
+  delete process.env.JPMORGAN_ENV;
+  const config = getJPMorganConfig();
+  assertIncludes(config.activeBaseUrl, 'openbankinguat.jpmorgan.com', 'default should be testing OAuth URL');
+});
+
+asyncTest('retrieveBalances throws when JPMORGAN_ACCESS_TOKEN not set', async () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  let threw = false;
+  try {
+    await jpmRetrieveBalances({ accountList: [{ accountId: '123' }] });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'JPMORGAN_ACCESS_TOKEN', 'error should mention JPMORGAN_ACCESS_TOKEN');
+  }
+  assert(threw, 'should have thrown an error when token not set');
+});
+
+asyncTest('retrieveBalances throws when relativeDateType combined with startDate', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await jpmRetrieveBalances({
+      accountList: [{ accountId: '123' }],
+      relativeDateType: 'CURRENT_DAY',
+      startDate: '2024-01-01'
+    });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'relativeDateType', 'error should mention relativeDateType');
+  }
+  assert(threw, 'should have thrown for invalid param combination');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('retrieveBalances throws when accountList is empty', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await jpmRetrieveBalances({ accountList: [] });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'accountList', 'error should mention accountList');
+  }
+  assert(threw, 'should have thrown for empty accountList');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+// ─── ASYNC QUEUE + SUMMARY ────────────────────────────────────────────────────
+(async () => {
+  if (asyncQueue.length > 0) {
+    console.log('\n=== ASYNC TESTS ===\n');
+    for (const { name, fn } of asyncQueue) {
+      try {
+        await fn();
+        console.log(`  ✅ PASS: ${name}`);
+        passed++;
+      } catch (err) {
+        console.log(`  ❌ FAIL: ${name}`);
+        console.log(`         ${err.message}`);
+        failed++;
+      }
+    }
+  }
+
+  console.log('\n=== TEST SUMMARY ===\n');
+  console.log(`  Total:  ${passed + failed}`);
+  console.log(`  Passed: ${passed}`);
+  console.log(`  Failed: ${failed}`);
+  console.log('');
+
+  if (failed > 0) {
+    console.log('❌ Some tests failed!');
+    process.exit(1);
+  } else {
+    console.log('✅ All critical-path tests passed!');
+    process.exit(0);
+  }
+})();
