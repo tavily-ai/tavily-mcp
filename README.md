@@ -779,6 +779,68 @@ claude mcp add netlify -- npx -y @netlify/mcp
 - [Netlify MCP Documentation](https://docs.netlify.com/welcome/build-with-ai/netlify-mcp-server/)
 - [Netlify Personal Access Tokens](https://app.netlify.com/user/applications#personal-access-tokens)
 
+## J.P. Morgan Account Balances API
+
+Access real-time and historical account balances for J.P. Morgan accounts directly through the MCP server.
+
+### Available Tools
+
+- `jpmorgan_retrieve_balances` — Retrieve balances for one or more J.P. Morgan accounts. Supports:
+  - **Date range query**: `start_date` + `end_date` (format: `yyyy-MM-dd`, max 31 days apart)
+  - **Relative date query**: `relative_date_type` = `CURRENT_DAY` or `PRIOR_DAY`
+- `jpmorgan_list_tools` — List available J.P. Morgan API tools
+- `jpmorgan_get_server_info` — Get API endpoints, auth details, and setup instructions
+
+### Authentication
+
+Set the `JPMORGAN_ACCESS_TOKEN` environment variable with your J.P. Morgan OAuth Bearer token:
+
+```bash
+export JPMORGAN_ACCESS_TOKEN=your-oauth-access-token
+export JPMORGAN_ENV=testing   # or 'production'
+```
+
+### API Environments
+
+| Environment | Auth | URL |
+|---|---|---|
+| Client Testing | OAuth | `https://openbankinguat.jpmorgan.com/accessapi` |
+| Client Testing | MTLS | `https://apigatewayqaf.jpmorgan.com/accessapi` |
+| Production | OAuth | `https://openbanking.jpmorgan.com/accessapi` |
+| Production | MTLS | `https://apigateway.jpmorgan.com/accessapi` |
+
+### Example Usage
+
+**Query current day balance:**
+```json
+{
+  "tool": "jpmorgan_retrieve_balances",
+  "arguments": {
+    "account_ids": ["00000000000000304266256"],
+    "relative_date_type": "CURRENT_DAY",
+    "environment": "testing"
+  }
+}
+```
+
+**Query by date range:**
+```json
+{
+  "tool": "jpmorgan_retrieve_balances",
+  "arguments": {
+    "account_ids": ["00000000000000304266256"],
+    "start_date": "2024-01-01",
+    "end_date": "2024-01-05",
+    "environment": "testing"
+  }
+}
+```
+
+### Resources
+
+- [J.P. Morgan Developer Portal](https://developer.jpmorgan.com)
+- [Account Balances API Spec](https://developer.jpmorgan.com) (OpenAPI 3.0, v1.0.5)
+
 ## Acknowledgments
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification

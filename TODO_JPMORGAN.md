@@ -4,7 +4,7 @@
 
 - [x] 1. Create src/jpmorgan.ts - J.P. Morgan Account Balances MCP integration ✅
 - [x] 2. Update src/index.ts - Add J.P. Morgan tools, handlers, and format functions ✅
-- [ ] 3. Update README.md - Add J.P. Morgan Account Balances API section
+- [x] 3. Update README.md - Add J.P. Morgan Account Balances API section ✅
 - [x] 4. Run npm run build - TypeScript compilation successful ✅
 - [x] 5. Run critical-path tests - 36/36 passing ✅
 
