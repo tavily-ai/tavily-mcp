@@ -8,6 +8,7 @@ import { listAgentQLServers, isAgentQLConfigured, getAgentQLConfig, AGENTQL_MCP_
 import { listCloudflareServers, CLOUDFLARE_MCP_SERVERS } from './build/cloudflare.js';
 import { listNetlifyTools, isNetlifyConfigured, getNetlifyConfig, NETLIFY_MCP_SERVER } from './build/netlify.js';
 import { JPMORGAN_API_SERVER, listJPMorganTools, isJPMorganConfigured, getJPMorganConfig, retrieveBalances as jpmRetrieveBalances } from './build/jpmorgan.js';
+import { JPMORGAN_EMBEDDED_SERVER, listJPMorganEmbeddedTools, isJPMorganEmbeddedConfigured, getJPMorganEmbeddedConfig, listClients as efListClients, getClient as efGetClient, createClient as efCreateClient } from './build/jpmorgan_embedded.js';
 
 let passed = 0;
 let failed = 0;
@@ -334,6 +335,133 @@ test('getJPMorganConfig uses testing OAuth URL by default', () => {
   delete process.env.JPMORGAN_ENV;
   const config = getJPMorganConfig();
   assertIncludes(config.activeBaseUrl, 'openbankinguat.jpmorgan.com', 'default should be testing OAuth URL');
+});
+
+// ─── J.P. MORGAN EMBEDDED PAYMENTS TESTS ─────────────────────────────────────
+console.log('\n=== J.P. MORGAN EMBEDDED PAYMENTS TESTS ===\n');
+
+test('JPMORGAN_EMBEDDED_SERVER has correct title', () => {
+  assertIncludes(JPMORGAN_EMBEDDED_SERVER.title, 'Embedded Payments', 'title should mention Embedded Payments');
+});
+
+test('JPMORGAN_EMBEDDED_SERVER has correct version', () => {
+  assertEqual(JPMORGAN_EMBEDDED_SERVER.version, 'v1', 'API version');
+});
+
+test('JPMORGAN_EMBEDDED_SERVER has production and mock base URLs', () => {
+  assertIncludes(JPMORGAN_EMBEDDED_SERVER.baseUrls.production, 'apigateway.jpmorgan.com', 'production URL');
+  assertIncludes(JPMORGAN_EMBEDDED_SERVER.baseUrls.mock, 'api-mock.payments.jpmorgan.com', 'mock URL');
+});
+
+test('JPMORGAN_EMBEDDED_SERVER has correct resources', () => {
+  assertEqual(JPMORGAN_EMBEDDED_SERVER.resources.clients, '/clients', 'clients resource path');
+  assertIncludes(JPMORGAN_EMBEDDED_SERVER.resources.accounts, '/accounts', 'accounts resource path');
+});
+
+test('listJPMorganEmbeddedTools returns 5 tools', () => {
+  const tools = listJPMorganEmbeddedTools();
+  assertEqual(tools.length, 5, 'tool count');
+});
+
+test('listJPMorganEmbeddedTools contains all client tools', () => {
+  const tools = listJPMorganEmbeddedTools();
+  const names = tools.map(t => t.name);
+  assert(names.includes('ef_list_clients'), 'missing ef_list_clients');
+  assert(names.includes('ef_get_client'), 'missing ef_get_client');
+  assert(names.includes('ef_create_client'), 'missing ef_create_client');
+});
+
+test('listJPMorganEmbeddedTools contains all account tools', () => {
+  const tools = listJPMorganEmbeddedTools();
+  const names = tools.map(t => t.name);
+  assert(names.includes('ef_list_accounts'), 'missing ef_list_accounts');
+  assert(names.includes('ef_get_account'), 'missing ef_get_account');
+});
+
+test('each Embedded Payments tool has name, description, and resource', () => {
+  const tools = listJPMorganEmbeddedTools();
+  for (const tool of tools) {
+    assert(typeof tool.name === 'string' && tool.name.length > 0, `tool missing name`);
+    assert(typeof tool.description === 'string' && tool.description.length > 0, `tool missing description: ${tool.name}`);
+    assert(typeof tool.resource === 'string' && tool.resource.length > 0, `tool missing resource: ${tool.name}`);
+  }
+});
+
+test('isJPMorganEmbeddedConfigured returns false when JPMORGAN_ACCESS_TOKEN not set', () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  assertEqual(isJPMorganEmbeddedConfigured(), false, 'should be false without env var');
+});
+
+test('isJPMorganEmbeddedConfigured returns true when JPMORGAN_ACCESS_TOKEN is set', () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-bearer-token';
+  assertEqual(isJPMorganEmbeddedConfigured(), true, 'should be true with env var');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+test('getJPMorganEmbeddedConfig returns configured=false without env var', () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  const config = getJPMorganEmbeddedConfig();
+  assertEqual(config.configured, false, 'configured should be false');
+  assertEqual(config.activeEnv, 'production', 'default env should be production');
+});
+
+test('getJPMorganEmbeddedConfig returns configured=true with env var', () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-bearer-token';
+  const config = getJPMorganEmbeddedConfig();
+  assertEqual(config.configured, true, 'configured should be true');
+  assertIncludes(config.activeBaseUrl, 'jpmorgan.com', 'activeBaseUrl should contain jpmorgan.com');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+test('getJPMorganEmbeddedConfig uses production URL by default', () => {
+  delete process.env.JPMORGAN_PAYMENTS_ENV;
+  const config = getJPMorganEmbeddedConfig();
+  assertIncludes(config.activeBaseUrl, 'apigateway.jpmorgan.com', 'default should be production URL');
+});
+
+test('getJPMorganEmbeddedConfig uses mock URL when JPMORGAN_PAYMENTS_ENV=mock', () => {
+  process.env.JPMORGAN_PAYMENTS_ENV = 'mock';
+  const config = getJPMorganEmbeddedConfig();
+  assertIncludes(config.activeBaseUrl, 'api-mock.payments.jpmorgan.com', 'mock env should use mock URL');
+  delete process.env.JPMORGAN_PAYMENTS_ENV;
+});
+
+asyncTest('efListClients throws when JPMORGAN_ACCESS_TOKEN not set', async () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  let threw = false;
+  try {
+    await efListClients();
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'JPMORGAN_ACCESS_TOKEN', 'error should mention JPMORGAN_ACCESS_TOKEN');
+  }
+  assert(threw, 'should have thrown when token not set');
+});
+
+asyncTest('efGetClient throws when clientId is empty', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await efGetClient('');
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'clientId', 'error should mention clientId');
+  }
+  assert(threw, 'should have thrown for empty clientId');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('efCreateClient throws when name is missing', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await efCreateClient({ name: '' });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'name', 'error should mention name');
+  }
+  assert(threw, 'should have thrown for missing name');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
 });
 
 asyncTest('retrieveBalances throws when JPMORGAN_ACCESS_TOKEN not set', async () => {

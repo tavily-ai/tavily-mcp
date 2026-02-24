@@ -73,6 +73,19 @@ import {
   retrieveBalances as jpmorganRetrieveBalances
 } from './jpmorgan.js';
 
+// J.P. Morgan Embedded Payments imports
+import {
+  JPMORGAN_EMBEDDED_SERVER,
+  listJPMorganEmbeddedTools,
+  isJPMorganEmbeddedConfigured,
+  getJPMorganEmbeddedConfig,
+  listClients as efListClients,
+  getClient as efGetClient,
+  createClient as efCreateClient,
+  listAccounts as efListAccounts,
+  getAccount as efGetAccount
+} from './jpmorgan_embedded.js';
+
 
 
 dotenv.config();
@@ -889,6 +902,136 @@ class TavilyClient {
             type: "object",
             properties: {}
           }
+        },
+        // J.P. Morgan Embedded Payments API Tools
+        {
+          name: "ef_list_clients",
+          description: "List all embedded finance clients in the J.P. Morgan Embedded Payments platform. Supports optional pagination. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              limit: {
+                type: "number",
+                description: "Maximum number of clients to return",
+                default: 20
+              },
+              page: {
+                type: "number",
+                description: "Page number for pagination",
+                default: 1
+              }
+            }
+          }
+        },
+        {
+          name: "ef_get_client",
+          description: "Get a specific embedded finance client by client ID. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              client_id: {
+                type: "string",
+                description: "The unique identifier of the embedded finance client"
+              }
+            },
+            required: ["client_id"]
+          }
+        },
+        {
+          name: "ef_create_client",
+          description: "Create a new embedded finance client in the J.P. Morgan Embedded Payments platform. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                description: "Name of the client"
+              },
+              type: {
+                type: "string",
+                description: "Type of the client (e.g., 'BUSINESS', 'INDIVIDUAL')"
+              },
+              email: {
+                type: "string",
+                description: "Contact email address for the client"
+              },
+              phone: {
+                type: "string",
+                description: "Contact phone number for the client"
+              },
+              address: {
+                type: "object",
+                description: "Client address",
+                properties: {
+                  line1: { type: "string" },
+                  line2: { type: "string" },
+                  city: { type: "string" },
+                  state: { type: "string" },
+                  postalCode: { type: "string" },
+                  country: { type: "string" }
+                }
+              }
+            },
+            required: ["name"]
+          }
+        },
+        {
+          name: "ef_list_accounts",
+          description: "List all accounts for a specific embedded finance client. Supports virtual transaction accounts and limited access payment accounts (Accounts v2 Beta). Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              client_id: {
+                type: "string",
+                description: "The unique identifier of the embedded finance client"
+              },
+              limit: {
+                type: "number",
+                description: "Maximum number of accounts to return",
+                default: 20
+              },
+              page: {
+                type: "number",
+                description: "Page number for pagination",
+                default: 1
+              }
+            },
+            required: ["client_id"]
+          }
+        },
+        {
+          name: "ef_get_account",
+          description: "Get a specific account for an embedded finance client by account ID (Accounts v2 Beta). Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              client_id: {
+                type: "string",
+                description: "The unique identifier of the embedded finance client"
+              },
+              account_id: {
+                type: "string",
+                description: "The unique identifier of the account"
+              }
+            },
+            required: ["client_id", "account_id"]
+          }
+        },
+        {
+          name: "ef_list_tools",
+          description: "List all available J.P. Morgan Embedded Payments API tools and their descriptions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "ef_get_server_info",
+          description: "Get connection information and setup instructions for the J.P. Morgan Embedded Payments API. Returns API endpoints, authentication details, environments, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
         }
       ];
 
@@ -1271,6 +1414,102 @@ text: formatResearchResults(researchResponse)
               return { content: [{ type: "text", text: formatJPMorganBalances(jpmBalanceResult) }] };
             } catch (err: any) {
               return { content: [{ type: "text", text: `J.P. Morgan API error: ${err.message}` }], isError: true };
+            }
+
+          // J.P. Morgan Embedded Payments tool handlers
+          case "ef_list_tools":
+            return {
+              content: [{
+                type: "text",
+                text: formatEFTools()
+              }]
+            };
+
+          case "ef_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatEFServerInfo()
+              }]
+            };
+
+          case "ef_list_clients":
+            if (!isJPMorganEmbeddedConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Embedded Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            try {
+              const efClientsResult = await efListClients({
+                limit: args.limit,
+                page: args.page
+              });
+              return { content: [{ type: "text", text: formatEFClients(efClientsResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
+            }
+
+          case "ef_get_client":
+            if (!isJPMorganEmbeddedConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Embedded Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            if (!args.client_id) {
+              throw new McpError(ErrorCode.InvalidRequest, "client_id is required.");
+            }
+            try {
+              const efClientResult = await efGetClient(args.client_id);
+              return { content: [{ type: "text", text: formatEFClient(efClientResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
+            }
+
+          case "ef_create_client":
+            if (!isJPMorganEmbeddedConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Embedded Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            if (!args.name) {
+              throw new McpError(ErrorCode.InvalidRequest, "name is required to create a client.");
+            }
+            try {
+              const efNewClient = await efCreateClient({
+                name: args.name,
+                type: args.type,
+                email: args.email,
+                phone: args.phone,
+                address: args.address
+              });
+              return { content: [{ type: "text", text: formatEFClient(efNewClient) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
+            }
+
+          case "ef_list_accounts":
+            if (!isJPMorganEmbeddedConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Embedded Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            if (!args.client_id) {
+              throw new McpError(ErrorCode.InvalidRequest, "client_id is required.");
+            }
+            try {
+              const efAccountsResult = await efListAccounts(args.client_id, {
+                limit: args.limit,
+                page: args.page
+              });
+              return { content: [{ type: "text", text: formatEFAccounts(efAccountsResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
+            }
+
+          case "ef_get_account":
+            if (!isJPMorganEmbeddedConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Embedded Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            if (!args.client_id || !args.account_id) {
+              throw new McpError(ErrorCode.InvalidRequest, "client_id and account_id are required.");
+            }
+            try {
+              const efAccountResult = await efGetAccount(args.client_id, args.account_id);
+              return { content: [{ type: "text", text: formatEFAccount(efAccountResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
             }
 
           default:
@@ -2279,6 +2518,168 @@ function formatJPMorganBalances(response: any): string {
     output.push('');
   });
 
+  return output.join('\n');
+}
+
+// J.P. Morgan Embedded Payments format functions
+function formatEFTools(): string {
+  const output: string[] = [];
+  output.push('Available J.P. Morgan Embedded Payments API Tools:');
+  output.push('');
+  output.push('Manage embedded finance clients and accounts via the J.P. Morgan Embedded Payments API.');
+  output.push('');
+
+  const tools = listJPMorganEmbeddedTools();
+  tools.forEach((tool, index) => {
+    output.push(`[${index + 1}] ${tool.name} (${tool.resource})`);
+    output.push(`    ${tool.description}`);
+    output.push('');
+  });
+
+  output.push('Authentication: OAuth Bearer token (JPMORGAN_ACCESS_TOKEN)');
+  output.push('');
+  output.push('Environments:');
+  output.push(`  Production: ${JPMORGAN_EMBEDDED_SERVER.baseUrls.production}`);
+  output.push(`  Mock:       ${JPMORGAN_EMBEDDED_SERVER.baseUrls.mock}`);
+
+  return output.join('\n');
+}
+
+function formatEFServerInfo(): string {
+  const output: string[] = [];
+  const config = getJPMorganEmbeddedConfig();
+
+  output.push('J.P. Morgan Embedded Payments API Information:');
+  output.push('');
+  output.push(`API Title:    ${JPMORGAN_EMBEDDED_SERVER.title}`);
+  output.push(`Version:      ${JPMORGAN_EMBEDDED_SERVER.version}`);
+  output.push(`API Version:  ${JPMORGAN_EMBEDDED_SERVER.apiVersion}`);
+  output.push(`Auth:         OAuth Bearer token`);
+  output.push(`Env Var:      JPMORGAN_ACCESS_TOKEN`);
+  output.push(`Configured:   ${config.configured ? 'Yes' : 'No'}`);
+  output.push(`Active Env:   ${config.activeEnv}`);
+  output.push(`Active URL:   ${config.activeBaseUrl}`);
+  output.push('');
+  output.push('Available Environments:');
+  output.push(`  Production: ${JPMORGAN_EMBEDDED_SERVER.baseUrls.production}`);
+  output.push(`  Mock:       ${JPMORGAN_EMBEDDED_SERVER.baseUrls.mock}`);
+  output.push('');
+  output.push('Available Tools (5 total):');
+  output.push('  Client Tools:');
+  output.push('  - ef_list_clients:  List all embedded finance clients');
+  output.push('  - ef_get_client:    Get a specific client by ID');
+  output.push('  - ef_create_client: Create a new embedded finance client');
+  output.push('  Account Tools (Accounts v2 Beta):');
+  output.push('  - ef_list_accounts: List all accounts for a client');
+  output.push('  - ef_get_account:   Get a specific account by ID');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Obtain an OAuth access token from the J.P. Morgan Developer Portal');
+  output.push('2. Set the environment variable: JPMORGAN_ACCESS_TOKEN=your-token');
+  output.push('3. Set JPMORGAN_PAYMENTS_ENV=production (default) or JPMORGAN_PAYMENTS_ENV=mock');
+  output.push('');
+  output.push('Documentation: https://developer.payments.jpmorgan.com');
+
+  return output.join('\n');
+}
+
+function formatEFClients(response: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Embedded Finance Clients:');
+  output.push('');
+
+  const items = response.data || response.items || (Array.isArray(response) ? response : []);
+
+  if (items.length === 0) {
+    output.push('No clients found.');
+    return output.join('\n');
+  }
+
+  if (response.total !== undefined) output.push(`Total: ${response.total}`);
+  output.push('');
+
+  items.forEach((client: any, idx: number) => {
+    output.push(`Client [${idx + 1}]:`);
+    output.push(`  ID:     ${client.id || client.clientId || 'N/A'}`);
+    if (client.name)   output.push(`  Name:   ${client.name}`);
+    if (client.type)   output.push(`  Type:   ${client.type}`);
+    if (client.status) output.push(`  Status: ${client.status}`);
+    if (client.email)  output.push(`  Email:  ${client.email}`);
+    output.push('');
+  });
+
+  return output.join('\n');
+}
+
+function formatEFClient(client: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Embedded Finance Client:');
+  output.push('');
+  output.push(`  ID:        ${client.id || client.clientId || 'N/A'}`);
+  if (client.name)      output.push(`  Name:      ${client.name}`);
+  if (client.type)      output.push(`  Type:      ${client.type}`);
+  if (client.status)    output.push(`  Status:    ${client.status}`);
+  if (client.email)     output.push(`  Email:     ${client.email}`);
+  if (client.phone)     output.push(`  Phone:     ${client.phone}`);
+  if (client.createdAt) output.push(`  Created:   ${client.createdAt}`);
+  if (client.updatedAt) output.push(`  Updated:   ${client.updatedAt}`);
+  if (client.address) {
+    const a = client.address;
+    output.push('  Address:');
+    if (a.line1)      output.push(`    Line 1:  ${a.line1}`);
+    if (a.line2)      output.push(`    Line 2:  ${a.line2}`);
+    if (a.city)       output.push(`    City:    ${a.city}`);
+    if (a.state)      output.push(`    State:   ${a.state}`);
+    if (a.postalCode) output.push(`    Postal:  ${a.postalCode}`);
+    if (a.country)    output.push(`    Country: ${a.country}`);
+  }
+  return output.join('\n');
+}
+
+function formatEFAccounts(response: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Embedded Finance Accounts (v2 Beta):');
+  output.push('');
+
+  const items = response.data || response.items || (Array.isArray(response) ? response : []);
+
+  if (items.length === 0) {
+    output.push('No accounts found.');
+    return output.join('\n');
+  }
+
+  if (response.total !== undefined) output.push(`Total: ${response.total}`);
+  output.push('');
+
+  items.forEach((account: any, idx: number) => {
+    output.push(`Account [${idx + 1}]:`);
+    output.push(`  ID:       ${account.id || account.accountId || 'N/A'}`);
+    if (account.type)     output.push(`  Type:     ${account.type}`);
+    if (account.status)   output.push(`  Status:   ${account.status}`);
+    if (account.currency) output.push(`  Currency: ${account.currency}`);
+    if (account.balance !== undefined)          output.push(`  Balance:  ${account.balance}`);
+    if (account.availableBalance !== undefined) output.push(`  Available: ${account.availableBalance}`);
+    output.push('');
+  });
+
+  return output.join('\n');
+}
+
+function formatEFAccount(account: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Embedded Finance Account (v2 Beta):');
+  output.push('');
+  output.push(`  ID:              ${account.id || account.accountId || 'N/A'}`);
+  if (account.clientId)           output.push(`  Client ID:       ${account.clientId}`);
+  if (account.type)               output.push(`  Type:            ${account.type}`);
+  if (account.status)             output.push(`  Status:          ${account.status}`);
+  if (account.currency)           output.push(`  Currency:        ${account.currency}`);
+  if (account.balance !== undefined)          output.push(`  Balance:         ${account.balance}`);
+  if (account.availableBalance !== undefined) output.push(`  Available Bal:   ${account.availableBalance}`);
+  if (account.routingNumber)      output.push(`  Routing Number:  ${account.routingNumber}`);
+  if (account.accountNumber)      output.push(`  Account Number:  ${account.accountNumber}`);
+  if (account.createdAt)          output.push(`  Created:         ${account.createdAt}`);
+  if (account.updatedAt)          output.push(`  Updated:         ${account.updatedAt}`);
   return output.join('\n');
 }
 
