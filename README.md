@@ -180,6 +180,15 @@ Before you begin, ensure you have:
 npx -y tavily-mcp@latest 
 ```
 
+## Exact Match Search
+
+Use the `exact_match` parameter to restrict search results to only those containing the exact phrase(s) in quotes within your query:
+
+```js
+// Only return results containing the exact phrase "John Smith"
+tavily_search({ query: '"John Smith" CEO Acme Corp', exact_match: true })
+```
+
 ## Default Parameters Configuration ⚙️
 
 You can set default parameter values for the `tavily-search` tool using the `DEFAULT_PARAMETERS` environment variable. This allows you to configure default search behavior without specifying these parameters in every request.
