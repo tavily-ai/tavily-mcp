@@ -190,6 +190,15 @@ You can set default parameter values for the `tavily-search` tool using the `DEF
 export DEFAULT_PARAMETERS='{"include_images": true}'
 ```
 
+### Exact Match Search
+
+Use the `exact_match` parameter to only return results containing the exact phrase(s) in quotes within your query:
+
+```js
+// Only return results containing the exact phrase "John Smith"
+tavily_search({ query: '"John Smith" CEO Acme Corp', exact_match: true })
+```
+
 ### Example usage from Client
 ```json
 {
