@@ -226,6 +226,11 @@ class TavilyClient {
                 type: "boolean",
                 description: "Whether to include the favicon URL for each result",
                 default: false
+              },
+              exact_match: {
+                type: "boolean",
+                description: "Only return results containing the exact phrase(s) inside quotes in the query. Use when searching for a specific name or phrase that must appear verbatim in source content.",
+                default: false
               }
             },
             required: ["query"]
@@ -453,7 +458,8 @@ class TavilyClient {
               country: args.country,
               include_favicon: args.include_favicon,
               start_date: args.start_date,
-              end_date: args.end_date
+              end_date: args.end_date,
+              exact_match: args.exact_match
             });
             break;
           
@@ -577,6 +583,7 @@ class TavilyClient {
         include_favicon: params.include_favicon,
         start_date: params.start_date,
         end_date: params.end_date,
+        exact_match: params.exact_match,
         api_key: API_KEY,
       };
       
