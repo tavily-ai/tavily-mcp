@@ -15,16 +15,17 @@
 
 ## Summary
 
-| Remote   | URL                                           | Status                                           |
-|----------|-----------------------------------------------|--------------------------------------------------|
-| owlban   | <https://github.com/OwlbanGroup/tavily-mcp.git> | ✅ Up to date (94fdab5)                          |
-| origin   | <https://github.com/ESADavid/tavily-mcp.git>   | ❌ Push blocked (403) — needs ESADavid credentials |
-| upstream | <https://github.com/tavily-ai/tavily-mcp.git> | (read-only reference)                            |
+| Remote   | URL                                         | Status                                             |
+|----------|---------------------------------------------|----------------------------------------------------|
+| owlban   | https://github.com/OwlbanGroup/tavily-mcp   | ✅ Up to date (94fdab5)                            |
+| origin   | https://github.com/ESADavid/tavily-mcp      | ❌ Push blocked (403) — needs ESADavid credentials |
+| upstream | https://github.com/tavily-ai/tavily-mcp     | (read-only reference)                              |
 
 
 ## Resolution — Push to origin (ATTEMPTS FAILED)
 
 Multiple PATs tried, all returned 403. Possible causes:
+
 - Token lacks `repo` scope (needs full repository access)
 - Branch protection rules on `ESADavid/tavily-mcp`
 - Repository ownership/permission issues
@@ -44,6 +45,7 @@ Generate a new PAT with **full `repo` scope** at:
 <https://github.com/settings/tokens/new?scopes=repo&description=tavily-mcp-push>
 
 Then run:
+
 ```bash
 git push https://ESADavid:NEW_TOKEN@github.com/ESADavid/tavily-mcp.git cloudflare-mcp-integration --force
 ```
