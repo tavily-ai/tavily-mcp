@@ -15,11 +15,12 @@
 
 ## Summary
 
-| Remote   | URL                                         | Status                                             |
-|----------|---------------------------------------------|----------------------------------------------------|
-| owlban   | <https://github.com/OwlbanGroup/tavily-mcp>   | ✅ Up to date (8fcb9f4) — PRODUCTION READY        |
+| Remote   | URL                                           | Status                                             |
+|----------|-----------------------------------------------|----------------------------------------------------|
+| owlban   | <https://github.com/OwlbanGroup/tavily-mcp>   | ✅ Up to date (8fcb9f4) — PRODUCTION READY          |
 | origin   | <https://github.com/ESADavid/tavily-mcp>      | ❌ Push blocked (403) — use PR via web UI          |
 | upstream | <https://github.com/tavily-ai/tavily-mcp>     | (read-only reference)                              |
+
 
 ## Resolution — Push to origin (ATTEMPTS FAILED)
 
@@ -68,7 +69,7 @@ gh pr create --repo ESADavid/tavily-mcp --base main --head cloudflare-mcp-integr
 
 ## Resolution — npm publish (after merge to main)
 
-### Step-by-step release workflow:
+### Step-by-step release workflow
 
 ```bash
 # 1. Version bump (updates package.json, creates git commit + tag)
@@ -82,6 +83,7 @@ npm publish --access public
 ```
 
 **Why this order matters:**
+
 1. **Version first** — npm requires a new version for every publish
 2. **Build second** — compiled output may embed the version number
 3. **Publish last** — uploads built artifacts with the new version
@@ -89,6 +91,7 @@ npm publish --access public
 ### Alternative: One-command release
 
 Add to `package.json`:
+
 ```json
 "scripts": {
   "release": "npm version minor && npm run build && npm publish --access public"
