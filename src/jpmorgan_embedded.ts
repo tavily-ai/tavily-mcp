@@ -16,6 +16,8 @@
  */
 
 import axios from 'axios';
+import { isSigningConfigured, signPayloadBase64, isEncryptionConfigured, encryptPayloadBase64 } from './signing.service.js';
+import { isMtlsConfigured, getMtlsAxiosConfig } from './mtls.service.js';
 
 // ─── Server Configuration ─────────────────────────────────────────────────────
 
@@ -184,6 +186,67 @@ export function listJPMorganEmbeddedTools(): Array<{ name: string; description: 
 
 // ─── Shared Axios Helper ──────────────────────────────────────────────────────
 
+/**
+ * Result of buildRequestPayload — contains the final headers and outbound body string.
+ */
+interface PreparedRequest {
+  headers: Record<string, string>;
+  body: string;
+}
+
+/**
+ * Prepare headers and body for a mutating (POST/PUT/PATCH) request.
+ *
+ * Security operations applied in order:
+ *   1. Sign the original serialised JSON → x-jpm-signature header
+ *   2. Encrypt the original serialised JSON → base64 body + Content-Type: application/octet-stream
+ *
+ * Both operations are optional and non-fatal: if a key file is absent or
+ * unreadable the request proceeds with the plaintext body and a warning is logged.
+ *
+ * @param body - The request body object to serialise, sign, and/or encrypt
+ */
+function buildRequestPayload(body: Record<string, any>): PreparedRequest {
+  const accessToken = process.env.JPMORGAN_ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error('JPMORGAN_ACCESS_TOKEN environment variable is not set. Please obtain an OAuth access token from the J.P. Morgan Developer Portal.');
+  }
+
+  const serialised = JSON.stringify(body);
+
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  // Step 1 — Sign the original plaintext
+  if (isSigningConfigured()) {
+    try {
+      headers['x-jpm-signature'] = signPayloadBase64(serialised);
+    } catch (sigErr: any) {
+      console.warn(`[JPMorganEmbedded] Request signing skipped: ${sigErr?.message}`);
+    }
+  }
+
+  // Step 2 — Encrypt the original plaintext (after signing so signature covers readable content)
+  let outboundBody = serialised;
+  if (isEncryptionConfigured()) {
+    try {
+      outboundBody = encryptPayloadBase64(serialised);
+      headers['Content-Type'] = 'application/octet-stream';
+      headers['x-jpm-encrypted'] = 'true';
+    } catch (encErr: any) {
+      console.warn(`[JPMorganEmbedded] Payload encryption skipped: ${encErr?.message}`);
+    }
+  }
+
+  return { headers, body: outboundBody };
+}
+
+/**
+ * Build read-only (GET/DELETE) auth headers — no body to sign or encrypt.
+ */
 function getAuthHeaders(): Record<string, string> {
   const accessToken = process.env.JPMORGAN_ACCESS_TOKEN;
   if (!accessToken) {
@@ -199,6 +262,14 @@ function getAuthHeaders(): Record<string, string> {
 function getActiveBaseUrl(): string {
   const env = (process.env.JPMORGAN_PAYMENTS_ENV as 'production' | 'mock') || 'production';
   return resolveBaseUrl(env);
+}
+
+/**
+ * Return axios transport config — includes mTLS httpsAgent when configured,
+ * empty object otherwise (plain HTTPS with default agent).
+ */
+function getTransportConfig(): Record<string, any> {
+  return isMtlsConfigured() ? getMtlsAxiosConfig() : {};
 }
 
 // ─── API Functions ────────────────────────────────────────────────────────────
@@ -220,6 +291,7 @@ export async function listClients(params?: {
   if (params?.page !== undefined)  queryParams.page = params.page;
 
   const response = await axios.get<EFListResponse<EFClient>>(url, {
+    ...getTransportConfig(),
     headers,
     params: Object.keys(queryParams).length > 0 ? queryParams : undefined
   });
@@ -240,7 +312,7 @@ export async function getClient(clientId: string): Promise<EFClient> {
   const baseUrl = getActiveBaseUrl();
   const url = `${baseUrl}${JPMORGAN_EMBEDDED_SERVER.resources.clients}/${encodeURIComponent(clientId)}`;
 
-  const response = await axios.get<EFClient>(url, { headers });
+  const response = await axios.get<EFClient>(url, { ...getTransportConfig(), headers });
   return response.data;
 }
 
@@ -253,11 +325,14 @@ export async function createClient(params: EFCreateClientRequest): Promise<EFCli
     throw new Error('name is required to create a client.');
   }
 
-  const headers = getAuthHeaders();
   const baseUrl = getActiveBaseUrl();
   const url = `${baseUrl}${JPMORGAN_EMBEDDED_SERVER.resources.clients}`;
 
-  const response = await axios.post<EFClient>(url, params, { headers });
+  const prepared = buildRequestPayload(params);
+  const response = await axios.post<EFClient>(url, prepared.body, {
+    ...getTransportConfig(),
+    headers: prepared.headers
+  });
   return response.data;
 }
 
@@ -282,6 +357,7 @@ export async function listAccounts(
   if (params?.page !== undefined)  queryParams.page = params.page;
 
   const response = await axios.get<EFListResponse<EFAccount>>(url, {
+    ...getTransportConfig(),
     headers,
     params: Object.keys(queryParams).length > 0 ? queryParams : undefined
   });
@@ -305,7 +381,7 @@ export async function getAccount(clientId: string, accountId: string): Promise<E
   const baseUrl = getActiveBaseUrl();
   const url = `${baseUrl}/clients/${encodeURIComponent(clientId)}/accounts/${encodeURIComponent(accountId)}`;
 
-  const response = await axios.get<EFAccount>(url, { headers });
+  const response = await axios.get<EFAccount>(url, { ...getTransportConfig(), headers });
   return response.data;
 }
 

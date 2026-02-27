@@ -434,7 +434,7 @@ Add the Eleven Labs MCP server to your Cursor configuration (`mcp.json`):
 
 > **Note:** The Eleven Labs MCP server requires an API key with appropriate permissions for text-to-speech operations.
 
-### Resources
+### Eleven Labs Resources
 
 - [Eleven Labs Documentation](https://elevenlabs.io/docs)
 - [Eleven Labs MCP GitHub](https://github.com/elevenlabs/elevenlabs-mcp)
@@ -502,7 +502,7 @@ Add the GitHub MCP server to your Cursor configuration (`mcp.json`):
 
 > **Note:** The GitHub MCP server requires a token with appropriate permissions for the operations you want to perform.
 
-### Resources
+### GitHub Resources
 
 - [GitHub MCP Server](https://github.com/github/github-mcp-server)
 
@@ -565,7 +565,7 @@ Add the AgentQL MCP server to your Cursor configuration (`mcp.json`):
 
 > **Note:** The AgentQL MCP server requires an API key with appropriate permissions for web scraping operations.
 
-### Resources
+### AgentQL Resources
 
 - [AgentQL MCP GitHub](https://github.com/tinyfish-io/agentql-mcp)
 
@@ -666,7 +666,13 @@ claude mcp add --transport http alby https://mcp.getalby.com/mcp --header "Autho
 
 > **Security Note:** Your NWC connection string grants access to your Bitcoin Lightning wallet. Never share it or commit it to version control. Always use environment variables.
 
-### Resources
+### Alby Resources
+
+- [Alby MCP GitHub](https://github.com/getAlby/mcp) — Alby MCP server repo and docs
+- [NWC (Nostr Wallet Connect)](https://nwc.dev) — protocol spec and tools
+- [NWC Connection Generator](https://nwc.getalby.com) — create NWC connection strings
+- [Alby Support](https://support.getalby.com) — help center and troubleshooting
+- [Alby Homepage](https://getalby.com) — product overview and sign-up
 
 - [Alby MCP GitHub](https://github.com/getAlby/mcp)
 - [Nostr Wallet Connect (NWC)](https://nwc.dev)
@@ -709,7 +715,7 @@ The [Netlify MCP Server](https://github.com/netlify/netlify-mcp) enables AI agen
 
 ### Connecting to Netlify MCP Server
 
-#### Claude Desktop
+#### Claude Desktop (Netlify)
 
 Add the Netlify MCP server to your Claude Desktop configuration (`claude_desktop_config.json`):
 
@@ -740,7 +746,7 @@ With optional Personal Access Token (for non-interactive / CI use):
 }
 ```
 
-#### Cursor
+#### Cursor (Netlify)
 
 Add to your Cursor configuration (`mcp.json`):
 
@@ -758,7 +764,7 @@ Add to your Cursor configuration (`mcp.json`):
 }
 ```
 
-#### Claude Code (CLI)
+#### Claude Code (Netlify CLI)
 
 ```bash
 claude mcp add netlify -- npx -y @netlify/mcp
@@ -773,7 +779,7 @@ claude mcp add netlify -- npx -y @netlify/mcp
 
 > **Note:** A PAT is optional. By default, the Netlify MCP server uses OAuth (interactive browser login). The PAT is only needed for non-interactive or CI/CD environments.
 
-### Resources
+### Netlify Resources
 
 - [Netlify MCP GitHub](https://github.com/netlify/netlify-mcp)
 - [Netlify MCP Documentation](https://docs.netlify.com/welcome/build-with-ai/netlify-mcp-server/)
@@ -803,7 +809,7 @@ export JPMORGAN_ENV=testing   # or 'production'
 ### API Environments
 
 | Environment | Auth | URL |
-|---|---|---|
+| --- | --- | --- |
 | Client Testing | OAuth | `https://openbankinguat.jpmorgan.com/accessapi` |
 | Client Testing | MTLS | `https://apigatewayqaf.jpmorgan.com/accessapi` |
 | Production | OAuth | `https://openbanking.jpmorgan.com/accessapi` |
@@ -812,6 +818,7 @@ export JPMORGAN_ENV=testing   # or 'production'
 ### Example Usage
 
 **Query current day balance:**
+
 ```json
 {
   "tool": "jpmorgan_retrieve_balances",
@@ -824,6 +831,7 @@ export JPMORGAN_ENV=testing   # or 'production'
 ```
 
 **Query by date range:**
+
 ```json
 {
   "tool": "jpmorgan_retrieve_balances",
@@ -836,10 +844,117 @@ export JPMORGAN_ENV=testing   # or 'production'
 }
 ```
 
-### Resources
+### J.P. Morgan Resources
 
 - [J.P. Morgan Developer Portal](https://developer.jpmorgan.com)
 - [Account Balances API Spec](https://developer.jpmorgan.com) (OpenAPI 3.0, v1.0.5)
+
+## J.P. Morgan Embedded Payments API
+
+Access J.P. Morgan's Embedded Finance platform to manage clients and accounts directly through the MCP server. Supports virtual transaction accounts and limited access payment accounts (Accounts v2 Beta).
+
+### Available Embedded Payments Tools
+
+**Client Tools:**
+
+- `ef_list_clients` — List all embedded finance clients (supports pagination via `limit` / `page`)
+- `ef_get_client` — Get a specific client by `client_id`
+- `ef_create_client` — Create a new embedded finance client (name, type, email, phone, address)
+
+**Account Tools (Accounts v2 Beta):**
+
+- `ef_list_accounts` — List all accounts for a specific client
+- `ef_get_account` — Get a specific account by `client_id` + `account_id`
+
+**Meta Tools:**
+
+- `ef_list_tools` — List all available Embedded Payments tools
+- `ef_get_server_info` — Get API endpoints, auth details, and setup instructions
+
+### Embedded Payments Authentication
+
+Set the `JPMORGAN_ACCESS_TOKEN` environment variable with your J.P. Morgan OAuth Bearer token:
+
+```bash
+export JPMORGAN_ACCESS_TOKEN=your-oauth-access-token
+export JPMORGAN_PAYMENTS_ENV=production   # or 'mock'
+```
+
+### Embedded Payments Environments
+
+| Environment | URL |
+| --- | --- |
+| Production | `https://apigateway.jpmorgan.com/tsapi/v1/ef` |
+| Mock / Testing | `https://api-mock.payments.jpmorgan.com/tsapi/v1/ef` |
+
+### Embedded Payments Example Usage
+
+**List all clients:**
+
+```json
+{
+  "tool": "ef_list_clients",
+  "arguments": {
+    "limit": 20,
+    "page": 1
+  }
+}
+```
+
+**Create a new client:**
+
+```json
+{
+  "tool": "ef_create_client",
+  "arguments": {
+    "name": "Acme Corp",
+    "type": "BUSINESS",
+    "email": "finance@acme.com",
+    "address": {
+      "line1": "123 Main St",
+      "city": "New York",
+      "state": "NY",
+      "postalCode": "10001",
+      "country": "US"
+    }
+  }
+}
+```
+
+**List accounts for a client:**
+
+```json
+{
+  "tool": "ef_list_accounts",
+  "arguments": {
+    "client_id": "your-client-id",
+    "limit": 20
+  }
+}
+```
+
+### Configuration Example
+
+```json
+{
+  "mcpServers": {
+    "tavily-mcp": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "env": {
+        "TAVILY_API_KEY": "your-tavily-api-key",
+        "JPMORGAN_ACCESS_TOKEN": "your-jpmorgan-oauth-token",
+        "JPMORGAN_PAYMENTS_ENV": "production"
+      }
+    }
+  }
+}
+```
+
+### J.P. Morgan Embedded Payments Resources
+
+- [J.P. Morgan Embedded Payments Developer Portal](https://developer.payments.jpmorgan.com)
+- [J.P. Morgan Developer Portal](https://developer.jpmorgan.com)
 
 ## Acknowledgments
 

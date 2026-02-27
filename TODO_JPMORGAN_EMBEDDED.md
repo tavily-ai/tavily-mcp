@@ -2,12 +2,12 @@
 
 ## Tasks
 
-- [ ] 1. Create src/jpmorgan_embedded.ts - Embedded Payments API integration
-- [ ] 2. Update src/index.ts - Add imports, tool definitions, handlers, format functions
-- [ ] 3. Update README.md - Add Embedded Payments section
-- [ ] 4. Run npm run build - TypeScript compilation
-- [ ] 5. Add tests to test_critical_path.mjs - Config, tool list, error paths
-- [ ] 6. Run node test_critical_path.mjs - Verify all tests pass
+- [x] 1. Create src/jpmorgan_embedded.ts - Embedded Payments API integration ✅
+- [x] 2. Update src/index.ts - Add imports, tool definitions, handlers, format functions ✅
+- [x] 3. Update README.md - Add Embedded Payments section ✅
+- [x] 4. Run npm run build - TypeScript compilation ✅
+- [x] 5. Add tests to test_critical_path.mjs - Config, tool list, error paths ✅
+- [x] 6. Run node test_critical_path.mjs - 67/67 tests passing ✅
 - [ ] 7. Commit and push changes
 
 ## Details

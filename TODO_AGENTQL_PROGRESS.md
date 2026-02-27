@@ -10,4 +10,4 @@
 - [x] 6. Fix README.md AgentQL tool names and npm package name
 - [x] 7. Run npm run build - TypeScript compilation successful ✅
 
-## All tasks completed!
+## All tasks completed

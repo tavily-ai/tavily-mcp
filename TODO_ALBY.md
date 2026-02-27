@@ -8,18 +8,21 @@
 - [x] 4. Run npm run build - TypeScript compilation successful ✅
 - [x] 5. Critical-path tests - 36/36 passed ✅
 
-## All tasks completed!
+## All tasks completed
 
 ## Details
 
-### Alby MCP Server (https://github.com/getAlby/mcp)
+### Alby MCP Server (<https://github.com/getAlby/mcp>)
+
 - npm package: `@getalby/mcp`
 - Auth env var: `NWC_CONNECTION_STRING` (Nostr Wallet Connect connection string)
 - Remote server (HTTP Streamable): `https://mcp.getalby.com/mcp`
 - Remote server (SSE): `https://mcp.getalby.com/sse`
 
 ### Tools (11 total)
+
 NWC tools:
+
 1. `get_balance` - Get the balance of the connected lightning wallet
 2. `get_info` - Get NWC capabilities and general information about the wallet and underlying lightning node
 3. `get_wallet_service_info` - Get NWC capabilities, supported encryption and notification types

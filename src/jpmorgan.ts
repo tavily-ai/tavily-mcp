@@ -19,6 +19,8 @@
  */
 
 import axios from 'axios';
+import { isSigningConfigured, signPayloadBase64, isEncryptionConfigured, encryptPayloadBase64 } from './signing.service.js';
+import { isMtlsConfigured, getMtlsAxiosConfig } from './mtls.service.js';
 
 // ─── Server Configuration ─────────────────────────────────────────────────────
 
@@ -207,8 +209,11 @@ export async function retrieveBalances(
     throw new Error('accountList must contain at least one account ID.');
   }
 
-  const baseUrl = resolveBaseUrl(env, 'oauth');
-  const url = `${baseUrl}${JPMORGAN_API_SERVER.endpoint}`;
+  // Use MTLS base URL + client certificate when mTLS is configured;
+  // fall back to OAuth base URL otherwise
+  const authType = isMtlsConfigured() ? 'mtls' : 'oauth';
+  const baseUrl  = resolveBaseUrl(env, authType);
+  const url      = `${baseUrl}${JPMORGAN_API_SERVER.endpoint}`;
 
   // Build request body — only include defined fields
   const requestBody: Record<string, any> = {
@@ -218,12 +223,45 @@ export async function retrieveBalances(
   if (params.endDate)          requestBody.endDate = params.endDate;
   if (params.relativeDateType) requestBody.relativeDateType = params.relativeDateType;
 
-  const response = await axios.post<JPMorganBalanceResponse>(url, requestBody, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
+  // Serialise the request body once — used for both signing and encryption
+  const serialisedBody = JSON.stringify(requestBody);
+
+  // Build request headers — attach RSA-SHA256 signature when signing is configured
+  const requestHeaders: Record<string, string> = {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+
+  if (isSigningConfigured()) {
+    try {
+      // Sign the original plaintext so the signature covers readable content
+      requestHeaders['x-jpm-signature'] = signPayloadBase64(serialisedBody);
+    } catch (sigErr: any) {
+      // Non-fatal: log the warning and proceed without the signature header
+      console.warn(`[JPMorgan] Request signing skipped: ${sigErr?.message}`);
     }
+  }
+
+  // Determine the actual body to send — encrypt with JPM's public key when configured
+  let outboundBody: string = serialisedBody;
+  if (isEncryptionConfigured()) {
+    try {
+      outboundBody = encryptPayloadBase64(serialisedBody);
+      requestHeaders['Content-Type'] = 'application/octet-stream';
+      requestHeaders['x-jpm-encrypted'] = 'true';
+    } catch (encErr: any) {
+      // Non-fatal: fall back to plaintext and log the warning
+      console.warn(`[JPMorgan] Payload encryption skipped: ${encErr?.message}`);
+    }
+  }
+
+  // Attach mTLS agent when configured (presents client cert during TLS handshake)
+  const transportConfig = isMtlsConfigured() ? getMtlsAxiosConfig() : {};
+
+  const response = await axios.post<JPMorganBalanceResponse>(url, outboundBody, {
+    ...transportConfig,
+    headers: requestHeaders
   });
 
   return response.data;
