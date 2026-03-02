@@ -106,12 +106,16 @@ import {
   createPayrollPayment as jpmCreatePayrollPayment,
   createBatchPayroll as jpmCreateBatchPayroll,
   createPayrollRun as jpmCreatePayrollRun,
+  approvePayrollRun as jpmApprovePayrollRun,
   validatePayrollRun,
+  validatePayrollRunApproval,
   type PayrollItem,
   type PayrollResult,
   type BatchPayrollResult,
   type PayrollRun,
-  type PayrollRunResult
+  type PayrollRunResult,
+  type PayrollRunApproval,
+  type PayrollRunApprovalResult
 } from './payroll.js';
 
 
@@ -1286,6 +1290,70 @@ class TavilyClient {
             type: "object",
             properties: {}
           }
+        },
+        // J.P. Morgan Payroll Run Tool (CreatePayrollRunDto)
+        {
+          name: "jpmorgan_create_payroll_run",
+          description: "Submit a named payroll run (CreatePayrollRunDto) with a maker user ID (created_by) and an array of payroll items. Validates the full run before submission and returns a per-item result with the createdBy field attached. Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              created_by: {
+                type: "string",
+                description: "Maker user ID who is initiating the payroll run (e.g. 'user-123')"
+              },
+              items: {
+                type: "array",
+                description: "Array of payroll items to disburse (minimum 1, mirrors CreatePayrollItemDto[])",
+                items: {
+                  type: "object",
+                  properties: {
+                    employee_id:    { type: "string", description: "Unique employee identifier" },
+                    employee_name:  { type: "string", description: "Full name of the employee" },
+                    routing_number: { type: "string", description: "ABA routing number (9 digits)" },
+                    account_number: { type: "string", description: "Bank account number" },
+                    account_type:   { type: "string", enum: ["CHECKING", "SAVINGS"], description: "Account type" },
+                    amount:         { type: "number", description: "Gross pay amount in USD" },
+                    effective_date: { type: "string", description: "Settlement date in yyyy-MM-dd format" }
+                  },
+                  required: ["employee_id", "employee_name", "routing_number", "account_number", "account_type", "amount", "effective_date"]
+                }
+              }
+            },
+            required: ["created_by", "items"]
+          }
+        },
+        // J.P. Morgan Payroll Approval Tool (ApprovePayrollRunDto — maker-checker)
+        {
+          name: "jpmorgan_approve_payroll_run",
+          description: "Approve and execute a payroll run as a checker (maker-checker workflow). Mirrors ApprovePayrollRunDto: provide approved_by (checker user ID) and the payroll items to approve. Validates the approval, submits all ACH payments sequentially, and returns a per-item result with the approvedBy field attached. Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              approved_by: {
+                type: "string",
+                description: "Checker user ID who is approving the payroll run (e.g. 'checker-456')"
+              },
+              items: {
+                type: "array",
+                description: "Array of payroll items to approve and disburse (minimum 1, mirrors CreatePayrollItemDto[])",
+                items: {
+                  type: "object",
+                  properties: {
+                    employee_id:    { type: "string", description: "Unique employee identifier" },
+                    employee_name:  { type: "string", description: "Full name of the employee" },
+                    routing_number: { type: "string", description: "ABA routing number (9 digits)" },
+                    account_number: { type: "string", description: "Bank account number" },
+                    account_type:   { type: "string", enum: ["CHECKING", "SAVINGS"], description: "Account type" },
+                    amount:         { type: "number", description: "Gross pay amount in USD" },
+                    effective_date: { type: "string", description: "Settlement date in yyyy-MM-dd format" }
+                  },
+                  required: ["employee_id", "employee_name", "routing_number", "account_number", "account_type", "amount", "effective_date"]
+                }
+              }
+            },
+            required: ["approved_by", "items"]
+          }
         }
       ];
 
@@ -1889,10 +1957,68 @@ text: formatResearchResults(researchResponse)
                 amount:        item.amount,
                 effectiveDate: item.effective_date
               }));
-              const batchResult: BatchPayrollResult = await jpmCreateBatchPayroll(batchItems);
+              const batchResult = await jpmCreateBatchPayroll(batchItems);
               return { content: [{ type: "text", text: formatBatchPayrollResult(batchResult) }] };
             } catch (err: any) {
               return { content: [{ type: "text", text: `J.P. Morgan Batch Payroll error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_create_payroll_run":
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.");
+            }
+            if (!args.created_by || typeof args.created_by !== 'string' || args.created_by.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "created_by is required and must be a non-empty string (maker user ID).");
+            }
+            if (!Array.isArray(args.items) || args.items.length === 0) {
+              throw new McpError(ErrorCode.InvalidRequest, "items must be a non-empty array of payroll item objects.");
+            }
+            try {
+              const payrollRun: PayrollRun = {
+                createdBy: args.created_by,
+                items: (args.items as any[]).map((item: any) => ({
+                  employeeId:    item.employee_id,
+                  employeeName:  item.employee_name,
+                  routingNumber: item.routing_number,
+                  accountNumber: item.account_number,
+                  accountType:   item.account_type,
+                  amount:        item.amount,
+                  effectiveDate: item.effective_date
+                }))
+              };
+              const payrollRunResult: PayrollRunResult = await jpmCreatePayrollRun(payrollRun);
+              return { content: [{ type: "text", text: formatPayrollRunResult(payrollRunResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payroll Run error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_approve_payroll_run":
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.");
+            }
+            if (!args.approved_by || typeof args.approved_by !== 'string' || args.approved_by.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "approved_by is required and must be a non-empty string (checker user ID).");
+            }
+            if (!Array.isArray(args.items) || args.items.length === 0) {
+              throw new McpError(ErrorCode.InvalidRequest, "items must be a non-empty array of payroll item objects.");
+            }
+            try {
+              const payrollApproval: PayrollRunApproval = {
+                approvedBy: args.approved_by,
+                items: (args.items as any[]).map((item: any) => ({
+                  employeeId:    item.employee_id,
+                  employeeName:  item.employee_name,
+                  routingNumber: item.routing_number,
+                  accountNumber: item.account_number,
+                  accountType:   item.account_type,
+                  amount:        item.amount,
+                  effectiveDate: item.effective_date
+                }))
+              };
+              const approvalResult: PayrollRunApprovalResult = await jpmApprovePayrollRun(payrollApproval);
+              return { content: [{ type: "text", text: formatPayrollRunApprovalResult(approvalResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payroll Approval error: ${err.message}` }], isError: true };
             }
 
           default:
@@ -3270,11 +3396,85 @@ function formatPayrollServerInfo(): string {
   output.push('  amount        (number)  — Gross pay in USD (> 0)');
   output.push('  effectiveDate (string)  — Settlement date in yyyy-MM-dd format');
   output.push('');
-  output.push('Available Tools (2 total):');
+  output.push('Available Tools (4 total):');
   output.push('  - jpmorgan_create_payroll_payment: Submit a single employee payroll ACH payment');
   output.push('  - jpmorgan_create_batch_payroll:   Submit a batch of payroll ACH payments');
+  output.push('  - jpmorgan_create_payroll_run:     Submit a named payroll run (maker, CreatePayrollRunDto)');
+  output.push('  - jpmorgan_approve_payroll_run:    Approve and execute a payroll run (checker, ApprovePayrollRunDto)');
   output.push('');
   output.push('Documentation: https://developer.jpmorgan.com');
+
+  return output.join('\n');
+}
+
+function formatPayrollRunResult(result: PayrollRunResult): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payroll Run Result:');
+  output.push('');
+  output.push(`  Created By:   ${result.createdBy}`);
+  output.push(`  Processed At: ${result.processedAt}`);
+  output.push(`  Total:        ${result.total}`);
+  output.push(`  Succeeded:    ${result.succeeded}`);
+  output.push(`  Failed:       ${result.failed}`);
+  output.push('');
+
+  if (result.results.length === 0) {
+    output.push('No items processed.');
+    return output.join('\n');
+  }
+
+  output.push('Per-Item Results:');
+  result.results.forEach((r, idx) => {
+    const status = r.success ? '✓ SUCCESS' : '✗ FAILED';
+    output.push(`\n  [${idx + 1}] ${status} — ${r.item.employeeName} (${r.item.employeeId})`);
+    output.push(`       Amount:         $${r.item.amount.toFixed(2)} USD`);
+    output.push(`       Effective Date: ${r.item.effectiveDate}`);
+    output.push(`       Account Type:   ${r.item.accountType}`);
+    if (r.success && r.payment) {
+      const pid = r.payment.paymentId || r.payment.id || 'N/A';
+      output.push(`       Payment ID:     ${pid}`);
+      if (r.payment.status) output.push(`       Status:         ${r.payment.status}`);
+    }
+    if (!r.success && r.error) {
+      output.push(`       Error:          ${r.error}`);
+    }
+  });
+
+  return output.join('\n');
+}
+
+function formatPayrollRunApprovalResult(result: PayrollRunApprovalResult): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payroll Run Approval Result:');
+  output.push('');
+  output.push(`  Approved By:  ${result.approvedBy}`);
+  output.push(`  Processed At: ${result.processedAt}`);
+  output.push(`  Total:        ${result.total}`);
+  output.push(`  Succeeded:    ${result.succeeded}`);
+  output.push(`  Failed:       ${result.failed}`);
+  output.push('');
+
+  if (result.results.length === 0) {
+    output.push('No items processed.');
+    return output.join('\n');
+  }
+
+  output.push('Per-Item Results:');
+  result.results.forEach((r, idx) => {
+    const status = r.success ? '✓ SUCCESS' : '✗ FAILED';
+    output.push(`\n  [${idx + 1}] ${status} — ${r.item.employeeName} (${r.item.employeeId})`);
+    output.push(`       Amount:         $${r.item.amount.toFixed(2)} USD`);
+    output.push(`       Effective Date: ${r.item.effectiveDate}`);
+    output.push(`       Account Type:   ${r.item.accountType}`);
+    if (r.success && r.payment) {
+      const pid = r.payment.paymentId || r.payment.id || 'N/A';
+      output.push(`       Payment ID:     ${pid}`);
+      if (r.payment.status) output.push(`       Status:         ${r.payment.status}`);
+    }
+    if (!r.success && r.error) {
+      output.push(`       Error:          ${r.error}`);
+    }
+  });
 
   return output.join('\n');
 }

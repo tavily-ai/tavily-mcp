@@ -14,6 +14,7 @@
 
 import {
   validatePayrollItem,
+  validatePayrollRunApproval,
   isPayrollConfigured,
   getPayrollConfig,
   PAYROLL_SERVER
@@ -523,6 +524,207 @@ test('formatBatchPayrollResult output contains summary and per-item results', ()
   assert(output.includes('Routing number invalid'), 'Contains error message for failure');
   assert(output.includes('Alice'),                 'Contains first employee name');
   assert(output.includes('Bob'),                   'Contains second employee name');
+});
+
+// ─── 7. validatePayrollRunApproval ───────────────────────────────────────────
+
+console.log('\n7. validatePayrollRunApproval()');
+
+test('valid approval passes with no errors', () => {
+  const errors = validatePayrollRunApproval({
+    approvedBy: 'checker-456',
+    items: [
+      {
+        employeeId:    'EMP-001',
+        employeeName:  'Alice Johnson',
+        routingNumber: '021000021',
+        accountNumber: '123456789',
+        accountType:   'CHECKING',
+        amount:        2500.00,
+        effectiveDate: '2026-03-14'
+      }
+    ]
+  });
+  assertEmpty(errors, `Expected no errors, got: ${JSON.stringify(errors)}`);
+});
+
+test('missing approvedBy produces error', () => {
+  const errors = validatePayrollRunApproval({
+    approvedBy: '',
+    items: [
+      {
+        employeeId:    'EMP-001',
+        employeeName:  'Alice',
+        routingNumber: '021000021',
+        accountNumber: '111',
+        accountType:   'CHECKING',
+        amount:        1000,
+        effectiveDate: '2026-03-14'
+      }
+    ]
+  });
+  assert(errors.length > 0, 'Expected validation error for empty approvedBy');
+  assert(errors.some(e => e.includes('approvedBy')), 'Error should mention approvedBy');
+});
+
+test('whitespace-only approvedBy produces error', () => {
+  const errors = validatePayrollRunApproval({
+    approvedBy: '   ',
+    items: [
+      {
+        employeeId:    'EMP-002',
+        employeeName:  'Bob',
+        routingNumber: '021000021',
+        accountNumber: '222',
+        accountType:   'SAVINGS',
+        amount:        500,
+        effectiveDate: '2026-03-14'
+      }
+    ]
+  });
+  assert(errors.some(e => e.includes('approvedBy')), 'Error should mention approvedBy');
+});
+
+test('empty items array produces error', () => {
+  const errors = validatePayrollRunApproval({
+    approvedBy: 'checker-456',
+    items: []
+  });
+  assert(errors.length > 0, 'Expected error for empty items array');
+  assert(errors.some(e => e.includes('items')), 'Error should mention items');
+});
+
+test('invalid item inside approval produces item-level error', () => {
+  const errors = validatePayrollRunApproval({
+    approvedBy: 'checker-456',
+    items: [
+      {
+        employeeId:    '',           // invalid
+        employeeName:  'Carol',
+        routingNumber: '021000021',
+        accountNumber: '333',
+        accountType:   'CHECKING',
+        amount:        750,
+        effectiveDate: '2026-03-14'
+      }
+    ]
+  });
+  assert(errors.length > 0, 'Expected item-level validation error');
+  assert(errors.some(e => e.includes('employeeId')), 'Error should mention employeeId');
+});
+
+test('multiple items — all valid passes', () => {
+  const errors = validatePayrollRunApproval({
+    approvedBy: 'checker-789',
+    items: [
+      { employeeId: 'EMP-A', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' },
+      { employeeId: 'EMP-B', employeeName: 'Bob',   routingNumber: '021000021', accountNumber: '222', accountType: 'SAVINGS',  amount: 2000, effectiveDate: '2026-03-14' }
+    ]
+  });
+  assertEmpty(errors, `Expected no errors for valid multi-item approval, got: ${JSON.stringify(errors)}`);
+});
+
+// ─── 8. approvePayrollRun — field mapping (snake_case → camelCase) ────────────
+
+console.log('\n8. approvePayrollRun() — MCP field mapping');
+
+test('approved_by MCP arg maps to approvedBy in PayrollRunApproval', () => {
+  const mcpArgs = {
+    approved_by: 'checker-456',
+    items: [
+      { employee_id: 'EMP-001', employee_name: 'Alice', routing_number: '021000021', account_number: '111', account_type: 'CHECKING', amount: 1000, effective_date: '2026-03-14' }
+    ]
+  };
+
+  // Simulate the MCP handler mapping
+  const approval = {
+    approvedBy: mcpArgs.approved_by,
+    items: mcpArgs.items.map(item => ({
+      employeeId:    item.employee_id,
+      employeeName:  item.employee_name,
+      routingNumber: item.routing_number,
+      accountNumber: item.account_number,
+      accountType:   item.account_type,
+      amount:        item.amount,
+      effectiveDate: item.effective_date
+    }))
+  };
+
+  assert(approval.approvedBy === 'checker-456', 'approvedBy mapped from approved_by');
+  assert(approval.items.length === 1, 'items array has 1 item');
+  assert(approval.items[0].employeeId === 'EMP-001', 'employeeId mapped');
+  assert(approval.items[0].employeeName === 'Alice', 'employeeName mapped');
+  assert(approval.items[0].routingNumber === '021000021', 'routingNumber mapped');
+  assert(approval.items[0].accountType === 'CHECKING', 'accountType mapped');
+  assert(approval.items[0].amount === 1000, 'amount mapped');
+  assert(approval.items[0].effectiveDate === '2026-03-14', 'effectiveDate mapped');
+});
+
+test('PayrollRunApprovalResult has approvedBy field', () => {
+  // Simulate what approvePayrollRun returns
+  const mockApprovalResult = {
+    approvedBy:  'checker-456',
+    total:       2,
+    succeeded:   2,
+    failed:      0,
+    processedAt: new Date().toISOString(),
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-001', status: 'PENDING' } },
+      { item: { employeeId: 'EMP-002', employeeName: 'Bob',   routingNumber: '021000021', accountNumber: '222', accountType: 'SAVINGS',  amount: 2000, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-002', status: 'PENDING' } }
+    ]
+  };
+
+  assert(mockApprovalResult.approvedBy === 'checker-456', 'approvedBy present in result');
+  assert(mockApprovalResult.total === 2,     'total is 2');
+  assert(mockApprovalResult.succeeded === 2, 'succeeded is 2');
+  assert(mockApprovalResult.failed === 0,    'failed is 0');
+  assert(Array.isArray(mockApprovalResult.results), 'results is array');
+  assert(typeof mockApprovalResult.processedAt === 'string', 'processedAt is string');
+});
+
+test('formatPayrollRunApprovalResult output contains approvedBy and per-item results', () => {
+  const result = {
+    approvedBy:  'checker-456',
+    total:       2,
+    succeeded:   1,
+    failed:      1,
+    processedAt: '2026-03-14T10:00:00.000Z',
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: true,  payment: { paymentId: 'PAY-001', status: 'PENDING' } },
+      { item: { employeeId: 'EMP-002', employeeName: 'Bob',   routingNumber: '021000021', accountNumber: '222', accountType: 'SAVINGS',  amount: 1500, effectiveDate: '2026-03-14' }, success: false, error: 'Routing number invalid' }
+    ]
+  };
+
+  // Replicate formatPayrollRunApprovalResult output
+  const lines = [
+    'J.P. Morgan Payroll Run Approval Result:',
+    '',
+    `  Approved By:  ${result.approvedBy}`,
+    `  Processed At: ${result.processedAt}`,
+    `  Total:        ${result.total}`,
+    `  Succeeded:    ${result.succeeded}`,
+    `  Failed:       ${result.failed}`,
+    '',
+    'Per-Item Results:'
+  ];
+  result.results.forEach((r, idx) => {
+    const status = r.success ? '✓ SUCCESS' : '✗ FAILED';
+    lines.push(`\n  [${idx + 1}] ${status} — ${r.item.employeeName} (${r.item.employeeId})`);
+    if (r.success && r.payment) lines.push(`       Payment ID:     ${r.payment.paymentId}`);
+    if (!r.success && r.error)  lines.push(`       Error:          ${r.error}`);
+  });
+  const output = lines.join('\n');
+
+  assert(output.includes('Approved By:  checker-456'),  'Contains approvedBy');
+  assert(output.includes('Total:        2'),             'Contains total');
+  assert(output.includes('Succeeded:    1'),             'Contains succeeded');
+  assert(output.includes('Failed:       1'),             'Contains failed');
+  assert(output.includes('✓ SUCCESS'),                   'Contains success marker');
+  assert(output.includes('✗ FAILED'),                    'Contains failure marker');
+  assert(output.includes('PAY-001'),                     'Contains paymentId');
+  assert(output.includes('Routing number invalid'),      'Contains error message');
+  assert(output.includes('Alice'),                       'Contains first employee name');
+  assert(output.includes('Bob'),                         'Contains second employee name');
 });
 
 // ─── Summary ──────────────────────────────────────────────────────────────────

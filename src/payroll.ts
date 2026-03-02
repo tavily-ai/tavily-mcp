@@ -130,6 +130,28 @@ export interface PayrollRunResult extends BatchPayrollResult {
   createdBy: string;
 }
 
+/**
+ * Checker approval for a payroll run.
+ * Mirrors ApprovePayrollRunDto without class-validator decorators.
+ *
+ * Because the MCP server is stateless (no database), the checker must supply
+ * both their user ID and the payroll items they are approving.  In a full
+ * NestJS implementation the items would be retrieved from the database by
+ * run ID; here they are passed explicitly.
+ */
+export interface PayrollRunApproval {
+  /** Checker user ID who is approving the run (e.g. 'checker-456') */
+  approvedBy: string;
+  /** The payroll items being approved for disbursement (minimum 1) */
+  items: PayrollItem[];
+}
+
+/** Result of a checker-approved payroll run — extends BatchPayrollResult with approvedBy */
+export interface PayrollRunApprovalResult extends BatchPayrollResult {
+  /** Checker user ID who approved the run */
+  approvedBy: string;
+}
+
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 /**
@@ -217,6 +239,41 @@ export function validatePayrollRun(run: PayrollRun): string[] {
   return errors;
 }
 
+// ─── Validation (PayrollRunApproval) ─────────────────────────────────────────
+
+/**
+ * Validate a PayrollRunApproval and return a list of validation error messages.
+ * Validates the approval-level field (approvedBy) and each payroll item.
+ * Returns an empty array if the approval is fully valid.
+ *
+ * Mirrors the validation that would be applied to ApprovePayrollRunDto
+ * (approvedBy: @IsString()) plus the items array.
+ */
+export function validatePayrollRunApproval(approval: PayrollRunApproval): string[] {
+  const errors: string[] = [];
+
+  if (!approval.approvedBy || typeof approval.approvedBy !== 'string' || approval.approvedBy.trim() === '') {
+    errors.push('approvedBy is required and must be a non-empty string (checker user ID).');
+  }
+
+  if (!Array.isArray(approval.items)) {
+    errors.push('items must be an array of PayrollItem objects.');
+    return errors; // can't iterate non-array
+  }
+
+  if (approval.items.length === 0) {
+    errors.push('items must contain at least one PayrollItem (@ArrayMinSize(1)).');
+    return errors;
+  }
+
+  approval.items.forEach((item, index) => {
+    const itemErrors = validatePayrollItem(item);
+    itemErrors.forEach(e => errors.push(`items[${index}] (${item?.employeeId ?? 'unknown'}): ${e}`));
+  });
+
+  return errors;
+}
+
 // ─── Configuration Helpers ────────────────────────────────────────────────────
 
 /**
@@ -263,6 +320,12 @@ export function listPayrollTools(): Array<{
     {
       name:        'jpmorgan_create_payroll_run',
       description: 'Submit a named payroll run (CreatePayrollRunDto) with a maker user ID and an array of payroll items. Validates the full run before submission and returns a per-item result with the createdBy field attached.',
+      method:      'POST',
+      endpoint:    '/payments/v1/payment (×N)'
+    },
+    {
+      name:        'jpmorgan_approve_payroll_run',
+      description: 'Approve and execute a payroll run as a checker (maker-checker workflow). Mirrors ApprovePayrollRunDto: provide approvedBy (checker user ID) and the payroll items to approve. Validates the approval, submits all ACH payments, and returns a per-item result with the approvedBy field attached.',
       method:      'POST',
       endpoint:    '/payments/v1/payment (×N)'
     }
@@ -370,6 +433,48 @@ export async function createPayrollRun(run: PayrollRun): Promise<PayrollRunResul
 }
 
 /**
+ * Approve and execute a payroll run as a checker (maker-checker workflow).
+ *
+ * Mirrors ApprovePayrollRunDto:
+ *   - approvedBy: string  — checker user ID (@IsString())
+ *   - items: PayrollItem[] — payroll items to approve and disburse (min 1)
+ *
+ * Validates the entire approval before submitting any payments.
+ * Delegates to createBatchPayroll() for sequential ACH submission.
+ * Returns a PayrollRunApprovalResult that extends BatchPayrollResult with approvedBy.
+ *
+ * @param approval - The approval containing checker ID and payroll items
+ * @returns Aggregated approval result with per-item success/failure details and approvedBy
+ * @throws If approval-level or item-level validation fails
+ *
+ * @example
+ * const result = await approvePayrollRun({
+ *   approvedBy: 'checker-456',
+ *   items: [
+ *     { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021',
+ *       accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }
+ *   ]
+ * });
+ * console.log(`Approved by ${result.approvedBy}: ${result.succeeded}/${result.total} succeeded`);
+ */
+export async function approvePayrollRun(approval: PayrollRunApproval): Promise<PayrollRunApprovalResult> {
+  const validationErrors = validatePayrollRunApproval(approval);
+  if (validationErrors.length > 0) {
+    throw new Error(
+      `Payroll run approval validation failed:\n` +
+      validationErrors.map(e => `  • ${e}`).join('\n')
+    );
+  }
+
+  const batchResult = await createBatchPayroll(approval.items);
+
+  return {
+    ...batchResult,
+    approvedBy: approval.approvedBy.trim()
+  };
+}
+
+/**
  * Submit a batch of payroll disbursements as ACH credit transfers.
  *
  * Processes each item sequentially (to respect API rate limits).
@@ -428,7 +533,9 @@ export default {
   listPayrollTools,
   validatePayrollItem,
   validatePayrollRun,
+  validatePayrollRunApproval,
   createPayrollPayment,
   createBatchPayroll,
-  createPayrollRun
+  createPayrollRun,
+  approvePayrollRun
 };
