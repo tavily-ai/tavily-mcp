@@ -7,10 +7,12 @@
   - ✅ All integrations, NestJS refactor, markdownlint fixes included
 - [x] 2. Push to owlban/cloudflare-mcp-integration
   - ✅ HEAD at 8fcb9f4 (production ready)
-- [ ] 3. Push to origin/cloudflare-mcp-integration (ESADavid)
-  - ❌ BLOCKED: 403 — use GitHub Web UI PR instead
-- [ ] 4. Open PR: cloudflare-mcp-integration → main on ESADavid/tavily-mcp
-- [ ] 5. Merge PR and bump version (0.2.17 → 0.3.0)
+- [x] 3. Push to origin/cloudflare-mcp-integration (ESADavid)
+  - ❌ BLOCKED: 403 — used cross-fork PR instead (OwlbanGroup → ESADavid)
+- [x] 4. Open PR: cloudflare-mcp-integration → main on ESADavid/tavily-mcp
+  - ✅ https://github.com/ESADavid/tavily-mcp/pull/1
+- [ ] 5. Merge PR (ESADavid must approve & merge via web UI)
+  - Version already bumped to 0.3.0 in package.json ✅
 - [ ] 6. npm publish
 
 ## Summary
