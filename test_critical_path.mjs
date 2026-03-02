@@ -10,6 +10,7 @@ import { listNetlifyTools, isNetlifyConfigured, getNetlifyConfig, NETLIFY_MCP_SE
 import { JPMORGAN_API_SERVER, listJPMorganTools, isJPMorganConfigured, getJPMorganConfig, retrieveBalances as jpmRetrieveBalances } from './build/jpmorgan.js';
 import { JPMORGAN_EMBEDDED_SERVER, listJPMorganEmbeddedTools, isJPMorganEmbeddedConfigured, getJPMorganEmbeddedConfig, listClients as efListClients, getClient as efGetClient, createClient as efCreateClient } from './build/jpmorgan_embedded.js';
 import { JPMORGAN_PAYMENTS_SERVER, listJPMorganPaymentsTools, isJPMorganPaymentsConfigured, getJPMorganPaymentsConfig, createPayment as jpmCreatePayment, getPayment as jpmGetPayment, listPayments as jpmListPayments } from './build/jpmorgan_payments.js';
+import { PAYROLL_SERVER, listPayrollTools, isPayrollConfigured, getPayrollConfig, validatePayrollRun, validatePayrollRunApproval, createPayrollRun, approvePayrollRun } from './build/payroll.js';
 
 let passed = 0;
 let failed = 0;
@@ -774,6 +775,237 @@ asyncTest('listPayments throws when JPMORGAN_ACCESS_TOKEN not set', async () => 
     assertIncludes(err.message, 'JPMORGAN_ACCESS_TOKEN', 'error should mention JPMORGAN_ACCESS_TOKEN');
   }
   assert(threw, 'should have thrown when token not set');
+});
+
+// ─── J.P. MORGAN PAYROLL TESTS ───────────────────────────────────────────────
+console.log('\n=== J.P. MORGAN PAYROLL TESTS ===\n');
+
+test('PAYROLL_SERVER has correct name and title', () => {
+  assertEqual(PAYROLL_SERVER.name,  'jpmorgan-payroll',                 'name');
+  assertEqual(PAYROLL_SERVER.title, 'J.P. Morgan Payroll ACH Payments', 'title');
+  assertEqual(PAYROLL_SERVER.version, 'v1', 'version');
+});
+
+test('listPayrollTools returns 4 tools', () => {
+  const tools = listPayrollTools();
+  assertEqual(tools.length, 4, 'tool count should be 4');
+});
+
+test('listPayrollTools contains all 4 payroll tools', () => {
+  const tools = listPayrollTools();
+  const names = tools.map(t => t.name);
+  assert(names.includes('jpmorgan_create_payroll_payment'), 'missing jpmorgan_create_payroll_payment');
+  assert(names.includes('jpmorgan_create_batch_payroll'),   'missing jpmorgan_create_batch_payroll');
+  assert(names.includes('jpmorgan_create_payroll_run'),     'missing jpmorgan_create_payroll_run');
+  assert(names.includes('jpmorgan_approve_payroll_run'),    'missing jpmorgan_approve_payroll_run');
+});
+
+test('each payroll tool has name, description, method, and endpoint', () => {
+  const tools = listPayrollTools();
+  for (const tool of tools) {
+    assert(typeof tool.name === 'string' && tool.name.length > 0,        `tool missing name`);
+    assert(typeof tool.description === 'string' && tool.description.length > 0, `tool missing description: ${tool.name}`);
+    assert(typeof tool.method === 'string' && tool.method.length > 0,    `tool missing method: ${tool.name}`);
+    assert(typeof tool.endpoint === 'string' && tool.endpoint.length > 0, `tool missing endpoint: ${tool.name}`);
+  }
+});
+
+test('jpmorgan_approve_payroll_run tool description mentions checker', () => {
+  const tools = listPayrollTools();
+  const tool = tools.find(t => t.name === 'jpmorgan_approve_payroll_run');
+  assert(tool !== undefined, 'jpmorgan_approve_payroll_run not found');
+  assertIncludes(tool.description.toLowerCase(), 'checker', 'description should mention checker');
+});
+
+test('isPayrollConfigured returns false when no env vars set', () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  delete process.env.JPMC_CLIENT_ID;
+  delete process.env.JPMC_CLIENT_SECRET;
+  delete process.env.JPMC_TOKEN_URL;
+  assertEqual(isPayrollConfigured(), false, 'should be false without env vars');
+});
+
+test('isPayrollConfigured returns true when JPMORGAN_ACCESS_TOKEN is set', () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  assertEqual(isPayrollConfigured(), true, 'should be true with access token');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+test('getPayrollConfig returns module metadata', () => {
+  const config = getPayrollConfig();
+  assertEqual(config.module, PAYROLL_SERVER.name,  'module name');
+  assertEqual(config.title,  PAYROLL_SERVER.title, 'title');
+  assert(typeof config.configured === 'boolean',   'configured is boolean');
+  assert(typeof config.activeEnv  === 'string',    'activeEnv is string');
+  assert(typeof config.activeBaseUrl === 'string', 'activeBaseUrl is string');
+});
+
+test('validatePayrollRun — valid run passes', () => {
+  const errors = validatePayrollRun({
+    createdBy: 'user-123',
+    items: [
+      { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }
+    ]
+  });
+  assertEqual(errors.length, 0, 'valid run should have no errors');
+});
+
+test('validatePayrollRun — missing createdBy produces error', () => {
+  const errors = validatePayrollRun({
+    createdBy: '',
+    items: [
+      { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }
+    ]
+  });
+  assert(errors.length > 0, 'should have errors for empty createdBy');
+  assert(errors.some(e => e.includes('createdBy')), 'error should mention createdBy');
+});
+
+test('validatePayrollRun — empty items array produces error', () => {
+  const errors = validatePayrollRun({ createdBy: 'user-123', items: [] });
+  assert(errors.length > 0, 'should have errors for empty items');
+  assert(errors.some(e => e.includes('items')), 'error should mention items');
+});
+
+test('validatePayrollRunApproval — valid approval passes', () => {
+  const errors = validatePayrollRunApproval({
+    approvedBy: 'checker-456',
+    items: [
+      { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }
+    ]
+  });
+  assertEqual(errors.length, 0, 'valid approval should have no errors');
+});
+
+test('validatePayrollRunApproval — missing approvedBy produces error', () => {
+  const errors = validatePayrollRunApproval({
+    approvedBy: '',
+    items: [
+      { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }
+    ]
+  });
+  assert(errors.length > 0, 'should have errors for empty approvedBy');
+  assert(errors.some(e => e.includes('approvedBy')), 'error should mention approvedBy');
+});
+
+test('validatePayrollRunApproval — empty items array produces error', () => {
+  const errors = validatePayrollRunApproval({ approvedBy: 'checker-456', items: [] });
+  assert(errors.length > 0, 'should have errors for empty items');
+  assert(errors.some(e => e.includes('items')), 'error should mention items');
+});
+
+asyncTest('createPayrollRun returns failed result when JPMORGAN_ACCESS_TOKEN not set', async () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  delete process.env.JPMC_CLIENT_ID;
+  // createBatchPayroll catches per-item errors internally — it returns a result with failed > 0
+  // rather than throwing, so we verify the result shape instead
+  const result = await createPayrollRun({
+    createdBy: 'user-123',
+    items: [
+      { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }
+    ]
+  });
+  assert(result.failed > 0, 'should have at least 1 failed item when token not set');
+  assertEqual(result.createdBy, 'user-123', 'createdBy should be preserved in result');
+  assert(result.results[0].success === false, 'first item should have failed');
+  assertIncludes(result.results[0].error, 'JPMORGAN_ACCESS_TOKEN', 'error should mention JPMORGAN_ACCESS_TOKEN');
+});
+
+asyncTest('createPayrollRun throws on validation error (empty createdBy)', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await createPayrollRun({
+      createdBy: '',
+      items: [
+        { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }
+      ]
+    });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'createdBy', 'error should mention createdBy');
+  }
+  assert(threw, 'should have thrown for empty createdBy');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('createPayrollRun throws on validation error (empty items)', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await createPayrollRun({ createdBy: 'user-123', items: [] });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'items', 'error should mention items');
+  }
+  assert(threw, 'should have thrown for empty items');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('approvePayrollRun returns failed result when JPMORGAN_ACCESS_TOKEN not set', async () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  delete process.env.JPMC_CLIENT_ID;
+  // createBatchPayroll catches per-item errors internally — it returns a result with failed > 0
+  // rather than throwing, so we verify the result shape instead
+  const result = await approvePayrollRun({
+    approvedBy: 'checker-456',
+    items: [
+      { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }
+    ]
+  });
+  assert(result.failed > 0, 'should have at least 1 failed item when token not set');
+  assertEqual(result.approvedBy, 'checker-456', 'approvedBy should be preserved in result');
+  assert(result.results[0].success === false, 'first item should have failed');
+  assertIncludes(result.results[0].error, 'JPMORGAN_ACCESS_TOKEN', 'error should mention JPMORGAN_ACCESS_TOKEN');
+});
+
+asyncTest('approvePayrollRun throws on validation error (empty approvedBy)', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await approvePayrollRun({
+      approvedBy: '',
+      items: [
+        { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }
+      ]
+    });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'approvedBy', 'error should mention approvedBy');
+  }
+  assert(threw, 'should have thrown for empty approvedBy');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('approvePayrollRun throws on validation error (empty items)', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await approvePayrollRun({ approvedBy: 'checker-456', items: [] });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'items', 'error should mention items');
+  }
+  assert(threw, 'should have thrown for empty items');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('approvePayrollRun throws on item-level validation error (bad routing number)', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await approvePayrollRun({
+      approvedBy: 'checker-456',
+      items: [
+        { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: 'BAD', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }
+      ]
+    });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'routingNumber', 'error should mention routingNumber');
+  }
+  assert(threw, 'should have thrown for invalid routing number');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
 });
 
 // ─── ASYNC QUEUE + SUMMARY ────────────────────────────────────────────────────

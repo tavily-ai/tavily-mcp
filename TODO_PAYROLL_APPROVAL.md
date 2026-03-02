@@ -9,4 +9,6 @@
 - [x] 3. Update `test_payroll_critical.mjs` — add Suite 7 (validatePayrollRunApproval) + Suite 8 (approvePayrollRun mapping)
 - [x] 4. Run `npm run build` — zero TypeScript errors ✅
 - [x] 5. Run `node test_payroll_critical.mjs` — 36/36 tests passing ✅
-- [ ] 6. Commit and push to owlban
+- [x] 6. Commit and push to owlban — pushed 2f6a744 ✅
+
+## All tasks completed!
