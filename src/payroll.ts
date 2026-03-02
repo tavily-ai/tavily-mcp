@@ -48,6 +48,19 @@ import {
   type PaymentResponse
 } from './jpmorgan_payments.js';
 
+// ─── Domain Model (re-exported from payroll/models) ──────────────────────────
+export type {
+  PayrollStatus,
+  PayrollPayment as PayrollPaymentEntity,
+  PayrollRun as PayrollRunEntity
+} from './payroll/models/payroll-run.model.js';
+
+import type {
+  PayrollStatus,
+  PayrollPayment as PayrollPaymentEntity,
+  PayrollRun as PayrollRunEntity
+} from './payroll/models/payroll-run.model.js';
+
 // ─── Server Metadata ──────────────────────────────────────────────────────────
 
 export const PAYROLL_SERVER = {
@@ -114,15 +127,21 @@ export interface BatchPayrollResult {
 }
 
 /**
- * A named payroll run — a batch of payroll items submitted by a specific maker user.
- * Mirrors CreatePayrollRunDto without class-validator decorators.
+ * DTO for creating a named payroll run (input shape — mirrors CreatePayrollRunDto).
+ * Use PayrollRunEntity (from payroll/models/payroll-run.model.ts) for the full
+ * domain entity with lifecycle status, id, timestamps, and JPMC tracking fields.
  */
-export interface PayrollRun {
+export interface CreatePayrollRunDto {
   /** Maker user ID who initiated the payroll run (e.g. 'user-123') */
   createdBy: string;
   /** Array of payroll items to disburse (minimum 1) */
   items: PayrollItem[];
 }
+
+/**
+ * @deprecated Use CreatePayrollRunDto. This alias is kept for backward compatibility.
+ */
+export type PayrollRun = CreatePayrollRunDto;
 
 /** Result of a named payroll run — extends BatchPayrollResult with maker metadata */
 export interface PayrollRunResult extends BatchPayrollResult {
@@ -415,7 +434,7 @@ export async function createPayrollPayment(item: PayrollItem): Promise<PaymentRe
  * });
  * console.log(`Run by ${result.createdBy}: ${result.succeeded}/${result.total} succeeded`);
  */
-export async function createPayrollRun(run: PayrollRun): Promise<PayrollRunResult> {
+export async function createPayrollRun(run: CreatePayrollRunDto): Promise<PayrollRunResult> {
   const validationErrors = validatePayrollRun(run);
   if (validationErrors.length > 0) {
     throw new Error(
@@ -526,6 +545,107 @@ export async function createBatchPayroll(items: PayrollItem[]): Promise<BatchPay
   };
 }
 
+// ─── Domain Model Mappers ─────────────────────────────────────────────────────
+
+/**
+ * Map a PayrollItem + optional PayrollResult to a PayrollPaymentEntity.
+ *
+ * Generates a deterministic internal ID from employeeId + timestamp.
+ * Copies JPMC tracking fields (paymentId, status) from the PayrollResult
+ * when available.
+ *
+ * @param item   - The input PayrollItem
+ * @param result - Optional PayrollResult from createPayrollPayment()
+ * @returns      A PayrollPaymentEntity suitable for persisting in a database
+ */
+export function mapToPayrollPayment(
+  item: PayrollItem,
+  result?: PayrollResult
+): PayrollPaymentEntity {
+  return {
+    id:            `${item.employeeId.trim()}-${Date.now()}`,
+    employeeId:    item.employeeId,
+    employeeName:  item.employeeName,
+    routingNumber: item.routingNumber,
+    accountNumber: item.accountNumber,
+    accountType:   item.accountType,
+    amount:        item.amount,
+    effectiveDate: item.effectiveDate,
+    jpmcPaymentId: result?.payment?.paymentId ?? result?.payment?.id,
+    jpmcStatus:    result?.payment?.status as string | undefined,
+    jpmcReturnCode: null
+  };
+}
+
+/**
+ * Map a PayrollRunResult to a PayrollRunEntity domain object.
+ *
+ * Derives the lifecycle status from the batch outcome:
+ *   - All succeeded  → 'SUBMITTED'
+ *   - All failed     → 'FAILED'
+ *   - Mixed          → 'PARTIALLY_POSTED'
+ *
+ * @param result - The PayrollRunResult returned by createPayrollRun()
+ * @returns      A PayrollRunEntity suitable for persisting in a database
+ */
+export function mapToPayrollRunEntity(result: PayrollRunResult): PayrollRunEntity {
+  const now         = new Date();
+  const totalAmount = result.results.reduce((sum, r) => sum + r.item.amount, 0);
+
+  let status: PayrollStatus;
+  if (result.failed === 0) {
+    status = 'SUBMITTED';
+  } else if (result.succeeded === 0) {
+    status = 'FAILED';
+  } else {
+    status = 'PARTIALLY_POSTED';
+  }
+
+  return {
+    id:          `run-${Date.now()}`,
+    createdAt:   now,
+    createdBy:   result.createdBy,
+    status,
+    totalAmount,
+    payments:    result.results.map(r => mapToPayrollPayment(r.item, r))
+  };
+}
+
+/**
+ * Map a PayrollRunApprovalResult to a PayrollRunEntity domain object.
+ *
+ * Sets approvedAt + approvedBy and derives status from the batch outcome.
+ *
+ * @param result - The PayrollRunApprovalResult returned by approvePayrollRun()
+ * @returns      A PayrollRunEntity with checker metadata attached
+ */
+export function mapApprovalToPayrollRunEntity(
+  result: PayrollRunApprovalResult
+): PayrollRunEntity {
+  const now         = new Date();
+  const totalAmount = result.results.reduce((sum, r) => sum + r.item.amount, 0);
+
+  let status: PayrollStatus;
+  if (result.failed === 0) {
+    status = 'POSTED';
+  } else if (result.succeeded === 0) {
+    status = 'FAILED';
+  } else {
+    status = 'PARTIALLY_POSTED';
+  }
+
+  return {
+    id:          `run-${Date.now()}`,
+    createdAt:   now,
+    createdBy:   result.approvedBy, // stateless — no separate maker record
+    approvedAt:  now,
+    approvedBy:  result.approvedBy,
+    status,
+    totalAmount,
+    payments:    result.results.map(r => mapToPayrollPayment(r.item, r))
+  };
+}
+
 export default {
   PAYROLL_SERVER,
   isPayrollConfigured,
@@ -537,5 +657,8 @@ export default {
   createPayrollPayment,
   createBatchPayroll,
   createPayrollRun,
-  approvePayrollRun
+  approvePayrollRun,
+  mapToPayrollPayment,
+  mapToPayrollRunEntity,
+  mapApprovalToPayrollRunEntity
 };
