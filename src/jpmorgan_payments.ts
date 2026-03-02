@@ -482,6 +482,18 @@ function getTransportConfig(): Record<string, any> {
 export async function createPayment(
   params: CreatePaymentRequest
 ): Promise<PaymentResponse> {
+  // ── Auth pre-check (runs before any other validation) ───────────────────────
+  if (
+    !process.env.JPMORGAN_ACCESS_TOKEN &&
+    !(process.env.JPMC_CLIENT_ID && process.env.JPMC_CLIENT_SECRET && process.env.JPMC_TOKEN_URL)
+  ) {
+    throw new Error(
+      'J.P. Morgan Payments API is not configured. ' +
+      'Set JPMC_CLIENT_ID + JPMC_CLIENT_SECRET + JPMC_TOKEN_URL for OAuth client credentials, ' +
+      'or set JPMORGAN_ACCESS_TOKEN for a pre-obtained bearer token.'
+    );
+  }
+
   // ── Validation ──────────────────────────────────────────────────────────────
   if (!params.paymentType) {
     throw new Error('paymentType is required. Supported values: ACH, WIRE, RTP, BOOK.');
