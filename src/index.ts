@@ -86,6 +86,17 @@ import {
   getAccount as efGetAccount
 } from './jpmorgan_embedded.js';
 
+// J.P. Morgan Payments API imports
+import {
+  JPMORGAN_PAYMENTS_SERVER,
+  listJPMorganPaymentsTools,
+  isJPMorganPaymentsConfigured,
+  getJPMorganPaymentsConfig,
+  createPayment as jpmCreatePayment,
+  getPayment as jpmGetPayment,
+  listPayments as jpmListPayments
+} from './jpmorgan_payments.js';
+
 
 
 dotenv.config();
@@ -1032,6 +1043,149 @@ class TavilyClient {
             type: "object",
             properties: {}
           }
+        },
+        // J.P. Morgan Payments API Tools (ACH, Wire, RTP, Book)
+        {
+          name: "jpmorgan_create_payment",
+          description: "Initiate an ACH, Wire, RTP, or Book payment via the J.P. Morgan Payments API. For ACH: provide paymentType='ACH', companyId, debitAccount, creditAccount (routingNumber + accountNumber + accountType), amount, and optional memo/effectiveDate. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              payment_type: {
+                type: "string",
+                enum: ["ACH", "WIRE", "RTP", "BOOK"],
+                description: "Payment rail to use. ACH=Automated Clearing House, WIRE=wire transfer, RTP=Real-Time Payments, BOOK=internal book transfer."
+              },
+              debit_account: {
+                type: "string",
+                description: "Source account ID to debit (your J.P. Morgan operating account)"
+              },
+              credit_account: {
+                type: "object",
+                description: "Destination account details. For ACH/RTP: { routingNumber, accountNumber, accountType }. For WIRE: { name, accountNumber, bankCode }. For BOOK: { accountId }.",
+                properties: {
+                  routingNumber: { type: "string", description: "ABA routing number (ACH/RTP)" },
+                  accountNumber: { type: "string", description: "Bank account number (ACH/RTP/WIRE)" },
+                  accountType:   { type: "string", enum: ["CHECKING", "SAVINGS"], description: "Account type (ACH/RTP)" },
+                  accountName:   { type: "string", description: "Account holder name (optional)" },
+                  accountId:     { type: "string", description: "J.P. Morgan internal account ID (BOOK)" },
+                  name:          { type: "string", description: "Beneficiary name (WIRE)" },
+                  bankCode:      { type: "string", description: "Beneficiary bank routing/SWIFT/BIC (WIRE)" }
+                }
+              },
+              amount: {
+                type: "object",
+                description: "Payment amount",
+                properties: {
+                  currency: { type: "string", description: "ISO 4217 currency code (e.g. 'USD')" },
+                  value:    { type: "string", description: "Decimal amount string (e.g. '1500.00')" }
+                },
+                required: ["currency", "value"]
+              },
+              company_id: {
+                type: "string",
+                description: "ACH company ID (required for ACH payments)"
+              },
+              memo: {
+                type: "string",
+                description: "Payment memo or description (e.g. 'Payroll - Employee 104')"
+              },
+              effective_date: {
+                type: "string",
+                description: "Requested settlement date in yyyy-MM-dd format (ACH/WIRE)"
+              },
+              end_to_end_id: {
+                type: "string",
+                description: "End-to-end reference ID for idempotency"
+              },
+              environment: {
+                type: "string",
+                enum: ["testing", "production"],
+                description: "Target environment. Use 'testing' (default) or 'production'.",
+                default: "testing"
+              }
+            },
+            required: ["payment_type", "debit_account", "credit_account", "amount"]
+          }
+        },
+        {
+          name: "jpmorgan_get_payment",
+          description: "Retrieve the status and full details of a specific J.P. Morgan payment by its payment ID. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              payment_id: {
+                type: "string",
+                description: "The unique payment identifier returned when the payment was created"
+              },
+              environment: {
+                type: "string",
+                enum: ["testing", "production"],
+                description: "Target environment. Use 'testing' (default) or 'production'.",
+                default: "testing"
+              }
+            },
+            required: ["payment_id"]
+          }
+        },
+        {
+          name: "jpmorgan_list_payments",
+          description: "List J.P. Morgan payments with optional filters for status, payment type, date range, and pagination. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              status: {
+                type: "string",
+                enum: ["PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED", "RETURNED"],
+                description: "Filter by payment lifecycle status"
+              },
+              payment_type: {
+                type: "string",
+                enum: ["ACH", "WIRE", "RTP", "BOOK"],
+                description: "Filter by payment type"
+              },
+              from_date: {
+                type: "string",
+                description: "Start date filter in yyyy-MM-dd format"
+              },
+              to_date: {
+                type: "string",
+                description: "End date filter in yyyy-MM-dd format"
+              },
+              limit: {
+                type: "number",
+                description: "Maximum number of payments to return",
+                default: 20
+              },
+              offset: {
+                type: "number",
+                description: "Pagination offset",
+                default: 0
+              },
+              environment: {
+                type: "string",
+                enum: ["testing", "production"],
+                description: "Target environment. Use 'testing' (default) or 'production'.",
+                default: "testing"
+              }
+            }
+          }
+        },
+        {
+          name: "jpmorgan_payments_list_tools",
+          description: "List all available J.P. Morgan Payments API tools (ACH, Wire, RTP, Book payment initiation and status).",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "jpmorgan_payments_get_server_info",
+          description: "Get connection information and setup instructions for the J.P. Morgan Payments API. Returns API endpoints, supported payment types, authentication details, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
         }
       ];
 
@@ -1510,6 +1664,75 @@ text: formatResearchResults(researchResponse)
               return { content: [{ type: "text", text: formatEFAccount(efAccountResult) }] };
             } catch (err: any) {
               return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
+            }
+
+          // J.P. Morgan Payments API tool handlers
+          case "jpmorgan_payments_list_tools":
+            return {
+              content: [{
+                type: "text",
+                text: formatJPMorganPaymentsTools()
+              }]
+            };
+
+          case "jpmorgan_payments_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatJPMorganPaymentsServerInfo()
+              }]
+            };
+
+          case "jpmorgan_create_payment":
+            if (!isJPMorganPaymentsConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            try {
+              const jpmPaymentResult = await jpmCreatePayment({
+                paymentType:   args.payment_type,
+                debitAccount:  args.debit_account,
+                creditAccount: args.credit_account,
+                amount:        args.amount,
+                companyId:     args.company_id,
+                memo:          args.memo,
+                effectiveDate: args.effective_date,
+                endToEndId:    args.end_to_end_id
+              });
+              return { content: [{ type: "text", text: formatJPMorganPayment(jpmPaymentResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payments API error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_get_payment":
+            if (!isJPMorganPaymentsConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            if (!args.payment_id) {
+              throw new McpError(ErrorCode.InvalidRequest, "payment_id is required.");
+            }
+            try {
+              const jpmGetPaymentResult = await jpmGetPayment(args.payment_id);
+              return { content: [{ type: "text", text: formatJPMorganPayment(jpmGetPaymentResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payments API error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_list_payments":
+            if (!isJPMorganPaymentsConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            try {
+              const jpmListPaymentsResult = await jpmListPayments({
+                status:      args.status,
+                paymentType: args.payment_type,
+                fromDate:    args.from_date,
+                toDate:      args.to_date,
+                limit:       args.limit,
+                offset:      args.offset
+              });
+              return { content: [{ type: "text", text: formatJPMorganPaymentsList(jpmListPaymentsResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payments API error: ${err.message}` }], isError: true };
             }
 
           default:
@@ -2680,6 +2903,147 @@ function formatEFAccount(account: any): string {
   if (account.accountNumber)      output.push(`  Account Number:  ${account.accountNumber}`);
   if (account.createdAt)          output.push(`  Created:         ${account.createdAt}`);
   if (account.updatedAt)          output.push(`  Updated:         ${account.updatedAt}`);
+  return output.join('\n');
+}
+
+// ─── J.P. Morgan Payments API format functions ────────────────────────────────
+
+function formatJPMorganPayment(payment: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payment:');
+  output.push('');
+
+  const id = payment.paymentId || payment.id || 'N/A';
+  output.push(`  Payment ID:     ${id}`);
+  if (payment.status)        output.push(`  Status:         ${payment.status}`);
+  if (payment.paymentType)   output.push(`  Payment Type:   ${payment.paymentType}`);
+  if (payment.debitAccount)  output.push(`  Debit Account:  ${payment.debitAccount}`);
+
+  if (payment.creditAccount) {
+    const ca = payment.creditAccount;
+    output.push('  Credit Account:');
+    if (ca.routingNumber)  output.push(`    Routing #:    ${ca.routingNumber}`);
+    if (ca.accountNumber)  output.push(`    Account #:    ${ca.accountNumber}`);
+    if (ca.accountType)    output.push(`    Account Type: ${ca.accountType}`);
+    if (ca.accountName)    output.push(`    Name:         ${ca.accountName}`);
+    if (ca.accountId)      output.push(`    Account ID:   ${ca.accountId}`);
+    if (ca.name)           output.push(`    Beneficiary:  ${ca.name}`);
+    if (ca.bankCode)       output.push(`    Bank Code:    ${ca.bankCode}`);
+  }
+
+  if (payment.amount) {
+    output.push(`  Amount:         ${payment.amount.value} ${payment.amount.currency}`);
+  }
+  if (payment.companyId)     output.push(`  Company ID:     ${payment.companyId}`);
+  if (payment.memo)          output.push(`  Memo:           ${payment.memo}`);
+  if (payment.effectiveDate) output.push(`  Effective Date: ${payment.effectiveDate}`);
+  if (payment.endToEndId)    output.push(`  End-to-End ID:  ${payment.endToEndId}`);
+  if (payment.createdAt)     output.push(`  Created:        ${payment.createdAt}`);
+  if (payment.updatedAt)     output.push(`  Updated:        ${payment.updatedAt}`);
+
+  return output.join('\n');
+}
+
+function formatJPMorganPaymentsList(response: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payments:');
+  output.push('');
+
+  const items = response.payments || response.data || (Array.isArray(response) ? response : []);
+
+  if (items.length === 0) {
+    output.push('No payments found.');
+    return output.join('\n');
+  }
+
+  if (response.total !== undefined) output.push(`Total: ${response.total}`);
+  output.push('');
+
+  items.forEach((payment: any, idx: number) => {
+    const id = payment.paymentId || payment.id || 'N/A';
+    output.push(`Payment [${idx + 1}]:`);
+    output.push(`  ID:           ${id}`);
+    if (payment.status)        output.push(`  Status:       ${payment.status}`);
+    if (payment.paymentType)   output.push(`  Type:         ${payment.paymentType}`);
+    if (payment.amount)        output.push(`  Amount:       ${payment.amount.value} ${payment.amount.currency}`);
+    if (payment.effectiveDate) output.push(`  Effective:    ${payment.effectiveDate}`);
+    if (payment.memo)          output.push(`  Memo:         ${payment.memo}`);
+    if (payment.createdAt)     output.push(`  Created:      ${payment.createdAt}`);
+    output.push('');
+  });
+
+  return output.join('\n');
+}
+
+function formatJPMorganPaymentsTools(): string {
+  const output: string[] = [];
+  output.push('Available J.P. Morgan Payments API Tools:');
+  output.push('');
+  output.push('Initiate and track ACH, Wire, RTP, and Book payments via the J.P. Morgan Payments API.');
+  output.push('');
+
+  const tools = listJPMorganPaymentsTools();
+  tools.forEach((tool, index) => {
+    output.push(`[${index + 1}] ${tool.name}`);
+    output.push(`    ${tool.method} ${tool.endpoint}`);
+    output.push(`    ${tool.description}`);
+    output.push('');
+  });
+
+  output.push('Authentication: OAuth Bearer token (JPMORGAN_ACCESS_TOKEN)');
+  output.push('');
+  output.push('Environments:');
+  output.push(`  Testing:    ${JPMORGAN_PAYMENTS_SERVER.baseUrls.testing}`);
+  output.push(`  Production: ${JPMORGAN_PAYMENTS_SERVER.baseUrls.production}`);
+
+  return output.join('\n');
+}
+
+function formatJPMorganPaymentsServerInfo(): string {
+  const output: string[] = [];
+  const config = getJPMorganPaymentsConfig();
+
+  output.push('J.P. Morgan Payments API Information:');
+  output.push('');
+  output.push(`API Title:    ${JPMORGAN_PAYMENTS_SERVER.title}`);
+  output.push(`Version:      ${JPMORGAN_PAYMENTS_SERVER.version}`);
+  output.push(`Auth:         OAuth Bearer token`);
+  output.push(`Env Var:      JPMORGAN_ACCESS_TOKEN`);
+  output.push(`Configured:   ${config.configured ? 'Yes' : 'No'}`);
+  output.push(`Active Env:   ${config.activeEnv}`);
+  output.push(`Active URL:   ${config.activeBaseUrl}`);
+  output.push('');
+  output.push('Available Environments:');
+  output.push(`  Testing:    ${JPMORGAN_PAYMENTS_SERVER.baseUrls.testing}`);
+  output.push(`  Production: ${JPMORGAN_PAYMENTS_SERVER.baseUrls.production}`);
+  output.push('');
+  output.push('Supported Payment Types:');
+  output.push('  ACH  — Automated Clearing House (domestic US, batch-settled)');
+  output.push('         Required: paymentType, companyId, debitAccount,');
+  output.push('                   creditAccount.{routingNumber, accountNumber, accountType},');
+  output.push('                   amount.{currency, value}');
+  output.push('  WIRE — Domestic/international wire transfer');
+  output.push('         Required: paymentType, debitAccount,');
+  output.push('                   creditAccount.{name, accountNumber, bankCode}, amount');
+  output.push('  RTP  — Real-Time Payments (instant, 24/7)');
+  output.push('         Required: paymentType, debitAccount,');
+  output.push('                   creditAccount.{routingNumber, accountNumber, accountType}, amount');
+  output.push('  BOOK — Internal book transfer between J.P. Morgan accounts');
+  output.push('         Required: paymentType, debitAccount,');
+  output.push('                   creditAccount.{accountId}, amount');
+  output.push('');
+  output.push('Available Tools (3 total):');
+  output.push('  - jpmorgan_create_payment: POST /payments — Initiate a payment');
+  output.push('  - jpmorgan_get_payment:    GET  /payments/{id} — Get payment status');
+  output.push('  - jpmorgan_list_payments:  GET  /payments — List payments with filters');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Obtain an OAuth access token from the J.P. Morgan Developer Portal');
+  output.push('2. Set the environment variable: JPMORGAN_ACCESS_TOKEN=your-token');
+  output.push('3. Set JPMORGAN_PAYMENTS_ENV=testing (default) or JPMORGAN_PAYMENTS_ENV=production');
+  output.push('');
+  output.push('Documentation: https://developer.jpmorgan.com');
+
   return output.join('\n');
 }
 

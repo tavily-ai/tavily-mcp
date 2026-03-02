@@ -13,13 +13,15 @@
 ## Details
 
 ### J.P. Morgan Embedded Payments API
-- Docs: https://developer.payments.jpmorgan.com
-- Production: https://apigateway.jpmorgan.com/tsapi/v1/ef
-- Mock/testing: https://api-mock.payments.jpmorgan.com/tsapi/v1/ef
+
+- Docs: <https://developer.payments.jpmorgan.com>
+- Production: <https://apigateway.jpmorgan.com/tsapi/v1/ef>
+- Mock/testing: <https://api-mock.payments.jpmorgan.com/tsapi/v1/ef>
 - Auth: JPMORGAN_ACCESS_TOKEN (shared with Account Balances API)
 - Default env: production (beta prototype)
 
 ### Tools (5 total)
+
 1. `ef_list_clients` - GET /clients — List embedded finance clients
 2. `ef_get_client` - GET /clients/{clientId} — Get a specific client
 3. `ef_create_client` - POST /clients — Create a new embedded finance client
@@ -27,6 +29,7 @@
 5. `ef_get_account` - GET /clients/{clientId}/accounts/{accountId} — Get a specific account (v2 beta)
 
 ### MCP Tool Definitions (7 total including meta tools)
+
 - ef_list_clients, ef_get_client, ef_create_client
 - ef_list_accounts, ef_get_account
 - ef_list_tools (meta)

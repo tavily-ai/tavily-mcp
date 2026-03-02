@@ -9,6 +9,7 @@ import { listCloudflareServers, CLOUDFLARE_MCP_SERVERS } from './build/cloudflar
 import { listNetlifyTools, isNetlifyConfigured, getNetlifyConfig, NETLIFY_MCP_SERVER } from './build/netlify.js';
 import { JPMORGAN_API_SERVER, listJPMorganTools, isJPMorganConfigured, getJPMorganConfig, retrieveBalances as jpmRetrieveBalances } from './build/jpmorgan.js';
 import { JPMORGAN_EMBEDDED_SERVER, listJPMorganEmbeddedTools, isJPMorganEmbeddedConfigured, getJPMorganEmbeddedConfig, listClients as efListClients, getClient as efGetClient, createClient as efCreateClient } from './build/jpmorgan_embedded.js';
+import { JPMORGAN_PAYMENTS_SERVER, listJPMorganPaymentsTools, isJPMorganPaymentsConfigured, getJPMorganPaymentsConfig, createPayment as jpmCreatePayment, getPayment as jpmGetPayment, listPayments as jpmListPayments } from './build/jpmorgan_payments.js';
 
 let passed = 0;
 let failed = 0;
@@ -504,6 +505,275 @@ asyncTest('retrieveBalances throws when accountList is empty', async () => {
   }
   assert(threw, 'should have thrown for empty accountList');
   delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+// ─── J.P. MORGAN PAYMENTS API TESTS ──────────────────────────────────────────
+console.log('\n=== J.P. MORGAN PAYMENTS API TESTS ===\n');
+
+test('JPMORGAN_PAYMENTS_SERVER has correct title', () => {
+  assertIncludes(JPMORGAN_PAYMENTS_SERVER.title, 'Payments', 'title should mention Payments');
+});
+
+test('JPMORGAN_PAYMENTS_SERVER has correct version', () => {
+  assertEqual(JPMORGAN_PAYMENTS_SERVER.version, 'v1', 'API version should be v1');
+});
+
+test('JPMORGAN_PAYMENTS_SERVER has production and testing base URLs', () => {
+  assertIncludes(JPMORGAN_PAYMENTS_SERVER.baseUrls.production, 'apigateway.jpmorgan.com', 'production URL');
+  assertIncludes(JPMORGAN_PAYMENTS_SERVER.baseUrls.testing, 'apigatewayqaf.jpmorgan.com', 'testing URL');
+});
+
+test('JPMORGAN_PAYMENTS_SERVER has correct payment resource path', () => {
+  assertEqual(JPMORGAN_PAYMENTS_SERVER.resources.payment, '/payments/v1/payment', 'payment resource path');
+});
+
+test('JPMORGAN_PAYMENTS_SERVER has correct payments list resource path', () => {
+  assertEqual(JPMORGAN_PAYMENTS_SERVER.resources.payments, '/payments/v1/payments', 'payments list resource path');
+});
+
+test('JPMORGAN_PAYMENTS_SERVER has sandbox base URL', () => {
+  assertIncludes(JPMORGAN_PAYMENTS_SERVER.baseUrls.sandbox, 'api-sandbox.jpmorgan.com', 'sandbox URL');
+});
+
+test('JPMORGAN_PAYMENTS_SERVER supports all 4 payment types', () => {
+  const types = JPMORGAN_PAYMENTS_SERVER.supportedPaymentTypes;
+  assert(types.includes('ACH'),  'should support ACH');
+  assert(types.includes('WIRE'), 'should support WIRE');
+  assert(types.includes('RTP'),  'should support RTP');
+  assert(types.includes('BOOK'), 'should support BOOK');
+});
+
+test('listJPMorganPaymentsTools returns 3 tools', () => {
+  const tools = listJPMorganPaymentsTools();
+  assertEqual(tools.length, 3, 'tool count should be 3');
+});
+
+test('listJPMorganPaymentsTools contains create, get, and list tools', () => {
+  const tools = listJPMorganPaymentsTools();
+  const names = tools.map(t => t.name);
+  assert(names.includes('jpmorgan_create_payment'), 'missing jpmorgan_create_payment');
+  assert(names.includes('jpmorgan_get_payment'),    'missing jpmorgan_get_payment');
+  assert(names.includes('jpmorgan_list_payments'),  'missing jpmorgan_list_payments');
+});
+
+test('each Payments tool has name, description, method, and endpoint', () => {
+  const tools = listJPMorganPaymentsTools();
+  for (const tool of tools) {
+    assert(typeof tool.name === 'string' && tool.name.length > 0,        `tool missing name`);
+    assert(typeof tool.description === 'string' && tool.description.length > 0, `tool missing description: ${tool.name}`);
+    assert(typeof tool.method === 'string' && tool.method.length > 0,    `tool missing method: ${tool.name}`);
+    assert(typeof tool.endpoint === 'string' && tool.endpoint.length > 0, `tool missing endpoint: ${tool.name}`);
+  }
+});
+
+test('jpmorgan_create_payment tool uses POST method', () => {
+  const tools = listJPMorganPaymentsTools();
+  const tool = tools.find(t => t.name === 'jpmorgan_create_payment');
+  assert(tool !== undefined, 'jpmorgan_create_payment not found');
+  assertEqual(tool.method, 'POST', 'create_payment should use POST');
+});
+
+test('jpmorgan_get_payment tool uses GET method', () => {
+  const tools = listJPMorganPaymentsTools();
+  const tool = tools.find(t => t.name === 'jpmorgan_get_payment');
+  assert(tool !== undefined, 'jpmorgan_get_payment not found');
+  assertEqual(tool.method, 'GET', 'get_payment should use GET');
+});
+
+test('isJPMorganPaymentsConfigured returns false when JPMORGAN_ACCESS_TOKEN not set', () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  assertEqual(isJPMorganPaymentsConfigured(), false, 'should be false without env var');
+});
+
+test('isJPMorganPaymentsConfigured returns true when JPMORGAN_ACCESS_TOKEN is set', () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-bearer-token';
+  assertEqual(isJPMorganPaymentsConfigured(), true, 'should be true with env var');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+test('getJPMorganPaymentsConfig returns configured=false without env var', () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  const config = getJPMorganPaymentsConfig();
+  assertEqual(config.configured, false, 'configured should be false');
+  assertEqual(config.activeEnv, 'sandbox', 'default env should be sandbox');
+});
+
+test('getJPMorganPaymentsConfig returns configured=true with env var', () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-bearer-token';
+  const config = getJPMorganPaymentsConfig();
+  assertEqual(config.configured, true, 'configured should be true');
+  assertIncludes(config.activeBaseUrl, 'jpmorgan.com', 'activeBaseUrl should contain jpmorgan.com');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+test('getJPMorganPaymentsConfig uses sandbox URL by default', () => {
+  delete process.env.JPMORGAN_PAYMENTS_ENV;
+  delete process.env.JPMC_BASE_URL;
+  const config = getJPMorganPaymentsConfig();
+  assertIncludes(config.activeBaseUrl, 'api-sandbox.jpmorgan.com', 'default should be sandbox URL');
+});
+
+test('getJPMorganPaymentsConfig uses production URL when env=production', () => {
+  delete process.env.JPMC_BASE_URL;
+  process.env.JPMORGAN_PAYMENTS_ENV = 'production';
+  const config = getJPMorganPaymentsConfig();
+  assertIncludes(config.activeBaseUrl, 'apigateway.jpmorgan.com', 'production env should use production URL');
+  delete process.env.JPMORGAN_PAYMENTS_ENV;
+});
+
+test('getJPMorganPaymentsConfig uses JPMC_BASE_URL when set', () => {
+  process.env.JPMC_BASE_URL = 'https://api-sandbox.jpmorgan.com';
+  const config = getJPMorganPaymentsConfig();
+  assertIncludes(config.activeBaseUrl, 'api-sandbox.jpmorgan.com', 'JPMC_BASE_URL should override env default');
+  delete process.env.JPMC_BASE_URL;
+});
+
+test('isJPMorganPaymentsConfigured returns true with client credentials', () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  process.env.JPMC_CLIENT_ID     = 'test-client-id';
+  process.env.JPMC_CLIENT_SECRET = 'test-client-secret';
+  process.env.JPMC_TOKEN_URL     = 'https://api-sandbox.jpmorgan.com/oauth2/v1/token';
+  assertEqual(isJPMorganPaymentsConfigured(), true, 'should be true with client credentials');
+  delete process.env.JPMC_CLIENT_ID;
+  delete process.env.JPMC_CLIENT_SECRET;
+  delete process.env.JPMC_TOKEN_URL;
+});
+
+test('isJPMorganPaymentsConfigured returns false with incomplete client credentials', () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  process.env.JPMC_CLIENT_ID = 'test-client-id';
+  // JPMC_CLIENT_SECRET and JPMC_TOKEN_URL intentionally missing
+  assertEqual(isJPMorganPaymentsConfigured(), false, 'should be false with incomplete credentials');
+  delete process.env.JPMC_CLIENT_ID;
+});
+
+asyncTest('createPayment throws when JPMORGAN_ACCESS_TOKEN not set', async () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  let threw = false;
+  try {
+    await jpmCreatePayment({
+      paymentType: 'ACH',
+      debitAccount: 'ACC123',
+      creditAccount: { routingNumber: '021000021', accountNumber: '123456789', accountType: 'CHECKING' },
+      amount: { currency: 'USD', value: '1500.00' },
+      companyId: 'ACME'
+    });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'JPMORGAN_ACCESS_TOKEN', 'error should mention JPMORGAN_ACCESS_TOKEN');
+  }
+  assert(threw, 'should have thrown when token not set');
+});
+
+asyncTest('createPayment throws when paymentType is missing', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await jpmCreatePayment({
+      paymentType: '',
+      debitAccount: 'ACC123',
+      creditAccount: { routingNumber: '021000021', accountNumber: '123456789', accountType: 'CHECKING' },
+      amount: { currency: 'USD', value: '1500.00' }
+    });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'paymentType', 'error should mention paymentType');
+  }
+  assert(threw, 'should have thrown for missing paymentType');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('createPayment throws when debitAccount is empty', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await jpmCreatePayment({
+      paymentType: 'ACH',
+      debitAccount: '',
+      creditAccount: { routingNumber: '021000021', accountNumber: '123456789', accountType: 'CHECKING' },
+      amount: { currency: 'USD', value: '1500.00' },
+      companyId: 'ACME'
+    });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'debitAccount', 'error should mention debitAccount');
+  }
+  assert(threw, 'should have thrown for empty debitAccount');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('createPayment throws when ACH is missing companyId', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await jpmCreatePayment({
+      paymentType: 'ACH',
+      debitAccount: 'ACC123',
+      creditAccount: { routingNumber: '021000021', accountNumber: '123456789', accountType: 'CHECKING' },
+      amount: { currency: 'USD', value: '1500.00' }
+      // companyId intentionally omitted
+    });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'companyId', 'error should mention companyId');
+  }
+  assert(threw, 'should have thrown for missing companyId on ACH');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('createPayment throws for invalid paymentType', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await jpmCreatePayment({
+      paymentType: 'INVALID',
+      debitAccount: 'ACC123',
+      creditAccount: { routingNumber: '021000021', accountNumber: '123456789', accountType: 'CHECKING' },
+      amount: { currency: 'USD', value: '1500.00' }
+    });
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'paymentType', 'error should mention paymentType');
+  }
+  assert(threw, 'should have thrown for invalid paymentType');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('getPayment throws when JPMORGAN_ACCESS_TOKEN not set', async () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  let threw = false;
+  try {
+    await jpmGetPayment('PAY-001');
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'JPMORGAN_ACCESS_TOKEN', 'error should mention JPMORGAN_ACCESS_TOKEN');
+  }
+  assert(threw, 'should have thrown when token not set');
+});
+
+asyncTest('getPayment throws when paymentId is empty', async () => {
+  process.env.JPMORGAN_ACCESS_TOKEN = 'test-token';
+  let threw = false;
+  try {
+    await jpmGetPayment('');
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'paymentId', 'error should mention paymentId');
+  }
+  assert(threw, 'should have thrown for empty paymentId');
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+});
+
+asyncTest('listPayments throws when JPMORGAN_ACCESS_TOKEN not set', async () => {
+  delete process.env.JPMORGAN_ACCESS_TOKEN;
+  let threw = false;
+  try {
+    await jpmListPayments();
+  } catch (err) {
+    threw = true;
+    assertIncludes(err.message, 'JPMORGAN_ACCESS_TOKEN', 'error should mention JPMORGAN_ACCESS_TOKEN');
+  }
+  assert(threw, 'should have thrown when token not set');
 });
 
 // ─── ASYNC QUEUE + SUMMARY ────────────────────────────────────────────────────

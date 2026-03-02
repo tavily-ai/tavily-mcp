@@ -21,7 +21,6 @@
 | origin   | <https://github.com/ESADavid/tavily-mcp>      | ❌ Push blocked (403) — use PR via web UI          |
 | upstream | <https://github.com/tavily-ai/tavily-mcp>     | (read-only reference)                              |
 
-
 ## Resolution — Push to origin (ATTEMPTS FAILED)
 
 Multiple PATs tried, all returned 403. Possible causes:
