@@ -17,7 +17,10 @@ import {
   validatePayrollRunApproval,
   isPayrollConfigured,
   getPayrollConfig,
-  PAYROLL_SERVER
+  PAYROLL_SERVER,
+  mapToPayrollPayment,
+  mapToPayrollRunEntity,
+  mapApprovalToPayrollRunEntity
 } from './build/payroll.js';
 
 // ─── Test harness ─────────────────────────────────────────────────────────────
@@ -725,6 +728,260 @@ test('formatPayrollRunApprovalResult output contains approvedBy and per-item res
   assert(output.includes('Routing number invalid'),      'Contains error message');
   assert(output.includes('Alice'),                       'Contains first employee name');
   assert(output.includes('Bob'),                         'Contains second employee name');
+});
+
+// ─── 9. Domain model mappers ──────────────────────────────────────────────────
+
+console.log('\n9. Domain model mappers — mapToPayrollPayment / mapToPayrollRunEntity / mapApprovalToPayrollRunEntity');
+
+// ── 9a. mapToPayrollPayment ───────────────────────────────────────────────────
+
+test('mapToPayrollPayment — maps all PayrollItem fields correctly', () => {
+  const item = {
+    employeeId:    'EMP-001',
+    employeeName:  'Alice Johnson',
+    routingNumber: '021000021',
+    accountNumber: '123456789',
+    accountType:   'CHECKING',
+    amount:        2500.00,
+    effectiveDate: '2026-03-14'
+  };
+  const entity = mapToPayrollPayment(item);
+
+  assert(entity.employeeId    === 'EMP-001',      'employeeId mapped');
+  assert(entity.employeeName  === 'Alice Johnson', 'employeeName mapped');
+  assert(entity.routingNumber === '021000021',     'routingNumber mapped');
+  assert(entity.accountNumber === '123456789',     'accountNumber mapped');
+  assert(entity.accountType   === 'CHECKING',      'accountType mapped');
+  assert(entity.amount        === 2500.00,         'amount mapped');
+  assert(entity.effectiveDate === '2026-03-14',    'effectiveDate mapped');
+});
+
+test('mapToPayrollPayment — generates id in format employeeId-timestamp', () => {
+  const item = {
+    employeeId: 'EMP-042', employeeName: 'Bob', routingNumber: '021000021',
+    accountNumber: '111', accountType: 'SAVINGS', amount: 1000, effectiveDate: '2026-03-14'
+  };
+  const before = Date.now();
+  const entity = mapToPayrollPayment(item);
+  const after  = Date.now();
+
+  assert(typeof entity.id === 'string',           'id is a string');
+  assert(entity.id.startsWith('EMP-042-'),        'id starts with employeeId-');
+  const ts = parseInt(entity.id.split('-').pop(), 10);
+  assert(ts >= before && ts <= after,             'id timestamp is within test window');
+});
+
+test('mapToPayrollPayment — without result: jpmcPaymentId/Status undefined, jpmcReturnCode null', () => {
+  const item = {
+    employeeId: 'EMP-003', employeeName: 'Carol', routingNumber: '021000021',
+    accountNumber: '333', accountType: 'CHECKING', amount: 750, effectiveDate: '2026-03-14'
+  };
+  const entity = mapToPayrollPayment(item);
+
+  assert(entity.jpmcPaymentId  === undefined, 'jpmcPaymentId is undefined when no result');
+  assert(entity.jpmcStatus     === undefined, 'jpmcStatus is undefined when no result');
+  assert(entity.jpmcReturnCode === null,      'jpmcReturnCode is null');
+});
+
+test('mapToPayrollPayment — with successful result: copies jpmcPaymentId and jpmcStatus', () => {
+  const item = {
+    employeeId: 'EMP-004', employeeName: 'Dave', routingNumber: '021000021',
+    accountNumber: '444', accountType: 'SAVINGS', amount: 3000, effectiveDate: '2026-03-14'
+  };
+  const result = {
+    item,
+    success: true,
+    payment: { paymentId: 'PAY-XYZ-001', id: 'PAY-XYZ-001', status: 'PENDING' }
+  };
+  const entity = mapToPayrollPayment(item, result);
+
+  assert(entity.jpmcPaymentId === 'PAY-XYZ-001', 'jpmcPaymentId copied from payment.paymentId');
+  assert(entity.jpmcStatus    === 'PENDING',      'jpmcStatus copied from payment.status');
+  assert(entity.jpmcReturnCode === null,          'jpmcReturnCode is null');
+});
+
+test('mapToPayrollPayment — with failed result: jpmcPaymentId/Status undefined', () => {
+  const item = {
+    employeeId: 'EMP-005', employeeName: 'Eve', routingNumber: '021000021',
+    accountNumber: '555', accountType: 'CHECKING', amount: 500, effectiveDate: '2026-03-14'
+  };
+  const result = { item, success: false, error: 'API error' };
+  const entity = mapToPayrollPayment(item, result);
+
+  assert(entity.jpmcPaymentId  === undefined, 'jpmcPaymentId undefined on failure');
+  assert(entity.jpmcStatus     === undefined, 'jpmcStatus undefined on failure');
+  assert(entity.jpmcReturnCode === null,      'jpmcReturnCode is null');
+});
+
+// ── 9b. mapToPayrollRunEntity ─────────────────────────────────────────────────
+
+test('mapToPayrollRunEntity — all succeeded → status SUBMITTED', () => {
+  const runResult = {
+    createdBy:   'user-123',
+    total:       2,
+    succeeded:   2,
+    failed:      0,
+    processedAt: new Date().toISOString(),
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-001', status: 'PENDING' } },
+      { item: { employeeId: 'EMP-002', employeeName: 'Bob',   routingNumber: '021000021', accountNumber: '222', accountType: 'SAVINGS',  amount: 1500, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-002', status: 'PENDING' } }
+    ]
+  };
+  const entity = mapToPayrollRunEntity(runResult);
+
+  assert(entity.status === 'SUBMITTED', 'status is SUBMITTED when all succeeded');
+});
+
+test('mapToPayrollRunEntity — all failed → status FAILED', () => {
+  const runResult = {
+    createdBy:   'user-123',
+    total:       2,
+    succeeded:   0,
+    failed:      2,
+    processedAt: new Date().toISOString(),
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: false, error: 'API error' },
+      { item: { employeeId: 'EMP-002', employeeName: 'Bob',   routingNumber: '021000021', accountNumber: '222', accountType: 'SAVINGS',  amount: 1500, effectiveDate: '2026-03-14' }, success: false, error: 'API error' }
+    ]
+  };
+  const entity = mapToPayrollRunEntity(runResult);
+
+  assert(entity.status === 'FAILED', 'status is FAILED when all failed');
+});
+
+test('mapToPayrollRunEntity — mixed results → status PARTIALLY_POSTED', () => {
+  const runResult = {
+    createdBy:   'user-123',
+    total:       2,
+    succeeded:   1,
+    failed:      1,
+    processedAt: new Date().toISOString(),
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: true,  payment: { paymentId: 'PAY-001', status: 'PENDING' } },
+      { item: { employeeId: 'EMP-002', employeeName: 'Bob',   routingNumber: '021000021', accountNumber: '222', accountType: 'SAVINGS',  amount: 1500, effectiveDate: '2026-03-14' }, success: false, error: 'API error' }
+    ]
+  };
+  const entity = mapToPayrollRunEntity(runResult);
+
+  assert(entity.status === 'PARTIALLY_POSTED', 'status is PARTIALLY_POSTED for mixed results');
+});
+
+test('mapToPayrollRunEntity — entity shape: id, createdAt, createdBy, totalAmount, payments[]', () => {
+  const runResult = {
+    createdBy:   'user-123',
+    total:       2,
+    succeeded:   2,
+    failed:      0,
+    processedAt: new Date().toISOString(),
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-001', status: 'PENDING' } },
+      { item: { employeeId: 'EMP-002', employeeName: 'Bob',   routingNumber: '021000021', accountNumber: '222', accountType: 'SAVINGS',  amount: 1500, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-002', status: 'PENDING' } }
+    ]
+  };
+  const entity = mapToPayrollRunEntity(runResult);
+
+  assert(typeof entity.id === 'string' && entity.id.startsWith('run-'), 'id starts with run-');
+  assert(entity.createdAt instanceof Date,                              'createdAt is a Date');
+  assert(entity.createdBy === 'user-123',                               'createdBy matches');
+  assert(entity.totalAmount === 2500,                                   'totalAmount is sum of amounts');
+  assert(Array.isArray(entity.payments) && entity.payments.length === 2, 'payments has 2 entries');
+  assert(entity.approvedAt  === undefined,                              'approvedAt is undefined');
+  assert(entity.approvedBy  === undefined,                              'approvedBy is undefined');
+});
+
+test('mapToPayrollRunEntity — payments[] contains PayrollPaymentEntity with JPMC fields', () => {
+  const runResult = {
+    createdBy:   'user-123',
+    total:       1,
+    succeeded:   1,
+    failed:      0,
+    processedAt: new Date().toISOString(),
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-001', status: 'PENDING' } }
+    ]
+  };
+  const entity = mapToPayrollRunEntity(runResult);
+  const payment = entity.payments[0];
+
+  assert(payment.employeeId    === 'EMP-001',  'payment.employeeId correct');
+  assert(payment.jpmcPaymentId === 'PAY-001',  'payment.jpmcPaymentId copied');
+  assert(payment.jpmcStatus    === 'PENDING',  'payment.jpmcStatus copied');
+  assert(payment.jpmcReturnCode === null,      'payment.jpmcReturnCode is null');
+});
+
+// ── 9c. mapApprovalToPayrollRunEntity ─────────────────────────────────────────
+
+test('mapApprovalToPayrollRunEntity — all succeeded → status POSTED', () => {
+  const approvalResult = {
+    approvedBy:  'checker-456',
+    total:       2,
+    succeeded:   2,
+    failed:      0,
+    processedAt: new Date().toISOString(),
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-001', status: 'PENDING' } },
+      { item: { employeeId: 'EMP-002', employeeName: 'Bob',   routingNumber: '021000021', accountNumber: '222', accountType: 'SAVINGS',  amount: 1500, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-002', status: 'PENDING' } }
+    ]
+  };
+  const entity = mapApprovalToPayrollRunEntity(approvalResult);
+
+  assert(entity.status === 'POSTED', 'status is POSTED when all succeeded after approval');
+});
+
+test('mapApprovalToPayrollRunEntity — all failed → status FAILED', () => {
+  const approvalResult = {
+    approvedBy:  'checker-456',
+    total:       1,
+    succeeded:   0,
+    failed:      1,
+    processedAt: new Date().toISOString(),
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: false, error: 'API error' }
+    ]
+  };
+  const entity = mapApprovalToPayrollRunEntity(approvalResult);
+
+  assert(entity.status === 'FAILED', 'status is FAILED when all failed after approval');
+});
+
+test('mapApprovalToPayrollRunEntity — mixed → status PARTIALLY_POSTED', () => {
+  const approvalResult = {
+    approvedBy:  'checker-456',
+    total:       2,
+    succeeded:   1,
+    failed:      1,
+    processedAt: new Date().toISOString(),
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: true,  payment: { paymentId: 'PAY-001', status: 'PENDING' } },
+      { item: { employeeId: 'EMP-002', employeeName: 'Bob',   routingNumber: '021000021', accountNumber: '222', accountType: 'SAVINGS',  amount: 1500, effectiveDate: '2026-03-14' }, success: false, error: 'API error' }
+    ]
+  };
+  const entity = mapApprovalToPayrollRunEntity(approvalResult);
+
+  assert(entity.status === 'PARTIALLY_POSTED', 'status is PARTIALLY_POSTED for mixed approval');
+});
+
+test('mapApprovalToPayrollRunEntity — entity shape: approvedAt, approvedBy, totalAmount, payments[]', () => {
+  const approvalResult = {
+    approvedBy:  'checker-456',
+    total:       2,
+    succeeded:   2,
+    failed:      0,
+    processedAt: new Date().toISOString(),
+    results: [
+      { item: { employeeId: 'EMP-001', employeeName: 'Alice', routingNumber: '021000021', accountNumber: '111', accountType: 'CHECKING', amount: 1000, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-001', status: 'PENDING' } },
+      { item: { employeeId: 'EMP-002', employeeName: 'Bob',   routingNumber: '021000021', accountNumber: '222', accountType: 'SAVINGS',  amount: 2000, effectiveDate: '2026-03-14' }, success: true, payment: { paymentId: 'PAY-002', status: 'PENDING' } }
+    ]
+  };
+  const entity = mapApprovalToPayrollRunEntity(approvalResult);
+
+  assert(typeof entity.id === 'string' && entity.id.startsWith('run-'), 'id starts with run-');
+  assert(entity.createdAt  instanceof Date,                              'createdAt is a Date');
+  assert(entity.approvedAt instanceof Date,                              'approvedAt is a Date');
+  assert(entity.approvedBy === 'checker-456',                            'approvedBy matches');
+  assert(entity.totalAmount === 3000,                                    'totalAmount is sum of amounts');
+  assert(Array.isArray(entity.payments) && entity.payments.length === 2, 'payments has 2 entries');
 });
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
