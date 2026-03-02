@@ -16,6 +16,7 @@ nestjs-reference/jpm/
     encryption.service.ts                ← RSA/OAEP public-key payload encryption
     callback-verification.service.ts     ← inbound webhook signature verification
     jpm-http.service.ts                  ← injectable Axios client (optional mTLS)
+    jpmc-corporate-quickpay.client.ts    ← ACH payment initiation + status retrieval
   providers/
     jpm-client.provider.ts               ← legacy factory provider (JPM_CLIENT token)
   controllers/
@@ -27,7 +28,7 @@ nestjs-reference/jpm/
 ## Installation (in your NestJS project)
 
 ```bash
-npm install @nestjs/common @nestjs/core axios
+npm install @nestjs/common @nestjs/core @nestjs/config axios
 npm install --save-dev @types/node
 ```
 
@@ -60,14 +61,23 @@ Place under `/certs/uat/` (UAT) or `/certs/prod/` (production):
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `JPMORGAN_ACCESS_TOKEN` | Yes | OAuth Bearer token |
+| `JPMORGAN_ACCESS_TOKEN` | Yes* | OAuth Bearer token (legacy / manual) |
 | `JPMORGAN_ENV` | No | `testing` (default) or `production` |
+| `JPMC_BASE_URL` | No | API base URL (default: `https://api-sandbox.jpmorgan.com`) |
+| `JPMC_CLIENT_ID` | Yes* | OAuth client ID for `JpmcCorporateQuickPayClient` |
+| `JPMC_CLIENT_SECRET` | Yes* | OAuth client secret for `JpmcCorporateQuickPayClient` |
+| `JPMC_TOKEN_URL` | Yes* | OAuth token endpoint for `JpmcCorporateQuickPayClient` |
+| `JPMC_ACH_COMPANY_ID` | No | Default ACH company ID |
+| `JPMC_ACH_DEBIT_ACCOUNT` | No | Default debit (source) account ID |
 | `SIGNING_KEY_PATH` | No | Override default signing key path |
 | `JPM_PUBLIC_KEY_PATH` | No | Override default encryption key path |
 | `JPM_CALLBACK_CERT_PATH` | No | Override default callback cert path |
 | `MTLS_CLIENT_CERT_PATH` | No | Override default mTLS client cert path |
 | `MTLS_CLIENT_KEY_PATH` | No | Override default mTLS client key path |
 | `MTLS_CA_BUNDLE_PATH` | No | Override default CA bundle path |
+
+\* `JPMORGAN_ACCESS_TOKEN` is used by `JpmHttpService` / `JpmPaymentController`.
+`JPMC_CLIENT_ID` + `JPMC_CLIENT_SECRET` + `JPMC_TOKEN_URL` are used by `JpmcCorporateQuickPayClient` (OAuth client credentials grant).
 
 ---
 
@@ -102,7 +112,56 @@ bootstrap();
 
 ### 3. Inject services into your own controllers/services
 
-Use `JpmHttpService` for outbound calls — no injection token required:
+#### Option A — `JpmcCorporateQuickPayClient` (ACH payments, OAuth client credentials)
+
+Use this service for ACH payment initiation and status retrieval. It handles
+OAuth token fetching automatically using `ConfigService`.
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { JpmcCorporateQuickPayClient } from './jpm/services/jpmc-corporate-quickpay.client';
+
+@Injectable()
+export class PayrollService {
+  constructor(
+    private readonly quickPay: JpmcCorporateQuickPayClient,
+  ) {}
+
+  async disbursePayroll(employee: {
+    routingNumber: string;
+    accountNumber: string;
+    netPay: string;
+    name: string;
+  }) {
+    // Initiate ACH payment
+    const payment = await this.quickPay.createAchPayment({
+      paymentType:   'ACH',
+      companyId:     'ACME_PAYROLL',
+      debitAccount:  '00000000000000304266256',
+      creditAccount: {
+        routingNumber: employee.routingNumber,
+        accountNumber: employee.accountNumber,
+        accountType:   'CHECKING',
+      },
+      amount:        { currency: 'USD', value: employee.netPay },
+      memo:          `Payroll - ${employee.name}`,
+      effectiveDate: '2026-03-04',
+    });
+
+    // Poll for status
+    const status = await this.quickPay.getPaymentStatus(payment.paymentId);
+    if (status.status === 'RETURNED') {
+      throw new Error(`Payment returned: ${status.returnCode}`);
+    }
+
+    return payment.paymentId;
+  }
+}
+```
+
+#### Option B — `JpmHttpService` (sign + encrypt pipeline, legacy Bearer token)
+
+Use `JpmHttpService` for outbound calls that require the full sign → encrypt pipeline:
 
 ```typescript
 import { Injectable } from '@nestjs/common';
@@ -151,15 +210,17 @@ serialised = JSON.stringify(requestBody)
 
 ---
 
-## JpmHttpService vs JpmClientProvider
+## Service comparison
 
-| | `JpmHttpService` | `JpmClientProvider` |
-| --- | --- | --- |
-| Injection | `private readonly jpm: JpmHttpService` | `@Inject(JPM_CLIENT) private readonly jpmClient: AxiosInstance` |
-| Pattern | Standard `@Injectable()` service | NestJS factory provider with custom token |
-| Recommended | ✅ Yes | Legacy — kept for backward compatibility |
+| Service | Auth method | Use case | Injection |
+| --- | --- | --- | --- |
+| `JpmcCorporateQuickPayClient` | OAuth client credentials (auto) | ACH payment initiation + status | `private readonly quickPay: JpmcCorporateQuickPayClient` |
+| `JpmHttpService` | Bearer token (manual) | Sign + encrypt pipeline | `private readonly jpm: JpmHttpService` |
+| `JpmClientProvider` | Bearer token (manual) | Legacy factory provider | `@Inject(JPM_CLIENT) private readonly jpmClient: AxiosInstance` |
 
-Both are exported from `JpmModule` and behave identically at runtime.
+**Recommended:** Use `JpmcCorporateQuickPayClient` for new ACH payment work.
+Use `JpmHttpService` when you need the full sign → encrypt → mTLS pipeline.
+`JpmClientProvider` is kept for backward compatibility only.
 
 ---
 

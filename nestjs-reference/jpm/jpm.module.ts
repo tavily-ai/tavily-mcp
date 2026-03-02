@@ -33,14 +33,23 @@
 //   app.use('/jpm/callbacks', express.raw({ type: 'application/json' }));
 
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { SigningService } from './services/signing.service';
 import { EncryptionService } from './services/encryption.service';
 import { CallbackVerificationService } from './services/callback-verification.service';
 import { JpmHttpService } from './services/jpm-http.service';
 import { JpmClientProvider } from './providers/jpm-client.provider';
 import { JpmPaymentController } from './controllers/jpm-payment.controller';
+import { JpmcCorporateQuickPayClient } from './services/jpmc-corporate-quickpay.client';
+import { jpmcConfig } from '../../src/config/jpmc.config';
 
 @Module({
+  imports: [
+    // Registers the 'jpmc' config namespace so ConfigService can resolve
+    // jpmc.baseUrl, jpmc.tokenUrl, jpmc.clientId, jpmc.clientSecret, etc.
+    // See src/config/jpmc.config.ts for the full list of keys.
+    ConfigModule.forFeature(jpmcConfig),
+  ],
   controllers: [JpmPaymentController],
   providers: [
     SigningService,
@@ -48,6 +57,7 @@ import { JpmPaymentController } from './controllers/jpm-payment.controller';
     CallbackVerificationService,
     JpmHttpService,
     JpmClientProvider,
+    JpmcCorporateQuickPayClient,
   ],
   exports: [
     SigningService,
@@ -55,6 +65,7 @@ import { JpmPaymentController } from './controllers/jpm-payment.controller';
     CallbackVerificationService,
     JpmHttpService,
     JpmClientProvider,
+    JpmcCorporateQuickPayClient,
   ],
 })
 export class JpmModule {}
