@@ -97,6 +97,23 @@ import {
   listPayments as jpmListPayments
 } from './jpmorgan_payments.js';
 
+// J.P. Morgan Payroll imports
+import {
+  PAYROLL_SERVER,
+  listPayrollTools,
+  isPayrollConfigured,
+  getPayrollConfig,
+  createPayrollPayment as jpmCreatePayrollPayment,
+  createBatchPayroll as jpmCreateBatchPayroll,
+  createPayrollRun as jpmCreatePayrollRun,
+  validatePayrollRun,
+  type PayrollItem,
+  type PayrollResult,
+  type BatchPayrollResult,
+  type PayrollRun,
+  type PayrollRunResult
+} from './payroll.js';
+
 
 
 dotenv.config();
@@ -1186,6 +1203,89 @@ class TavilyClient {
             type: "object",
             properties: {}
           }
+        },
+        // J.P. Morgan Payroll ACH Payment Tools
+        {
+          name: "jpmorgan_create_payroll_payment",
+          description: "Submit a single employee payroll disbursement as an ACH credit transfer via the J.P. Morgan Payments API. Provide employee details (employeeId, employeeName), bank account details (routingNumber, accountNumber, accountType), amount (USD), and effectiveDate (yyyy-MM-dd). Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              employee_id: {
+                type: "string",
+                description: "Unique employee identifier (e.g. 'EMP-001')"
+              },
+              employee_name: {
+                type: "string",
+                description: "Full name of the employee"
+              },
+              routing_number: {
+                type: "string",
+                description: "ABA routing number of the employee's bank (9 digits)"
+              },
+              account_number: {
+                type: "string",
+                description: "Employee's bank account number"
+              },
+              account_type: {
+                type: "string",
+                enum: ["CHECKING", "SAVINGS"],
+                description: "Bank account type"
+              },
+              amount: {
+                type: "number",
+                description: "Gross pay amount in USD (e.g. 2500.00). Must be greater than 0."
+              },
+              effective_date: {
+                type: "string",
+                description: "Requested ACH settlement date in yyyy-MM-dd format (e.g. '2026-03-14')"
+              }
+            },
+            required: ["employee_id", "employee_name", "routing_number", "account_number", "account_type", "amount", "effective_date"]
+          }
+        },
+        {
+          name: "jpmorgan_create_batch_payroll",
+          description: "Submit a batch of employee payroll disbursements as ACH credit transfers via the J.P. Morgan Payments API. Processes each item sequentially and returns a per-item success/failure summary. Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              payroll_items: {
+                type: "array",
+                description: "Array of payroll items to disburse",
+                items: {
+                  type: "object",
+                  properties: {
+                    employee_id:    { type: "string", description: "Unique employee identifier" },
+                    employee_name:  { type: "string", description: "Full name of the employee" },
+                    routing_number: { type: "string", description: "ABA routing number (9 digits)" },
+                    account_number: { type: "string", description: "Bank account number" },
+                    account_type:   { type: "string", enum: ["CHECKING", "SAVINGS"], description: "Account type" },
+                    amount:         { type: "number", description: "Gross pay amount in USD" },
+                    effective_date: { type: "string", description: "Settlement date in yyyy-MM-dd format" }
+                  },
+                  required: ["employee_id", "employee_name", "routing_number", "account_number", "account_type", "amount", "effective_date"]
+                }
+              }
+            },
+            required: ["payroll_items"]
+          }
+        },
+        {
+          name: "jpmorgan_payroll_list_tools",
+          description: "List all available J.P. Morgan Payroll ACH payment tools and their descriptions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "jpmorgan_payroll_get_server_info",
+          description: "Get configuration details and setup instructions for the J.P. Morgan Payroll ACH payment module. Returns required environment variables, supported fields, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
         }
       ];
 
@@ -1733,6 +1833,66 @@ text: formatResearchResults(researchResponse)
               return { content: [{ type: "text", text: formatJPMorganPaymentsList(jpmListPaymentsResult) }] };
             } catch (err: any) {
               return { content: [{ type: "text", text: `J.P. Morgan Payments API error: ${err.message}` }], isError: true };
+            }
+
+          // J.P. Morgan Payroll tool handlers
+          case "jpmorgan_payroll_list_tools":
+            return {
+              content: [{
+                type: "text",
+                text: formatPayrollTools()
+              }]
+            };
+
+          case "jpmorgan_payroll_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatPayrollServerInfo()
+              }]
+            };
+
+          case "jpmorgan_create_payroll_payment":
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.");
+            }
+            try {
+              const payrollItem: PayrollItem = {
+                employeeId:    args.employee_id,
+                employeeName:  args.employee_name,
+                routingNumber: args.routing_number,
+                accountNumber: args.account_number,
+                accountType:   args.account_type,
+                amount:        args.amount,
+                effectiveDate: args.effective_date
+              };
+              const payrollPaymentResult = await jpmCreatePayrollPayment(payrollItem);
+              return { content: [{ type: "text", text: formatPayrollPayment(payrollItem, payrollPaymentResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payroll error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_create_batch_payroll":
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.");
+            }
+            if (!Array.isArray(args.payroll_items) || args.payroll_items.length === 0) {
+              throw new McpError(ErrorCode.InvalidRequest, "payroll_items must be a non-empty array of payroll item objects.");
+            }
+            try {
+              const batchItems: PayrollItem[] = (args.payroll_items as any[]).map((item: any) => ({
+                employeeId:    item.employee_id,
+                employeeName:  item.employee_name,
+                routingNumber: item.routing_number,
+                accountNumber: item.account_number,
+                accountType:   item.account_type,
+                amount:        item.amount,
+                effectiveDate: item.effective_date
+              }));
+              const batchResult: BatchPayrollResult = await jpmCreateBatchPayroll(batchItems);
+              return { content: [{ type: "text", text: formatBatchPayrollResult(batchResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Batch Payroll error: ${err.message}` }], isError: true };
             }
 
           default:
@@ -3043,6 +3203,139 @@ function formatJPMorganPaymentsServerInfo(): string {
   output.push('3. Set JPMORGAN_PAYMENTS_ENV=testing (default) or JPMORGAN_PAYMENTS_ENV=production');
   output.push('');
   output.push('Documentation: https://developer.jpmorgan.com');
+
+  return output.join('\n');
+}
+
+// ─── J.P. Morgan Payroll format functions ────────────────────────────────────
+
+function formatPayrollTools(): string {
+  const output: string[] = [];
+  output.push('Available J.P. Morgan Payroll ACH Payment Tools:');
+  output.push('');
+  output.push('Disburse employee payroll via ACH credit transfers through the J.P. Morgan Payments API.');
+  output.push('');
+
+  const tools = listPayrollTools();
+  tools.forEach((tool, index) => {
+    output.push(`[${index + 1}] ${tool.name}`);
+    output.push(`    ${tool.method} ${tool.endpoint}`);
+    output.push(`    ${tool.description}`);
+    output.push('');
+  });
+
+  output.push('Authentication: OAuth Bearer token (JPMORGAN_ACCESS_TOKEN)');
+  output.push('');
+  output.push('Required Environment Variables:');
+  output.push('  JPMC_ACH_DEBIT_ACCOUNT  — Your J.P. Morgan operating account ID');
+  output.push('  JPMC_ACH_COMPANY_ID     — Your ACH company ID');
+  output.push('  JPMORGAN_ACCESS_TOKEN   — OAuth bearer token');
+  output.push('  (or JPMC_CLIENT_ID + JPMC_CLIENT_SECRET + JPMC_TOKEN_URL for OAuth client credentials)');
+
+  return output.join('\n');
+}
+
+function formatPayrollServerInfo(): string {
+  const output: string[] = [];
+  const config = getPayrollConfig();
+
+  output.push('J.P. Morgan Payroll ACH Payment Module:');
+  output.push('');
+  output.push(`Module:       ${PAYROLL_SERVER.name}`);
+  output.push(`Title:        ${PAYROLL_SERVER.title}`);
+  output.push(`Version:      ${PAYROLL_SERVER.version}`);
+  output.push(`Auth:         OAuth Bearer token`);
+  output.push(`Configured:   ${config.configured ? 'Yes' : 'No'}`);
+  output.push(`Active Env:   ${config.activeEnv}`);
+  output.push(`Active URL:   ${config.activeBaseUrl}`);
+  output.push('');
+  output.push('Required Environment Variables:');
+  output.push('  JPMC_ACH_DEBIT_ACCOUNT  — Your J.P. Morgan operating account ID (debit side)');
+  output.push('  JPMC_ACH_COMPANY_ID     — Your ACH company ID');
+  output.push('  JPMORGAN_ACCESS_TOKEN   — Pre-obtained OAuth bearer token');
+  output.push('  OR:');
+  output.push('  JPMC_CLIENT_ID          — OAuth client ID (client credentials grant)');
+  output.push('  JPMC_CLIENT_SECRET      — OAuth client secret');
+  output.push('  JPMC_TOKEN_URL          — OAuth token endpoint');
+  output.push('');
+  output.push('Optional:');
+  output.push('  JPMORGAN_PAYMENTS_ENV   — sandbox | testing | production (default: sandbox)');
+  output.push('');
+  output.push('PayrollItem Fields:');
+  output.push('  employeeId    (string)  — Unique employee identifier (e.g. EMP-001)');
+  output.push('  employeeName  (string)  — Full name of the employee');
+  output.push('  routingNumber (string)  — ABA routing number (9 digits)');
+  output.push('  accountNumber (string)  — Bank account number');
+  output.push('  accountType   (enum)    — CHECKING | SAVINGS');
+  output.push('  amount        (number)  — Gross pay in USD (> 0)');
+  output.push('  effectiveDate (string)  — Settlement date in yyyy-MM-dd format');
+  output.push('');
+  output.push('Available Tools (2 total):');
+  output.push('  - jpmorgan_create_payroll_payment: Submit a single employee payroll ACH payment');
+  output.push('  - jpmorgan_create_batch_payroll:   Submit a batch of payroll ACH payments');
+  output.push('');
+  output.push('Documentation: https://developer.jpmorgan.com');
+
+  return output.join('\n');
+}
+
+function formatPayrollPayment(item: PayrollItem, payment: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payroll Payment Submitted:');
+  output.push('');
+  output.push('Employee:');
+  output.push(`  ID:             ${item.employeeId}`);
+  output.push(`  Name:           ${item.employeeName}`);
+  output.push(`  Account Type:   ${item.accountType}`);
+  output.push(`  Routing #:      ${item.routingNumber}`);
+  output.push(`  Account #:      ${item.accountNumber}`);
+  output.push(`  Amount:         $${item.amount.toFixed(2)} USD`);
+  output.push(`  Effective Date: ${item.effectiveDate}`);
+  output.push('');
+  output.push('Payment Response:');
+
+  const id = payment?.paymentId || payment?.id || 'N/A';
+  output.push(`  Payment ID:     ${id}`);
+  if (payment?.status)        output.push(`  Status:         ${payment.status}`);
+  if (payment?.paymentType)   output.push(`  Payment Type:   ${payment.paymentType}`);
+  if (payment?.effectiveDate) output.push(`  Effective Date: ${payment.effectiveDate}`);
+  if (payment?.memo)          output.push(`  Memo:           ${payment.memo}`);
+  if (payment?.createdAt)     output.push(`  Created:        ${payment.createdAt}`);
+
+  return output.join('\n');
+}
+
+function formatBatchPayrollResult(result: BatchPayrollResult): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Batch Payroll Result:');
+  output.push('');
+  output.push(`  Processed At: ${result.processedAt}`);
+  output.push(`  Total:        ${result.total}`);
+  output.push(`  Succeeded:    ${result.succeeded}`);
+  output.push(`  Failed:       ${result.failed}`);
+  output.push('');
+
+  if (result.results.length === 0) {
+    output.push('No items processed.');
+    return output.join('\n');
+  }
+
+  output.push('Per-Item Results:');
+  result.results.forEach((r, idx) => {
+    const status = r.success ? '✓ SUCCESS' : '✗ FAILED';
+    output.push(`\n  [${idx + 1}] ${status} — ${r.item.employeeName} (${r.item.employeeId})`);
+    output.push(`       Amount:         $${r.item.amount.toFixed(2)} USD`);
+    output.push(`       Effective Date: ${r.item.effectiveDate}`);
+    output.push(`       Account Type:   ${r.item.accountType}`);
+    if (r.success && r.payment) {
+      const pid = r.payment.paymentId || r.payment.id || 'N/A';
+      output.push(`       Payment ID:     ${pid}`);
+      if (r.payment.status) output.push(`       Status:         ${r.payment.status}`);
+    }
+    if (!r.success && r.error) {
+      output.push(`       Error:          ${r.error}`);
+    }
+  });
 
   return output.join('\n');
 }
