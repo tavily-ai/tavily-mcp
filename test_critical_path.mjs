@@ -786,9 +786,9 @@ test('PAYROLL_SERVER has correct name and title', () => {
   assertEqual(PAYROLL_SERVER.version, 'v1', 'version');
 });
 
-test('listPayrollTools returns 4 tools', () => {
+test('listPayrollTools returns 8 tools', () => {
   const tools = listPayrollTools();
-  assertEqual(tools.length, 4, 'tool count should be 4');
+  assertEqual(tools.length, 8, 'tool count should be 8');
 });
 
 test('listPayrollTools contains all 4 payroll tools', () => {
