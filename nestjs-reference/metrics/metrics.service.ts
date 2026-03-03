@@ -135,10 +135,11 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
   });
 
   readonly payrollRunAmountUsd = new Histogram({
-    name:      'payroll_run_amount_usd',
-    help:      'Distribution of total payroll run amounts in USD.',
-    buckets:   AMOUNT_BUCKETS,
-    registers: [this.registry],
+    name:       'payroll_run_amount_usd',
+    help:       'Distribution of total payroll run amounts in USD.',
+    labelNames: ['env'] as const,
+    buckets:    AMOUNT_BUCKETS,
+    registers:  [this.registry],
   });
 
   readonly payrollPaymentsTotal = new Counter({
@@ -235,7 +236,7 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
 
   /** Record a payroll run total amount in the histogram. */
   observePayrollRunAmount(amountUsd: number): void {
-    this.payrollRunAmountUsd.observe(amountUsd);
+    this.payrollRunAmountUsd.observe({ env: envLabel() }, amountUsd);
   }
 
   /** Increment payroll_payments_total for a given JPMC payment status. */

@@ -1,0 +1,92 @@
+// alloy.river — Grafana Alloy scrape configuration for NestJS Payroll + JPM
+//
+// Copy this file to your Alloy config directory (e.g. /etc/alloy/alloy.river)
+// or include it via the command line: --config=/path/to/alloy.river
+//
+// Environment variables consumed:
+//   ALLOY_SCRAPE_HOST   — NestJS app host (default: localhost)
+//   ALLOY_SCRAPE_PORT   — NestJS metrics port (default: 3000)
+//   PROMETHEUS_RW_URL   — Prometheus remote_write endpoint URL
+//   PROMETHEUS_RW_USER  — Prometheus remote_write username
+//   PROMETHEUS_RW_PASS  — Prometheus remote_write password
+
+// ── Scrape the NestJS app ────────────────────────────────────────────────────
+
+prometheus.scrape "nestjs_payroll_jpm" {
+  // Targets: the NestJS app exposing /metrics
+  targets = [{
+    __address__ = "${ALLOY_SCRAPE_HOST:-localhost}:${ALLOY_SCRAPE_PORT:-3000}",
+  }]
+
+  // Forward scraped metrics to the remote_write sink
+  forward_to = [prometheus.remote_write.default.receiver]
+
+  // Scrape every 15 seconds (production) or 5 seconds (development)
+  scrape_interval = "${SCRAPE_INTERVAL:-15s}"
+
+  // Metrics endpoint path
+  metrics_path = "/metrics"
+
+  // Timeout per scrape
+  scrape_timeout = "10s"
+
+  // Labels attached to all scraped metrics
+  labels = {
+    service  = "nestjs-payroll-jpm",
+    env      = "${NODE_ENV:-unknown}",
+    platform = "nestjs",
+  }
+}
+
+// ── Remote write to Prometheus / Grafana Cloud ───────────────────────────────
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "${PROMETHEUS_RW_URL}"
+
+    // Optional: basic auth for Grafana Cloud or self-hosted Prometheus
+    basic_auth {
+      username = "${PROMETHEUS_RW_USER:-}"
+      password = "${PROMETHEUS_RW_PASS:-}"
+    }
+
+    // Optional: bearer token auth
+    // bearer_token = "${PROMETHEUS_RW_TOKEN:-}"
+
+    // Queue configuration for high-throughput scenarios
+    queue_config {
+      capacity             = 10000
+      max_shards          = 5
+      min_shards          = 1
+      max_samples_per_send = 500
+      batch_send_deadline  = "5s"
+    }
+
+    // Metadata configuration
+    metadata_config {
+      send_interval = "1m"
+      send_timeout  = "10s"
+    }
+  }
+}
+
+// ── Health check endpoint for Alloy (optional) ───────────────────────────────
+
+// Expose Alloy's own /ready and /metrics endpoints on an internal HTTP server
+http.server "internal" {
+  host = "0.0.0.0"
+  port = 9090
+}
+
+// ── Metric relabeling (optional) ───────────────────────────────────────────
+
+// Add environment label to all metrics based on a constant
+prometheus.relabel "add_env_label" {
+  rule {
+    target_label = "env"
+    replacement  = "${NODE_ENV:-unknown}"
+  }
+
+  source_labels = ["__name__"]
+  action        = "replace"
+}
