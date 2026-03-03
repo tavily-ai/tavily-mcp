@@ -324,6 +324,7 @@ export function listPayrollTools(): Array<{
   endpoint: string;
 }> {
   return [
+    // ── Stateless tools (immediate submission) ────────────────────────────────
     {
       name:        'jpmorgan_create_payroll_payment',
       description: 'Submit a single employee payroll disbursement as an ACH credit transfer via the J.P. Morgan Payments API.',
@@ -347,6 +348,31 @@ export function listPayrollTools(): Array<{
       description: 'Approve and execute a payroll run as a checker (maker-checker workflow). Mirrors ApprovePayrollRunDto: provide approvedBy (checker user ID) and the payroll items to approve. Validates the approval, submits all ACH payments, and returns a per-item result with the approvedBy field attached.',
       method:      'POST',
       endpoint:    '/payments/v1/payment (×N)'
+    },
+    // ── Stateful tools (in-memory PayrollService, maker-checker by run ID) ────
+    {
+      name:        'jpmorgan_create_payroll_run_draft',
+      description: 'Create a DRAFT payroll run (stateful). Stores the run in memory with a UUID and returns it in DRAFT status. No payments are submitted yet — use jpmorgan_approve_payroll_run_by_id to trigger submission after checker approval.',
+      method:      'POST',
+      endpoint:    '(in-memory store)'
+    },
+    {
+      name:        'jpmorgan_approve_payroll_run_by_id',
+      description: 'Approve a DRAFT payroll run by its run ID (stateful maker-checker). The checker user ID must differ from the maker. Sets status to PENDING_SUBMISSION and fires ACH payment submission asynchronously. Returns the run in PENDING_SUBMISSION status immediately.',
+      method:      'POST',
+      endpoint:    '/payments/v1/payment (×N, async)'
+    },
+    {
+      name:        'jpmorgan_get_payroll_run',
+      description: 'Retrieve a stateful payroll run by its UUID. Returns the full run entity including per-payment JPMC tracking fields (paymentId, status, returnCode).',
+      method:      'GET',
+      endpoint:    '(in-memory store)'
+    },
+    {
+      name:        'jpmorgan_refresh_payroll_run_status',
+      description: 'Poll the JPMC Payments API for the latest status of each payment in a submitted run and update the run lifecycle status (SUBMITTED → PARTIALLY_POSTED / POSTED / PARTIALLY_RETURNED / RETURNED).',
+      method:      'GET',
+      endpoint:    '/payments/v1/payment/{id} (×N)'
     }
   ];
 }

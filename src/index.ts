@@ -118,6 +118,10 @@ import {
   type PayrollRunApprovalResult
 } from './payroll.js';
 
+// J.P. Morgan Payroll Service (stateful in-memory maker-checker)
+import { payrollService } from './payroll/payroll.service.js';
+import type { PayrollRun as PayrollRunEntity } from './payroll/models/payroll-run.model.js';
+
 
 
 dotenv.config();
@@ -1354,6 +1358,84 @@ class TavilyClient {
             },
             required: ["approved_by", "items"]
           }
+        },
+        // ── Stateful PayrollService tools (in-memory maker-checker by run ID) ──────
+        {
+          name: "jpmorgan_create_payroll_run_draft",
+          description: "Create a DRAFT payroll run (stateful). Stores the run in memory with a UUID and returns it in DRAFT status. No payments are submitted yet — use jpmorgan_approve_payroll_run_by_id to trigger submission after checker approval. Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              created_by: {
+                type: "string",
+                description: "Maker user ID who is initiating the payroll run (e.g. 'user-123')"
+              },
+              items: {
+                type: "array",
+                description: "Array of payroll items to include in the run (minimum 1)",
+                items: {
+                  type: "object",
+                  properties: {
+                    employee_id:    { type: "string", description: "Unique employee identifier" },
+                    employee_name:  { type: "string", description: "Full name of the employee" },
+                    routing_number: { type: "string", description: "ABA routing number (9 digits)" },
+                    account_number: { type: "string", description: "Bank account number" },
+                    account_type:   { type: "string", enum: ["CHECKING", "SAVINGS"], description: "Account type" },
+                    amount:         { type: "number", description: "Gross pay amount in USD" },
+                    effective_date: { type: "string", description: "Settlement date in yyyy-MM-dd format" }
+                  },
+                  required: ["employee_id", "employee_name", "routing_number", "account_number", "account_type", "amount", "effective_date"]
+                }
+              }
+            },
+            required: ["created_by", "items"]
+          }
+        },
+        {
+          name: "jpmorgan_approve_payroll_run_by_id",
+          description: "Approve a DRAFT payroll run by its run ID (stateful maker-checker). The checker user ID (approved_by) must differ from the maker (createdBy). Sets status to PENDING_SUBMISSION and fires ACH payment submission asynchronously. Returns the run in PENDING_SUBMISSION status immediately — poll with jpmorgan_get_payroll_run to observe SUBMITTED / FAILED. Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              run_id: {
+                type: "string",
+                description: "UUID of the payroll run to approve (returned by jpmorgan_create_payroll_run_draft)"
+              },
+              approved_by: {
+                type: "string",
+                description: "Checker user ID who is approving the run (must differ from the maker)"
+              }
+            },
+            required: ["run_id", "approved_by"]
+          }
+        },
+        {
+          name: "jpmorgan_get_payroll_run",
+          description: "Retrieve a stateful payroll run by its UUID. Returns the full run entity including lifecycle status, per-payment JPMC tracking fields (paymentId, jpmcStatus, jpmcReturnCode), maker/checker metadata, and timestamps.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              run_id: {
+                type: "string",
+                description: "UUID of the payroll run to retrieve"
+              }
+            },
+            required: ["run_id"]
+          }
+        },
+        {
+          name: "jpmorgan_refresh_payroll_run_status",
+          description: "Poll the JPMC Payments API for the latest status of each payment in a submitted run and update the run lifecycle status (SUBMITTED → PARTIALLY_POSTED / POSTED / PARTIALLY_RETURNED / RETURNED). Only runs in SUBMITTED, PARTIALLY_POSTED, or PARTIALLY_RETURNED status are refreshed. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              run_id: {
+                type: "string",
+                description: "UUID of the payroll run to refresh"
+              }
+            },
+            required: ["run_id"]
+          }
         }
       ];
 
@@ -2019,6 +2101,78 @@ text: formatResearchResults(researchResponse)
               return { content: [{ type: "text", text: formatPayrollRunApprovalResult(approvalResult) }] };
             } catch (err: any) {
               return { content: [{ type: "text", text: `J.P. Morgan Payroll Approval error: ${err.message}` }], isError: true };
+            }
+
+          // ── Stateful PayrollService tool handlers ─────────────────────────────
+
+          case "jpmorgan_create_payroll_run_draft":
+            if (!args.created_by || typeof args.created_by !== 'string' || args.created_by.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "created_by is required and must be a non-empty string (maker user ID).");
+            }
+            if (!Array.isArray(args.items) || args.items.length === 0) {
+              throw new McpError(ErrorCode.InvalidRequest, "items must be a non-empty array of payroll item objects.");
+            }
+            try {
+              const draftRun: PayrollRunEntity = await payrollService.createRun({
+                createdBy: args.created_by,
+                items: (args.items as any[]).map((item: any) => ({
+                  employeeId:    item.employee_id,
+                  employeeName:  item.employee_name,
+                  routingNumber: item.routing_number,
+                  accountNumber: item.account_number,
+                  accountType:   item.account_type,
+                  amount:        item.amount,
+                  effectiveDate: item.effective_date
+                }))
+              });
+              return { content: [{ type: "text", text: formatPayrollRunEntity(draftRun) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payroll Draft Run error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_approve_payroll_run_by_id":
+            if (!args.run_id || typeof args.run_id !== 'string' || args.run_id.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "run_id is required and must be a non-empty string (UUID of the payroll run).");
+            }
+            if (!args.approved_by || typeof args.approved_by !== 'string' || args.approved_by.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "approved_by is required and must be a non-empty string (checker user ID).");
+            }
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.");
+            }
+            try {
+              const approvedRun: PayrollRunEntity = await payrollService.approveRun(
+                args.run_id.trim(),
+                { approvedBy: args.approved_by.trim() }
+              );
+              return { content: [{ type: "text", text: formatPayrollRunEntity(approvedRun) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payroll Approve-by-ID error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_get_payroll_run":
+            if (!args.run_id || typeof args.run_id !== 'string' || args.run_id.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "run_id is required and must be a non-empty string (UUID of the payroll run).");
+            }
+            try {
+              const fetchedRun: PayrollRunEntity = await payrollService.getRun(args.run_id.trim());
+              return { content: [{ type: "text", text: formatPayrollRunEntity(fetchedRun) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Get Payroll Run error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_refresh_payroll_run_status":
+            if (!args.run_id || typeof args.run_id !== 'string' || args.run_id.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "run_id is required and must be a non-empty string (UUID of the payroll run).");
+            }
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            try {
+              const refreshedRun: PayrollRunEntity = await payrollService.refreshRunStatus(args.run_id.trim());
+              return { content: [{ type: "text", text: formatPayrollRunEntity(refreshedRun) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Refresh Payroll Run Status error: ${err.message}` }], isError: true };
             }
 
           default:
@@ -3535,6 +3689,41 @@ function formatBatchPayrollResult(result: BatchPayrollResult): string {
     if (!r.success && r.error) {
       output.push(`       Error:          ${r.error}`);
     }
+  });
+
+  return output.join('\n');
+}
+
+// ─── J.P. Morgan Payroll Run Entity formatter (stateful PayrollService) ───────
+
+function formatPayrollRunEntity(run: PayrollRunEntity): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payroll Run:');
+  output.push('');
+  output.push(`  Run ID:       ${run.id}`);
+  output.push(`  Status:       ${run.status}`);
+  output.push(`  Created By:   ${run.createdBy}`);
+  output.push(`  Created At:   ${run.createdAt instanceof Date ? run.createdAt.toISOString() : run.createdAt}`);
+  if (run.approvedBy) output.push(`  Approved By:  ${run.approvedBy}`);
+  if (run.approvedAt) output.push(`  Approved At:  ${run.approvedAt instanceof Date ? run.approvedAt.toISOString() : run.approvedAt}`);
+  output.push(`  Total Amount: $${run.totalAmount.toFixed(2)} USD`);
+  output.push(`  Payments:     ${run.payments.length}`);
+  output.push('');
+
+  if (run.payments.length === 0) {
+    output.push('No payment records.');
+    return output.join('\n');
+  }
+
+  output.push('Payment Records:');
+  run.payments.forEach((p, idx) => {
+    output.push(`\n  [${idx + 1}] ${p.employeeName} (${p.employeeId})`);
+    output.push(`       Amount:         $${p.amount.toFixed(2)} USD`);
+    output.push(`       Effective Date: ${p.effectiveDate}`);
+    output.push(`       Account Type:   ${p.accountType}`);
+    if (p.jpmcPaymentId) output.push(`       JPMC Payment ID: ${p.jpmcPaymentId}`);
+    if (p.jpmcStatus)    output.push(`       JPMC Status:     ${p.jpmcStatus}`);
+    if (p.jpmcReturnCode) output.push(`       Return Code:    ${p.jpmcReturnCode}`);
   });
 
   return output.join('\n');
