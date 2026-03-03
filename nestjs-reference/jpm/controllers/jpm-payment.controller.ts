@@ -29,6 +29,8 @@ import { SigningService } from '../services/signing.service';
 import { EncryptionService } from '../services/encryption.service';
 import { CallbackVerificationService } from '../services/callback-verification.service';
 import { JpmHttpService } from '../services/jpm-http.service';
+import { MetricsService } from '../../metrics/metrics.service';
+import { AuditLoggerService } from '../../common/logger/audit-logger.service';
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
@@ -59,6 +61,8 @@ export class JpmPaymentController {
     private readonly encryptionService: EncryptionService,
     private readonly callbackVerificationService: CallbackVerificationService,
     private readonly jpmHttp: JpmHttpService,
+    private readonly metrics: MetricsService,
+    private readonly audit: AuditLoggerService,
   ) {}
 
   /**
@@ -71,7 +75,10 @@ export class JpmPaymentController {
    *   4. POST to JPM /payments endpoint
    */
   @Post('payments')
-  async createPayment(@Body() dto: CreatePaymentDto): Promise<unknown> {
+  async createPayment(
+    @Body() dto: CreatePaymentDto,
+    @Headers('x-request-id') requestId = 'unknown',
+  ): Promise<unknown> {
     const serialised = JSON.stringify(dto);
 
     // ① Sign
@@ -95,9 +102,49 @@ export class JpmPaymentController {
       this.logger.debug('Request body encrypted');
     }
 
-    // ③ Send
-    const response = await this.jpmHttp.getClient().post('/payments', body, { headers });
-    return response.data;
+    // ③ Send — timed + counted
+    const endTimer = this.metrics.startJpmApiTimer('createPayment');
+    let response: unknown;
+    try {
+      const res = await this.jpmHttp.getClient().post('/payments', body, { headers });
+      this.metrics.incrementJpmApiCalls('createPayment', 'success');
+      response = res.data;
+    } catch (err) {
+      this.metrics.incrementJpmApiCalls('createPayment', 'failure');
+      // ── SOC 2 audit — failure ──────────────────────────────────────────────
+      this.audit.logFailure(
+        {
+          requestId,
+          actor:      'system',
+          action:     'jpm.payment.create',
+          resourceId: dto.reference ?? 'unknown',
+          extras: {
+            amount:   dto.amount,
+            currency: dto.currency,
+          },
+        },
+        'JPM_PAYMENT_CREATE_FAILED',
+        (err as Error)?.message ?? String(err),
+      );
+      throw err;
+    } finally {
+      endTimer();
+    }
+
+    // ── SOC 2 audit — success ──────────────────────────────────────────────
+    this.audit.log({
+      requestId,
+      actor:      'system',
+      action:     'jpm.payment.create',
+      resourceId: dto.reference ?? 'unknown',
+      result:     'success',
+      extras: {
+        amount:   dto.amount,
+        currency: dto.currency,
+      },
+    });
+
+    return response;
   }
 
   /**
@@ -111,6 +158,7 @@ export class JpmPaymentController {
   async handlePaymentCallback(
     @Req() req: { rawBody?: Buffer },
     @Headers('x-jpm-signature') signature: string,
+    @Headers('x-request-id') requestId = 'unknown',
     @Body() payload: JpmCallbackPayload,
   ): Promise<{ received: boolean }> {
     // ① Verify signature
@@ -119,8 +167,22 @@ export class JpmPaymentController {
       const valid = this.callbackVerificationService.verify(rawBody, signature ?? '');
       if (!valid) {
         this.logger.warn('JPM callback rejected: invalid signature');
+        this.metrics.incrementJpmCallbackVerification('invalid');
+        // ── SOC 2 audit — invalid callback ──────────────────────────────────
+        this.audit.logFailure(
+          {
+            requestId,
+            actor:      'jpm-webhook',
+            action:     'jpm.callback.verify',
+            resourceId: payload.paymentId ?? 'unknown',
+            extras:     { event_type: payload.eventType },
+          },
+          'JPM_CALLBACK_INVALID_SIGNATURE',
+          'Inbound JPM webhook signature verification failed.',
+        );
         throw new UnauthorizedException('Invalid JPM callback signature');
       }
+      this.metrics.incrementJpmCallbackVerification('valid');
       this.logger.debug('JPM callback signature verified');
     } else {
       this.logger.warn('Callback verification not configured — skipping signature check');
@@ -128,6 +190,20 @@ export class JpmPaymentController {
 
     // ② Process event
     this.logger.log(`JPM callback received: ${payload.eventType} / ${payload.paymentId}`);
+
+    // ── SOC 2 audit — callback received ───────────────────────────────────
+    this.audit.log({
+      requestId,
+      actor:      'jpm-webhook',
+      action:     'jpm.callback.verify',
+      resourceId: payload.paymentId ?? 'unknown',
+      result:     'success',
+      extras: {
+        event_type: payload.eventType,
+        status:     payload.status,
+      },
+    });
+
     // TODO: dispatch to your domain service based on payload.eventType
 
     return { received: true };

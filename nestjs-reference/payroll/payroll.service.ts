@@ -33,6 +33,9 @@ import {
 } from '@nestjs/common';
 import { CreatePayrollRunDto } from './dto/create-payroll-run.dto';
 import { ApprovePayrollRunDto } from './dto/approve-payroll-run.dto';
+import { MetricsService } from '../metrics/metrics.service';
+import { AuditLoggerService } from '../common/logger/audit-logger.service';
+import { maskPaymentItem } from '../common/utils/pii.util';
 
 // ─── Domain model (re-used from src) ─────────────────────────────────────────
 // Import the shared domain types from the plain-TS model file.
@@ -61,6 +64,11 @@ export class PayrollService {
    */
   private readonly runs = new Map<string, PayrollRun>();
 
+  constructor(
+    private readonly metrics: MetricsService,
+    private readonly audit: AuditLoggerService,
+  ) {}
+
   // ── createRun ──────────────────────────────────────────────────────────────
 
   /**
@@ -73,7 +81,7 @@ export class PayrollService {
    * @param dto - Validated CreatePayrollRunDto (maker user ID + payroll items)
    * @returns The newly created PayrollRun in DRAFT status
    */
-  async createRun(dto: CreatePayrollRunDto): Promise<PayrollRun> {
+  async createRun(dto: CreatePayrollRunDto, requestId = 'unknown'): Promise<PayrollRun> {
     const id = randomUUID();
 
     const payments: PayrollPayment[] = dto.items.map((item) => ({
@@ -102,6 +110,24 @@ export class PayrollService {
     this.logger.log(
       `Created payroll run ${id} with ${payments.length} payments, total $${totalAmount.toFixed(2)}`,
     );
+
+    // ── Metrics ──────────────────────────────────────────────────────────────
+    this.metrics.incrementPayrollRunsCreated();
+    this.metrics.observePayrollRunAmount(totalAmount);
+
+    // ── SOC 2 audit event ─────────────────────────────────────────────────────
+    this.audit.log({
+      requestId,
+      actor:      run.createdBy,
+      action:     'payroll.run.create',
+      resourceId: run.id,
+      result:     'success',
+      extras: {
+        payment_count: payments.length,
+        amount_usd:    totalAmount,
+        payments:      payments.map(maskPaymentItem),
+      },
+    });
 
     return run;
   }
@@ -142,7 +168,7 @@ export class PayrollService {
    * @throws NotFoundException if the run is not found
    * @throws BadRequestException if the status is invalid or maker === checker
    */
-  async approveRun(id: string, dto: ApprovePayrollRunDto): Promise<PayrollRun> {
+  async approveRun(id: string, dto: ApprovePayrollRunDto, requestId = 'unknown'): Promise<PayrollRun> {
     const run = await this.getRun(id);
 
     if (run.status !== 'DRAFT' && run.status !== 'PENDING_SUBMISSION') {
@@ -165,10 +191,28 @@ export class PayrollService {
 
     this.logger.log(`Run ${id} approved by ${run.approvedBy}, submitting to JPMorgan…`);
 
+    // ── Metrics ──────────────────────────────────────────────────────────────
+    this.metrics.incrementPayrollRunsApproved();
+
+    // ── SOC 2 audit event ─────────────────────────────────────────────────────
+    this.audit.log({
+      requestId,
+      actor:      run.approvedBy,
+      action:     'payroll.run.approve',
+      resourceId: run.id,
+      result:     'success',
+      extras: {
+        maker:         run.createdBy,
+        payment_count: run.payments.length,
+        amount_usd:    run.totalAmount,
+      },
+    });
+
     // Fire-and-forget — submission runs asynchronously so the controller
     // can return the PENDING_SUBMISSION state immediately.
     this.submitRunToJpmc(run.id).catch((err) => {
       this.logger.error(`Failed to submit run ${run.id}: ${err?.message ?? err}`);
+      this.metrics.incrementPayrollRunsSubmitted('failure');
       const current = this.runs.get(run.id);
       if (current) {
         current.status = 'FAILED';
@@ -202,6 +246,7 @@ export class PayrollService {
     this.logger.log(`Submitting ${run.payments.length} payment(s) for run ${runId} to JPMorgan…`);
 
     for (const payment of run.payments) {
+      const endTimer = this.metrics.startPayrollJpmcTimer('createAchPayment');
       const resp = await createPayrollPayment({
         employeeId:    payment.employeeId,
         employeeName:  payment.employeeName,
@@ -210,7 +255,16 @@ export class PayrollService {
         accountType:   payment.accountType,
         amount:        payment.amount,
         effectiveDate: payment.effectiveDate,
-      });
+      })
+        .then((r) => {
+          this.metrics.incrementJpmApiCalls('createAchPayment', 'success');
+          return r;
+        })
+        .catch((err) => {
+          this.metrics.incrementJpmApiCalls('createAchPayment', 'failure');
+          throw err;
+        })
+        .finally(() => endTimer());
 
       payment.jpmcPaymentId = resp.paymentId ?? resp.id;
       payment.jpmcStatus    = resp.status as string | undefined;
@@ -218,6 +272,12 @@ export class PayrollService {
 
     run.status = 'SUBMITTED';
     this.runs.set(runId, run);
+
+    // ── Metrics ──────────────────────────────────────────────────────────────
+    this.metrics.incrementPayrollRunsSubmitted('success');
+    for (const p of run.payments) {
+      if (p.jpmcStatus) this.metrics.incrementPayrollPayments(p.jpmcStatus);
+    }
 
     this.logger.log(`Run ${runId} submitted — ${run.payments.length} payment(s) dispatched.`);
   }
@@ -240,7 +300,7 @@ export class PayrollService {
    * @returns The updated PayrollRun with refreshed payment statuses
    * @throws NotFoundException if the run is not found
    */
-  async refreshRunStatus(runId: string): Promise<PayrollRun> {
+  async refreshRunStatus(runId: string, requestId = 'unknown'): Promise<PayrollRun> {
     const run = await this.getRun(runId);
 
     const eligibleStatuses: PayrollStatus[] = ['SUBMITTED', 'PARTIALLY_POSTED', 'PARTIALLY_RETURNED'];
@@ -255,7 +315,11 @@ export class PayrollService {
     for (const payment of run.payments) {
       if (!payment.jpmcPaymentId) continue;
 
-      const statusResp = await getPayment(payment.jpmcPaymentId);
+      const endTimer = this.metrics.startPayrollJpmcTimer('getPayment');
+      const statusResp = await getPayment(payment.jpmcPaymentId)
+        .then((r) => { this.metrics.incrementJpmApiCalls('getPayment', 'success'); return r; })
+        .catch((err) => { this.metrics.incrementJpmApiCalls('getPayment', 'failure'); throw err; })
+        .finally(() => endTimer());
 
       payment.jpmcStatus     = statusResp.status as string | undefined;
       payment.jpmcReturnCode = (statusResp as any).returnCode ?? null;
@@ -284,10 +348,29 @@ export class PayrollService {
       `Run ${runId} status refreshed → "${run.status}" (posted=${posted}, returned=${returned})`,
     );
 
+    // ── Metrics ──────────────────────────────────────────────────────────────
+    for (const p of run.payments) {
+      if (p.jpmcStatus) this.metrics.incrementPayrollPayments(p.jpmcStatus);
+    }
+
+    // ── SOC 2 audit event ─────────────────────────────────────────────────────
+    this.audit.log({
+      requestId,
+      actor:      'system',
+      action:     'payroll.run.refresh_status',
+      resourceId: runId,
+      result:     'success',
+      extras: {
+        new_status: run.status,
+        posted,
+        returned,
+      },
+    });
+
     return run;
   }
 
-  // ── listRuns (utility) ─────────────────────────────────────────────────────
+  // ── listRuns ───────────────────────────────────────────────────────────────
 
   /**
    * List all payroll runs currently held in memory.

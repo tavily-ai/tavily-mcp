@@ -254,3 +254,166 @@ server {
         proxy_set_header Host api-sandbox.jpmorgan.com;
     }
 }
+```
+
+---
+
+## Metrics & Observability (Prometheus + Grafana Alloy)
+
+### Overview
+
+`MetricsModule` is a `@Global()` NestJS module that wires Prometheus metrics,
+SOC 2 audit logging, and global HTTP instrumentation into every module that
+imports it (or into the whole app when imported once in `AppModule`).
+
+### Installation
+
+```bash
+npm install prom-client
+```
+
+### AppModule integration
+
+```typescript
+// app.module.ts
+import { Module } from '@nestjs/common';
+import { MetricsModule } from './metrics/metrics.module';
+import { JpmModule }     from './jpm/jpm.module';
+import { PayrollModule } from './payroll/payroll.module';
+
+@Module({
+  imports: [MetricsModule, JpmModule, PayrollModule],
+})
+export class AppModule {}
+```
+
+### main.ts — global filter + validation
+
+```typescript
+import { NestFactory }      from '@nestjs/core';
+import { ValidationPipe }   from '@nestjs/common';
+import { AppModule }        from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // Global DTO validation (required by PayrollModule DTOs)
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // Raw body middleware for JPM callback signature verification
+  const express = await import('express');
+  app.use('/jpm/callbacks', express.raw({ type: 'application/json' }));
+
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+> `AllExceptionsFilter`, `HttpMetricsInterceptor`, and `AuditLogInterceptor` are
+> registered automatically via `APP_FILTER` / `APP_INTERCEPTOR` tokens inside
+> `MetricsModule` — no manual `useGlobalFilters` / `useGlobalInterceptors` call needed.
+
+### Prometheus scrape endpoint
+
+`MetricsController` exposes `GET /metrics` in the standard Prometheus text
+exposition format. Configure Grafana Alloy to scrape it:
+
+```yaml
+# alloy/config.alloy (River syntax)
+prometheus.scrape "nestjs" {
+  targets = [{ __address__ = "localhost:3000" }]
+  forward_to = [prometheus.remote_write.default.receiver]
+  metrics_path = "/metrics"
+  scrape_interval = "15s"
+}
+```
+
+### Metric catalogue
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `http_requests_total` | Counter | `method`, `route`, `status_code` | All inbound HTTP requests |
+| `http_request_duration_seconds` | Histogram | `method`, `route`, `status_code` | HTTP request latency |
+| `http_errors_total` | Counter | `method`, `route`, `status_code` | HTTP 4xx + 5xx responses |
+| `payroll_runs_created_total` | Counter | `env` | Payroll runs created (DRAFT) |
+| `payroll_runs_approved_total` | Counter | `env` | Payroll runs approved by checker |
+| `payroll_runs_submitted_total` | Counter | `status`, `env` | Payroll runs submitted to JPMC |
+| `payroll_run_amount_usd` | Histogram | — | Distribution of run totals (USD) |
+| `payroll_payments_total` | Counter | `status`, `env` | Individual payments by JPMC status |
+| `payroll_jpmc_api_duration_seconds` | Histogram | `operation` | JPMC API latency during payroll |
+| `jpm_api_calls_total` | Counter | `operation`, `status` | Outbound JPMC API calls |
+| `jpm_api_duration_seconds` | Histogram | `operation` | Outbound JPMC API latency |
+| `jpm_callback_verifications_total` | Counter | `result` | Inbound webhook verifications |
+
+---
+
+## SOC 2 Audit Logging
+
+### Overview
+
+`AuditLoggerService` emits newline-delimited JSON (NDJSON) audit events to
+`stdout` so that Grafana Alloy / Loki / any log aggregator can ingest them.
+
+Every event is structured as:
+
+```json
+{
+  "level":       "audit",
+  "timestamp":   "2025-01-15T10:30:00.000Z",
+  "request_id":  "550e8400-e29b-41d4-a716-446655440000",
+  "actor":       "alice@example.com",
+  "action":      "payroll.run.approve",
+  "resource_id": "run-uuid-here",
+  "result":      "success",
+  "maker":       "bob@example.com",
+  "payment_count": 12,
+  "amount_usd":  45000
+}
+```
+
+### Action catalogue
+
+| Action | Actor | Trigger |
+| --- | --- | --- |
+| `payroll.run.create` | maker user ID | `POST /payroll/runs` |
+| `payroll.run.approve` | checker user ID | `POST /payroll/runs/:id/approve` |
+| `payroll.run.refresh_status` | `system` | `POST /payroll/runs/:id/refresh-status` |
+| `jpm.payment.create` | `system` | `POST /jpm/payments` |
+| `jpm.callback.verify` | `jpm-webhook` | `POST /jpm/callbacks/payment` |
+
+### SOC 2 controls satisfied
+
+| Control | Requirement | Implementation |
+| --- | --- | --- |
+| CC6.1 | Logical access controls | Every action logged with `actor` + `resource_id` |
+| CC7.2 | Security event monitoring | Auth failures logged with `result=failure` + `error_code` |
+| CC9.2 | Financial transaction integrity | Payroll events include `amount_usd` + `payment_count` |
+| A1.2 | Availability & traceability | All events include `timestamp` + `request_id` |
+
+### PII masking
+
+All account numbers and routing numbers are masked before being written to audit
+logs. The `maskPaymentItem` helper in `common/utils/pii.util.ts` replaces the
+last N digits with `*` characters:
+
+```typescript
+// Input:  { accountNumber: '123456789', routingNumber: '021000021', ... }
+// Output: { accountNumber: '****6789',  routingNumber: '*****0021', ... }
+```
+
+Never pass raw `PayrollPayment` objects to `audit.log()` — always call
+`maskPaymentItem(payment)` first.
+
+### Loki query examples
+
+```logql
+# All audit events for a specific payroll run
+{app="nestjs"} | json | level="audit" | resource_id="<run-uuid>"
+
+# All failed operations in the last hour
+{app="nestjs"} | json | level="audit" | result="failure" | __error__=""
+
+# Payroll approvals by checker
+{app="nestjs"} | json | level="audit" | action="payroll.run.approve"
+  | line_format "{{.actor}} approved {{.resource_id}} — ${{.amount_usd}}"
+```

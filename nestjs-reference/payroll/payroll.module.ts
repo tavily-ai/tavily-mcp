@@ -45,8 +45,10 @@
 import { Module } from '@nestjs/common';
 import { PayrollController } from './payroll.controller';
 import { PayrollService } from './payroll.service';
+import { MetricsModule } from '../metrics/metrics.module';
 
 @Module({
+  imports:     [MetricsModule],
   controllers: [PayrollController],
   providers:   [PayrollService],
   exports:     [PayrollService],

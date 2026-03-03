@@ -42,6 +42,7 @@ import { JpmClientProvider } from './providers/jpm-client.provider';
 import { JpmPaymentController } from './controllers/jpm-payment.controller';
 import { JpmcCorporateQuickPayClient } from './services/jpmc-corporate-quickpay.client';
 import { jpmcConfig } from '../../src/config/jpmc.config';
+import { MetricsModule } from '../metrics/metrics.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { jpmcConfig } from '../../src/config/jpmc.config';
     // jpmc.baseUrl, jpmc.tokenUrl, jpmc.clientId, jpmc.clientSecret, etc.
     // See src/config/jpmc.config.ts for the full list of keys.
     ConfigModule.forFeature(jpmcConfig),
+    MetricsModule,
   ],
   controllers: [JpmPaymentController],
   providers: [
