@@ -349,7 +349,7 @@ prometheus.scrape "nestjs" {
 
 ## SOC 2 Audit Logging
 
-### Overview
+### Audit event format
 
 `AuditLoggerService` emits newline-delimited JSON (NDJSON) audit events to
 `stdout` so that Grafana Alloy / Loki / any log aggregator can ingest them.
