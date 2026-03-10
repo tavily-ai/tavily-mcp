@@ -1,5 +1,5 @@
 {
-  "name": "tavily-mcp",
+  "name": "@owlban/frog",
   "version": "0.3.0",
   "mcpName": "io.github.tavily-ai/tavily-mcp",
   "description": "MCP server for advanced web search using Tavily",

@@ -13,7 +13,8 @@
   - ✅ https://github.com/ESADavid/tavily-mcp/pull/1
 - [ ] 5. Merge PR (ESADavid must approve & merge via web UI)
   - Version already bumped to 0.3.0 in package.json ✅
-- [ ] 6. npm publish
+- [x] 6. npm publish
+  - ✅ Published @owlban/frog@0.3.0 to npm registry
 
 ## Summary
 
