@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "isolatedModules": true,
+    "baseUrl": "..",
+    "outDir": "./build",
+    "types": ["node", "jest"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "mocks/**/*.ts",
+    "tests/**/*.ts",
+    "../nestjs-reference/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "../node_modules"
+  ]
+}
