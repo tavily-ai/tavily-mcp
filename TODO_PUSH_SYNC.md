@@ -10,7 +10,7 @@
 - [x] 3. Push to origin/cloudflare-mcp-integration (ESADavid)
   - ❌ BLOCKED: 403 — used cross-fork PR instead (OwlbanGroup → ESADavid)
 - [x] 4. Open PR: cloudflare-mcp-integration → main on ESADavid/tavily-mcp
-  - ✅ https://github.com/ESADavid/tavily-mcp/pull/1
+  - ✅ <https://github.com/ESADavid/tavily-mcp/pull/1>
 - [ ] 5. Merge PR (ESADavid must approve & merge via web UI)
   - Version already bumped to 0.3.0 in package.json ✅
 - [x] 6. npm publish
