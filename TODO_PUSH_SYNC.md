@@ -9,8 +9,8 @@
   - ✅ HEAD at 8fcb9f4 (production ready)
 - [x] 3. Push to origin/cloudflare-mcp-integration (ESADavid)
   - ❌ BLOCKED: 403 — used cross-fork PR instead (OwlbanGroup → ESADavid)
-- [x] 4. Open PR: cloudflare-mcp-integration → main on ESADavid/tavily-mcp
-  - ✅ <https://github.com/ESADavid/tavily-mcp/pull/1>
+- [x] 4. Open PR: cloudflare-mcp-integration → main on tavily-ai/tavily-mcp
+  - ✅ <https://github.com/tavily-ai/tavily-mcp/pull/124>
 - [ ] 5. Merge PR (ESADavid must approve & merge via web UI)
   - Version already bumped to 0.3.0 in package.json ✅
 - [x] 6. npm publish
@@ -18,11 +18,11 @@
 
 ## Summary
 
-| Remote   | URL                                           | Status                                             |
-|----------|-----------------------------------------------|----------------------------------------------------|
-| owlban   | <https://github.com/OwlbanGroup/tavily-mcp>   | ✅ Up to date (8fcb9f4) — PRODUCTION READY          |
-| origin   | <https://github.com/ESADavid/tavily-mcp>      | ❌ Push blocked (403) — use PR via web UI          |
-| upstream | <https://github.com/tavily-ai/tavily-mcp>     | (read-only reference)                              |
+| Remote | URL | Status |
+| --- | --- | --- |
+| owlban | <https://github.com/OwlbanGroup/tavily-mcp> | ✅ Up to date (8fcb9f4) — PRODUCTION READY |
+| origin | <https://github.com/ESADavid/tavily-mcp> | ❌ Push blocked (403) — use PR via web UI |
+| upstream | <https://github.com/tavily-ai/tavily-mcp> | (read-only reference) |
 
 ## Resolution — Push to origin (ATTEMPTS FAILED)
 
@@ -36,10 +36,16 @@ Multiple PATs tried, all returned 403. Possible causes:
 
 ### Option A: Create PR via GitHub Web UI (Recommended)
 
-1. Go to: <https://github.com/ESADavid/tavily-mcp/compare/main...OwlbanGroup:tavily-mcp:cloudflare-mcp-integration>
+**Prerequisite:** ESADavid must push the branch to their fork first, OR use the fork comparison method:
+
+1. Go to: <https://github.com/tavily-ai/tavily-mcp/compare/main...ESADavid:cloudflare-mcp-integration>
 2. Click "Create pull request"
 3. Title: `feat: Cloudflare/Alby/Netlify/AgentQL/JPMorgan Embedded Payments + NestJS JpmHttpService`
 4. Merge via web UI
+
+**Alternative:** If ESADavid can't push, create PR from OwlbanGroup fork:
+1. Push branch to OwlbanGroup: `git push owlban cloudflare-mcp-integration`
+2. Create PR: <https://github.com/tavily-ai/tavily-mcp/compare/main...OwlbanGroup:cloudflare-mcp-integration>
 
 ### Option B: Fix Token and Retry
 
