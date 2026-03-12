@@ -69,11 +69,19 @@ class TavilyClient {
     research: 'https://api.tavily.com/research'
   };
 
+  private docsURLs: Record<string, string> = {
+    search: 'https://docs.tavily.com/documentation/api-reference/endpoint/search',
+    extract: 'https://docs.tavily.com/documentation/api-reference/endpoint/extract',
+    crawl: 'https://docs.tavily.com/documentation/api-reference/endpoint/crawl',
+    map: 'https://docs.tavily.com/documentation/api-reference/endpoint/map',
+    research: 'https://docs.tavily.com/documentation/api-reference/endpoint/research',
+  };
+
   constructor() {
     this.server = new Server(
       {
         name: "tavily-mcp",
-        version: "0.2.10",
+        version: "0.2.18",
       },
       {
         capabilities: {
@@ -219,7 +227,7 @@ class TavilyClient {
               },
               country: {
                 type: "string",
-                description: "Boost search results from a specific country. This will prioritize content from the selected country in the search results. Available only if topic is general.",
+                description: "Boost search results from a specific country. Must be a full country name (e.g., 'United States', 'Japan', 'Germany'). ISO country codes (e.g., 'us', 'jp') are not supported. Available only if topic is general. See https://docs.tavily.com/documentation/api-reference/search for the full list of supported countries.",
                 default: ""
               },
               include_favicon: {
@@ -397,7 +405,7 @@ class TavilyClient {
         },
         {
           name: "tavily_research",
-          description: "Perform comprehensive research on a given topic or question. Use this tool when you need to gather information from multiple sources to answer a question or complete a task. Returns a detailed response based on the research findings.",
+          description: "Perform comprehensive research on a given topic or question. Use this tool when you need to gather information from multiple sources to answer a question or complete a task. Returns a detailed response based on the research findings. Rate limit: 20 requests per minute.",
           inputSchema: {
             type: "object",
             properties: {
@@ -535,10 +543,18 @@ class TavilyClient {
         };
       } catch (error: any) {
         if (axios.isAxiosError(error)) {
+          const toolName = request.params.name?.replace('tavily_', '') || '';
+          const docsUrl = this.docsURLs[toolName] || '';
+          const responseData = error.response?.data;
+          const detail = responseData && typeof responseData === 'object'
+            ? (responseData.detail || responseData.message || responseData)
+            : (error.message);
+          const detailStr = typeof detail === 'object' ? JSON.stringify(detail) : String(detail);
+          const docsSuffix = docsUrl ? `\nDocumentation: ${docsUrl}` : '';
           return {
             content: [{
               type: "text",
-              text: `Tavily API error: ${error.response?.data?.message ?? error.message}`
+              text: `Tavily API error: ${detailStr}${docsSuffix}`
             }],
             isError: true,
           }
@@ -609,9 +625,9 @@ class TavilyClient {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {
-        throw new Error('Invalid API key');
+        throw new Error(`Invalid API key. Documentation: ${this.docsURLs.search}`);
       } else if (error.response?.status === 429) {
-        throw new Error('Usage limit exceeded');
+        throw new Error(`Usage limit exceeded. Documentation: ${this.docsURLs.search}`);
       }
       throw error;
     }
@@ -626,9 +642,9 @@ class TavilyClient {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {
-        throw new Error('Invalid API key');
+        throw new Error(`Invalid API key. Documentation: ${this.docsURLs.extract}`);
       } else if (error.response?.status === 429) {
-        throw new Error('Usage limit exceeded');
+        throw new Error(`Usage limit exceeded. Documentation: ${this.docsURLs.extract}`);
       }
       throw error;
     }
@@ -643,9 +659,9 @@ class TavilyClient {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {
-        throw new Error('Invalid API key');
+        throw new Error(`Invalid API key. Documentation: ${this.docsURLs.crawl}`);
       } else if (error.response?.status === 429) {
-        throw new Error('Usage limit exceeded');
+        throw new Error(`Usage limit exceeded. Documentation: ${this.docsURLs.crawl}`);
       }
       throw error;
     }
@@ -660,9 +676,9 @@ class TavilyClient {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {
-        throw new Error('Invalid API key');
+        throw new Error(`Invalid API key. Documentation: ${this.docsURLs.map}`);
       } else if (error.response?.status === 429) {
-        throw new Error('Usage limit exceeded');
+        throw new Error(`Usage limit exceeded. Documentation: ${this.docsURLs.map}`);
       }
       throw error;
     }
@@ -684,7 +700,7 @@ class TavilyClient {
 
       const requestId = response.data.request_id;
       if (!requestId) {
-        return { error: 'No request_id returned from research endpoint' };
+        return { error: `No request_id returned from research endpoint. Documentation: ${this.docsURLs.research}` };
       }
 
       // For model=auto, use pro timeout since we don't know which model will be used
@@ -714,7 +730,7 @@ class TavilyClient {
           }
 
           if (status === 'failed') {
-            return { error: 'Research task failed' };
+            return { error: `Research task failed. Documentation: ${this.docsURLs.research}` };
           }
 
         } catch (pollError: any) {
@@ -727,12 +743,12 @@ class TavilyClient {
         pollInterval = Math.min(pollInterval * POLL_BACKOFF_FACTOR, MAX_POLL_INTERVAL);
       }
 
-      return { error: 'Research task timed out' };
+      return { error: `Research task timed out. Documentation: ${this.docsURLs.research}` };
     } catch (error: any) {
       if (error.response?.status === 401) {
-        throw new Error('Invalid API key');
+        throw new Error(`Invalid API key. Documentation: ${this.docsURLs.research}`);
       } else if (error.response?.status === 429) {
-        throw new Error('Usage limit exceeded');
+        throw new Error(`Usage limit exceeded. Documentation: ${this.docsURLs.research}`);
       }
       throw error;
     }
