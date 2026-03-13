@@ -1,0 +1,12 @@
+{
+  "MD004": false,
+  "MD013": false,
+  "MD026": {
+    "punctuation": ".,;:!"
+  },
+  "MD060": {
+    "style": "compact"
+  },
+  "MD033": false
+}
+

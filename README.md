@@ -151,6 +151,7 @@ rm -rf ~/.mcp-auth
 ```
 
 > **Note:**
+>
 > - OAuth authentication is optional. You can still use API key authentication at any time by including your Tavily API key in the URL query parameter (`?tavilyApiKey=...`) or by setting it in the `Authorization` header, as described above.
 
 #### Selecting Which API Key Is Used for OAuth
@@ -254,6 +255,706 @@ export STRIPE_SECRET_KEY="sk_test_your_stripe_secret_key"
 ```
 
 > **Security Note:** Never hardcode your Stripe secret key in source code or configuration files that are committed to version control. Always use environment variables.
+
+## Cloudflare MCP Servers
+
+The Tavily MCP server also provides integration with Cloudflare's MCP servers for additional capabilities. These can be added as remote MCP servers to your client configuration.
+
+### Available Cloudflare MCP Servers
+
+| Service | URL | Description |
+| ------- | --- | ----------- |
+| Observability | `https://observability.mcp.cloudflare.com/mcp` | Monitoring, logs, and metrics |
+| Radar | `https://radar.mcp.cloudflare.com/mcp` | Security analytics and threat data |
+| Browser | `https://browser.mcp.cloudflare.com/mcp` | Web browsing and page rendering |
+
+### Connecting to Cloudflare MCP Servers
+
+#### Claude Desktop
+
+Add Cloudflare MCP servers to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "cloudflare-observability": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-radar": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-browser": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+Or using the remote server approach:
+
+```json
+{
+  "mcpServers": {
+    "cloudflare-observability": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://observability.mcp.cloudflare.com/mcp"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-radar": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://radar.mcp.cloudflare.com/mcp"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-browser": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://browser.mcp.cloudflare.com/mcp"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+#### Cursor
+
+Add Cloudflare MCP servers to your Cursor configuration (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "cloudflare-observability": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-radar": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    },
+    "cloudflare-browser": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server"],
+      "env": {
+        "CLOUDFLARE_API_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+### Getting a Cloudflare API Token
+
+1. Log in to the [Cloudflare Dashboard](https://dash.cloudflare.com)
+2. Go to Profile > API Tokens
+3. Click "Create Token"
+4. Choose a template or create a custom token
+5. Ensure the token has appropriate permissions for the services you want to use
+
+> **Note:** Some Cloudflare MCP servers may require specific API token permissions. Refer to the Cloudflare MCP server documentation for details.
+
+## Eleven Labs MCP Server
+
+The Tavily MCP server provides integration with Eleven Labs' MCP server for text-to-speech and voice synthesis capabilities.
+
+### Available Eleven Labs Tools
+
+When you add the Eleven Labs MCP server to your client, you'll have access to:
+
+- `elevenlabs-text-to-speech` - Convert text to speech with various voices
+- `elevenlabs-voices` - List available voices for synthesis
+- `elevenlabs-models` - List available TTS models
+- `elevenlabs-settings` - Get or set user preferences
+
+### Connecting to Eleven Labs MCP Server
+
+#### Claude Desktop (Eleven Labs)
+
+Add the Eleven Labs MCP server to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "elevenlabs": {
+      "command": "npx",
+      "args": ["-y", "@elevenlabs/mcp-server"],
+      "env": {
+        "ELEVENLABS_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+#### Cursor (Eleven Labs)
+
+Add the Eleven Labs MCP server to your Cursor configuration (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "elevenlabs": {
+      "command": "npx",
+      "args": ["-y", "@elevenlabs/mcp-server"],
+      "env": {
+        "ELEVENLABS_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### Getting an Eleven Labs API Key
+
+1. Log in to the [Eleven Labs Dashboard](https://elevenlabs.io/app)
+2. Go to Settings > API Keys
+3. Click "Create API Key"
+4. Copy your API key and use it in your MCP client configuration
+
+> **Note:** The Eleven Labs MCP server requires an API key with appropriate permissions for text-to-speech operations.
+
+### Eleven Labs Resources
+
+- [Eleven Labs Documentation](https://elevenlabs.io/docs)
+- [Eleven Labs MCP GitHub](https://github.com/elevenlabs/elevenlabs-mcp)
+
+## GitHub MCP Server
+
+The Tavily MCP server provides integration with GitHub's MCP server for code scanning, issues, pull requests, and repository management capabilities.
+
+### Available GitHub Tools
+
+When you add the GitHub MCP server to your client, you'll have access to:
+
+- `github-code-scanning` - Security vulnerability detection
+- `github-issues` - Create, read, update, and search issues
+- `github-pull-requests` - Create, read, update, and search PRs
+- `github-repositories` - Manage repositories, branches, and commits
+- `github-search` - Search code, issues, PRs, and repositories
+- `github-actions` - Manage workflows and runs
+
+### Connecting to GitHub MCP Server
+
+#### Claude Desktop (GitHub)
+
+Add the GitHub MCP server to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@github/mcp-server"],
+      "env": {
+        "GITHUB_TOKEN": "your-github-token"
+      }
+    }
+  }
+}
+```
+
+#### Cursor (GitHub)
+
+Add the GitHub MCP server to your Cursor configuration (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@github/mcp-server"],
+      "env": {
+        "GITHUB_TOKEN": "your-github-token"
+      }
+    }
+  }
+}
+```
+
+### Getting a GitHub Token
+
+1. Log in to your GitHub account
+2. Go to Settings > Developer settings > Personal access tokens
+3. Click "Generate new token"
+4. Select the scopes you need (repo, workflow, read:org, etc.)
+5. Copy your token and use it in your MCP client configuration
+
+> **Note:** The GitHub MCP server requires a token with appropriate permissions for the operations you want to perform.
+
+### GitHub Resources
+
+- [GitHub MCP Server](https://github.com/github/github-mcp-server)
+
+## AgentQL MCP Server
+
+The Tavily MCP server provides integration with AgentQL's MCP server for AI-powered web scraping and data extraction capabilities.
+
+### Available AgentQL Tools
+
+When you add the AgentQL MCP server to your client, you'll have access to:
+
+- `query_data` - Extract structured data from any web page using AgentQL's GraphQL-like query language
+- `get_web_element` - Locate and retrieve specific web elements from a page using natural language queries
+
+### Connecting to AgentQL MCP Server
+
+#### Claude Desktop (AgentQL)
+
+Add the AgentQL MCP server to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "agentql": {
+      "command": "npx",
+      "args": ["-y", "agentql-mcp"],
+      "env": {
+        "AGENTQL_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+#### Cursor (AgentQL)
+
+Add the AgentQL MCP server to your Cursor configuration (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "agentql": {
+      "command": "npx",
+      "args": ["-y", "agentql-mcp"],
+      "env": {
+        "AGENTQL_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### Getting an AgentQL API Key
+
+1. Visit <https://agentql.com>
+2. Sign up for an account or log in
+3. Navigate to your account settings or API keys section
+4. Generate a new API key
+5. Copy your API key and use it in your MCP client configuration
+
+> **Note:** The AgentQL MCP server requires an API key with appropriate permissions for web scraping operations.
+
+### AgentQL Resources
+
+- [AgentQL MCP GitHub](https://github.com/tinyfish-io/agentql-mcp)
+
+## Alby Bitcoin Lightning MCP Server
+
+The Tavily MCP server provides integration with Alby's MCP server for Bitcoin Lightning wallet operations using Nostr Wallet Connect (NWC).
+
+### Available Alby Tools
+
+When you add the Alby MCP server to your client, you'll have access to:
+
+**NWC Wallet Tools:**
+
+- `get_balance` - Get the balance of the connected lightning wallet
+- `get_info` - Get NWC capabilities and general information about the wallet and underlying lightning node
+- `get_wallet_service_info` - Get NWC capabilities, supported encryption and notification types
+- `lookup_invoice` - Look up lightning invoice details from a BOLT-11 invoice or payment hash
+- `make_invoice` - Create a lightning invoice
+- `pay_invoice` - Pay a lightning invoice
+- `list_transactions` - List all transactions from the connected wallet with optional filtering
+
+**Lightning Tools:**
+
+- `fetch_l402` - Fetch a paid resource protected by L402 (Lightning HTTP 402 Payment Required)
+- `fiat_to_sats` - Convert fiat currency amounts (e.g. USD, EUR) to satoshis
+- `parse_invoice` - Parse a BOLT-11 lightning invoice and return its details
+- `request_invoice` - Request a lightning invoice from a lightning address (LNURL)
+
+### Connecting to Alby MCP Server
+
+#### Option 1: Local (STDIO) — Claude Desktop
+
+Add the Alby MCP server to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "alby": {
+      "command": "npx",
+      "args": ["-y", "@getalby/mcp"],
+      "env": {
+        "NWC_CONNECTION_STRING": "nostr+walletconnect://..."
+      }
+    }
+  }
+}
+```
+
+#### Option 1 (Cursor): Local (STDIO)
+
+Add the Alby MCP server to your Cursor configuration (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "alby": {
+      "command": "npx",
+      "args": ["-y", "@getalby/mcp"],
+      "env": {
+        "NWC_CONNECTION_STRING": "nostr+walletconnect://..."
+      }
+    }
+  }
+}
+```
+
+#### Option 2: Remote Server
+
+Connect directly to Alby's hosted MCP server (no local installation required):
+
+- **HTTP Streamable:** `https://mcp.getalby.com/mcp`
+- **SSE:** `https://mcp.getalby.com/sse`
+
+**Bearer Authentication (preferred):**
+
+```http
+Authorization: Bearer nostr+walletconnect://...
+```
+
+**Query Parameter:**
+
+```text
+https://mcp.getalby.com/mcp?nwc=ENCODED_NWC_URL
+```
+
+#### Claude Code (Remote)
+
+```bash
+claude mcp add --transport http alby https://mcp.getalby.com/mcp --header "Authorization: Bearer nostr+walletconnect://..."
+```
+
+### Getting a NWC Connection String
+
+1. Visit [nwc.getalby.com](https://nwc.getalby.com) or use any NWC-compatible Bitcoin Lightning wallet
+2. Create a new connection and copy the connection string
+3. The connection string starts with `nostr+walletconnect://`
+4. Set it as the `NWC_CONNECTION_STRING` environment variable
+
+> **Security Note:** Your NWC connection string grants access to your Bitcoin Lightning wallet. Never share it or commit it to version control. Always use environment variables.
+
+### Alby Resources
+
+- [Alby MCP GitHub](https://github.com/getAlby/mcp) — Alby MCP server repo and docs
+- [NWC (Nostr Wallet Connect)](https://nwc.dev) — protocol spec and tools
+- [NWC Connection Generator](https://nwc.getalby.com) — create NWC connection strings
+- [Alby Support](https://support.getalby.com) — help center and troubleshooting
+- [Alby Homepage](https://getalby.com) — product overview and sign-up
+
+- [Alby MCP GitHub](https://github.com/getAlby/mcp)
+- [Nostr Wallet Connect (NWC)](https://nwc.dev)
+- [Alby Support](https://support.getalby.com)
+
+## Netlify MCP Server
+
+The [Netlify MCP Server](https://github.com/netlify/netlify-mcp) enables AI agents to create, manage, and deploy Netlify projects using natural language prompts.
+
+- **npm package:** `@netlify/mcp`
+- **Auth:** Netlify OAuth (default, interactive) or `NETLIFY_PERSONAL_ACCESS_TOKEN` (optional, non-interactive)
+- **Docs:** [Netlify MCP Server Documentation](https://docs.netlify.com/welcome/build-with-ai/netlify-mcp-server/)
+
+### Available Tools (16 tools across 5 domains)
+
+**Project Tools:**
+
+- `get-project` - Get a Netlify project/site by ID or name
+- `get-projects` - List all Netlify projects/sites for the current team
+- `create-new-project` - Create a new Netlify project/site
+- `update-project-name` - Update the name of an existing Netlify project
+- `update-visitor-access-controls` - Modify visitor access controls (password protection, JWT, etc.)
+- `update-project-forms` - Enable or disable Netlify form submissions for a project
+- `get-forms-for-project` - Get all forms associated with a Netlify project
+- `manage-form-submissions` - Manage form submissions (list, delete, etc.)
+- `manage-project-env-vars` - Create, update, or delete environment variables and secrets
+
+**Deploy Tools:**
+
+- `get-deploy` - Get a specific Netlify deploy by deploy ID
+- `get-deploy-for-site` - Get all deploys for a specific Netlify site
+- `deploy-site` - Build and deploy a site to Netlify
+- `deploy-site-remotely` - Deploy a site to Netlify using remote build infrastructure
+
+**User / Team / Extension Tools:**
+
+- `get-user` - Get current authenticated Netlify user information
+- `get-team` - Get Netlify team information and settings
+- `manage-extensions` - Install or uninstall Netlify extensions for a project
+
+### Connecting to Netlify MCP Server
+
+#### Claude Desktop (Netlify)
+
+Add the Netlify MCP server to your Claude Desktop configuration (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "netlify": {
+      "command": "npx",
+      "args": ["-y", "@netlify/mcp"]
+    }
+  }
+}
+```
+
+With optional Personal Access Token (for non-interactive / CI use):
+
+```json
+{
+  "mcpServers": {
+    "netlify": {
+      "command": "npx",
+      "args": ["-y", "@netlify/mcp"],
+      "env": {
+        "NETLIFY_PERSONAL_ACCESS_TOKEN": "your-netlify-pat"
+      }
+    }
+  }
+}
+```
+
+#### Cursor (Netlify)
+
+Add to your Cursor configuration (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "netlify": {
+      "command": "npx",
+      "args": ["-y", "@netlify/mcp"],
+      "env": {
+        "NETLIFY_PERSONAL_ACCESS_TOKEN": "your-netlify-pat"
+      }
+    }
+  }
+}
+```
+
+#### Claude Code (Netlify CLI)
+
+```bash
+claude mcp add netlify -- npx -y @netlify/mcp
+```
+
+### Getting a Netlify Personal Access Token
+
+1. Log in to [app.netlify.com](https://app.netlify.com)
+2. Go to **User Settings → Applications → Personal access tokens**
+3. Click **New access token**, give it a name, and copy the token
+4. Set it as the `NETLIFY_PERSONAL_ACCESS_TOKEN` environment variable
+
+> **Note:** A PAT is optional. By default, the Netlify MCP server uses OAuth (interactive browser login). The PAT is only needed for non-interactive or CI/CD environments.
+
+### Netlify Resources
+
+- [Netlify MCP GitHub](https://github.com/netlify/netlify-mcp)
+- [Netlify MCP Documentation](https://docs.netlify.com/welcome/build-with-ai/netlify-mcp-server/)
+- [Netlify Personal Access Tokens](https://app.netlify.com/user/applications#personal-access-tokens)
+
+## J.P. Morgan Account Balances API
+
+Access real-time and historical account balances for J.P. Morgan accounts directly through the MCP server.
+
+### Available Tools
+
+- `jpmorgan_retrieve_balances` — Retrieve balances for one or more J.P. Morgan accounts. Supports:
+  - **Date range query**: `start_date` + `end_date` (format: `yyyy-MM-dd`, max 31 days apart)
+  - **Relative date query**: `relative_date_type` = `CURRENT_DAY` or `PRIOR_DAY`
+- `jpmorgan_list_tools` — List available J.P. Morgan API tools
+- `jpmorgan_get_server_info` — Get API endpoints, auth details, and setup instructions
+
+### Authentication
+
+Set the `JPMORGAN_ACCESS_TOKEN` environment variable with your J.P. Morgan OAuth Bearer token:
+
+```bash
+export JPMORGAN_ACCESS_TOKEN=your-oauth-access-token
+export JPMORGAN_ENV=testing   # or 'production'
+```
+
+### API Environments
+
+| Environment | Auth | URL |
+| --- | --- | --- |
+| Client Testing | OAuth | `https://openbankinguat.jpmorgan.com/accessapi` |
+| Client Testing | MTLS | `https://apigatewayqaf.jpmorgan.com/accessapi` |
+| Production | OAuth | `https://openbanking.jpmorgan.com/accessapi` |
+| Production | MTLS | `https://apigateway.jpmorgan.com/accessapi` |
+
+### Example Usage
+
+**Query current day balance:**
+
+```json
+{
+  "tool": "jpmorgan_retrieve_balances",
+  "arguments": {
+    "account_ids": ["00000000000000304266256"],
+    "relative_date_type": "CURRENT_DAY",
+    "environment": "testing"
+  }
+}
+```
+
+**Query by date range:**
+
+```json
+{
+  "tool": "jpmorgan_retrieve_balances",
+  "arguments": {
+    "account_ids": ["00000000000000304266256"],
+    "start_date": "2024-01-01",
+    "end_date": "2024-01-05",
+    "environment": "testing"
+  }
+}
+```
+
+### J.P. Morgan Resources
+
+- [J.P. Morgan Developer Portal](https://developer.jpmorgan.com)
+- [Account Balances API Spec](https://developer.jpmorgan.com) (OpenAPI 3.0, v1.0.5)
+
+## J.P. Morgan Embedded Payments API
+
+Access J.P. Morgan's Embedded Finance platform to manage clients and accounts directly through the MCP server. Supports virtual transaction accounts and limited access payment accounts (Accounts v2 Beta).
+
+### Available Embedded Payments Tools
+
+**Client Tools:**
+
+- `ef_list_clients` — List all embedded finance clients (supports pagination via `limit` / `page`)
+- `ef_get_client` — Get a specific client by `client_id`
+- `ef_create_client` — Create a new embedded finance client (name, type, email, phone, address)
+
+**Account Tools (Accounts v2 Beta):**
+
+- `ef_list_accounts` — List all accounts for a specific client
+- `ef_get_account` — Get a specific account by `client_id` + `account_id`
+
+**Meta Tools:**
+
+- `ef_list_tools` — List all available Embedded Payments tools
+- `ef_get_server_info` — Get API endpoints, auth details, and setup instructions
+
+### Embedded Payments Authentication
+
+Set the `JPMORGAN_ACCESS_TOKEN` environment variable with your J.P. Morgan OAuth Bearer token:
+
+```bash
+export JPMORGAN_ACCESS_TOKEN=your-oauth-access-token
+export JPMORGAN_PAYMENTS_ENV=production   # or 'mock'
+```
+
+### Embedded Payments Environments
+
+| Environment | URL |
+| --- | --- |
+| Production | `https://apigateway.jpmorgan.com/tsapi/v1/ef` |
+| Mock / Testing | `https://api-mock.payments.jpmorgan.com/tsapi/v1/ef` |
+
+### Embedded Payments Example Usage
+
+**List all clients:**
+
+```json
+{
+  "tool": "ef_list_clients",
+  "arguments": {
+    "limit": 20,
+    "page": 1
+  }
+}
+```
+
+**Create a new client:**
+
+```json
+{
+  "tool": "ef_create_client",
+  "arguments": {
+    "name": "Acme Corp",
+    "type": "BUSINESS",
+    "email": "finance@acme.com",
+    "address": {
+      "line1": "123 Main St",
+      "city": "New York",
+      "state": "NY",
+      "postalCode": "10001",
+      "country": "US"
+    }
+  }
+}
+```
+
+**List accounts for a client:**
+
+```json
+{
+  "tool": "ef_list_accounts",
+  "arguments": {
+    "client_id": "your-client-id",
+    "limit": 20
+  }
+}
+```
+
+### Configuration Example
+
+```json
+{
+  "mcpServers": {
+    "tavily-mcp": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "env": {
+        "TAVILY_API_KEY": "your-tavily-api-key",
+        "JPMORGAN_ACCESS_TOKEN": "your-jpmorgan-oauth-token",
+        "JPMORGAN_PAYMENTS_ENV": "production"
+      }
+    }
+  }
+}
+```
+
+### J.P. Morgan Embedded Payments Resources
+
+- [J.P. Morgan Embedded Payments Developer Portal](https://developer.payments.jpmorgan.com)
+- [J.P. Morgan Developer Portal](https://developer.jpmorgan.com)
 
 ## Acknowledgments
 

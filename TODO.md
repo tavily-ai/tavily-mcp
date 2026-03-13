@@ -1,44 +1,36 @@
-# TODO: Stripe Integration for tavily-mcp
+# NestJS Prometheus + SOC 2 Implementation Plan
 
-## Tasks
-- [x] 1. Add stripe package to package.json dependencies
-- [x] 2. Create src/stripe.ts - Stripe service with environment variable-based API key loading
-- [x] 3. Update src/index.ts - Integrate Stripe service and add MCP tools
-- [x] 4. Update .env.example or README with STRIPE_SECRET_KEY environment variable instructions
-- [x] 5. Test the build
+## New files to create
 
-## Details
+- [x] `nestjs-reference/common/utils/pii.util.ts`
+- [x] `nestjs-reference/common/logger/audit-logger.service.ts`
+- [x] `nestjs-reference/common/filters/all-exceptions.filter.ts`
+- [x] `nestjs-reference/common/interceptors/http-metrics.interceptor.ts`
+- [x] `nestjs-reference/common/interceptors/audit-log.interceptor.ts`
+- [x] `nestjs-reference/metrics/metrics.service.ts`
+- [x] `nestjs-reference/metrics/metrics.controller.ts`
+- [x] `nestjs-reference/metrics/metrics.module.ts`
 
-### 1. Add stripe package - COMPLETED
-- Added "stripe" to dependencies in package.json
+## Files to modify
 
-### 2. Create Stripe service (src/stripe.ts) - COMPLETED
-- Load STRIPE_SECRET_KEY from environment variables
-- Initialize Stripe client properly (ES module syntax)
-- Export functions for:
-  - Creating payment intents
-  - Retrieving payment intents
-  - Creating customers
-  - Retrieving customers
-  - Listing charges
-  - Creating checkout sessions
-  - Retrieving checkout sessions
+- [x] `nestjs-reference/payroll/payroll.service.ts` — inject MetricsService + AuditLoggerService
+- [x] `nestjs-reference/payroll/payroll.module.ts` — import MetricsModule
+- [x] `nestjs-reference/jpm/jpm.module.ts` — import MetricsModule
+- [x] `nestjs-reference/jpm/controllers/jpm-payment.controller.ts` — add audit logging + metrics
 
-### 3. Update MCP server (src/index.ts) - COMPLETED
-- Import Stripe service
-- Added new MCP tools:
-  - stripe_create_payment_intent
-  - stripe_get_payment_intent
-  - stripe_create_customer
-  - stripe_get_customer
-  - stripe_list_charges
-  - stripe_create_checkout_session
-  - stripe_get_checkout_session
-- Added format functions for Stripe responses
-- API key is loaded from environment variable (security fix - no hardcoded keys)
+## Follow-up
 
-### 4. Documentation - COMPLETED
-- Added STRIPE_SECRET_KEY to README.md (Stripe Payment Integration section)
+- [x] Update `nestjs-reference/README.md` with metrics + SOC 2 docs
 
-### 5. Build Testing - COMPLETED
-- npm run build completed successfully
+## Verification
+
+- [x] `nestjs-test/` Jest DI wiring suite: **9/9 tests passed** (9.372 s)
+  - ✓ MetricsService is defined and injectable
+  - ✓ AuditLoggerService is defined and injectable
+  - ✓ PayrollService is defined and injectable
+  - ✓ createRun() creates a DRAFT run and emits audit log
+  - ✓ listRuns() returns all runs in memory
+  - ✓ approveRun() rejects same maker/checker
+  - ✓ approveRun() sets status to PENDING_SUBMISSION and emits audit log
+  - ✓ getMetrics() returns Prometheus text with expected metric names
+  - ✓ logFailure() emits a failure audit event with error_code

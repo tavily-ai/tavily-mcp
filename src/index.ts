@@ -19,6 +19,111 @@ import {
   getCheckoutSession
 } from './stripe.js';
 
+// Cloudflare imports
+import {
+  CLOUDFLARE_MCP_SERVERS,
+  listCloudflareServers
+} from './cloudflare.js';
+
+// Eleven Labs imports
+import {
+  listElevenLabsServers,
+  isElevenLabsConfigured,
+  getElevenLabsConfig
+} from './elevenlabs.js';
+
+// GitHub imports
+import {
+  listGitHubServers,
+  isGitHubConfigured,
+  getGitHubConfig
+} from './github.js';
+
+// AgentQL imports
+import {
+  listAgentQLServers,
+  isAgentQLConfigured,
+  getAgentQLConfig,
+  queryData as agentqlQueryData,
+  getWebElement as agentqlGetWebElement
+} from './agentql.js';
+
+// Alby imports
+import {
+  listAlbyServers,
+  isAlbyConfigured,
+  getAlbyConfig,
+  ALBY_MCP_SERVER
+} from './alby.js';
+
+// Netlify imports
+import {
+  listNetlifyTools,
+  isNetlifyConfigured,
+  getNetlifyConfig,
+  NETLIFY_MCP_SERVER
+} from './netlify.js';
+
+// J.P. Morgan imports
+import {
+  JPMORGAN_API_SERVER,
+  listJPMorganTools,
+  isJPMorganConfigured,
+  getJPMorganConfig,
+  retrieveBalances as jpmorganRetrieveBalances
+} from './jpmorgan.js';
+
+// J.P. Morgan Embedded Payments imports
+import {
+  JPMORGAN_EMBEDDED_SERVER,
+  listJPMorganEmbeddedTools,
+  isJPMorganEmbeddedConfigured,
+  getJPMorganEmbeddedConfig,
+  listClients as efListClients,
+  getClient as efGetClient,
+  createClient as efCreateClient,
+  listAccounts as efListAccounts,
+  getAccount as efGetAccount
+} from './jpmorgan_embedded.js';
+
+// J.P. Morgan Payments API imports
+import {
+  JPMORGAN_PAYMENTS_SERVER,
+  listJPMorganPaymentsTools,
+  isJPMorganPaymentsConfigured,
+  getJPMorganPaymentsConfig,
+  createPayment as jpmCreatePayment,
+  getPayment as jpmGetPayment,
+  listPayments as jpmListPayments
+} from './jpmorgan_payments.js';
+
+// J.P. Morgan Payroll imports
+import {
+  PAYROLL_SERVER,
+  listPayrollTools,
+  isPayrollConfigured,
+  getPayrollConfig,
+  createPayrollPayment as jpmCreatePayrollPayment,
+  createBatchPayroll as jpmCreateBatchPayroll,
+  createPayrollRun as jpmCreatePayrollRun,
+  approvePayrollRun as jpmApprovePayrollRun,
+  validatePayrollRun,
+  validatePayrollRunApproval,
+  type PayrollItem,
+  type PayrollResult,
+  type BatchPayrollResult,
+  type PayrollRun,
+  type PayrollRunResult,
+  type PayrollRunApproval,
+  type PayrollRunApprovalResult
+} from './payroll.js';
+
+// J.P. Morgan Payroll Service (stateful in-memory maker-checker)
+import { payrollService } from './payroll/payroll.service.js';
+import type { PayrollRun as PayrollRunEntity } from './payroll/models/payroll-run.model.js';
+
+
+
 dotenv.config();
 
 const API_KEY = process.env.TAVILY_API_KEY;
@@ -596,7 +701,745 @@ class TavilyClient {
             required: ["session_id"]
           }
         },
+        // Cloudflare MCP Server Tools (Remote Servers)
+        {
+          name: "cloudflare_list_servers",
+          description: "List available Cloudflare MCP servers that can be added to your MCP client. These are remote MCP servers that provide monitoring, analytics, and browsing capabilities.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "cloudflare_get_server_info",
+          description: "Get connection information for a specific Cloudflare MCP server. Use this to get the server URL and configuration details.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              service: {
+                type: "string",
+                enum: ["observability", "radar", "browser"],
+                description: "The Cloudflare service to get info for"
+              }
+            },
+            required: ["service"]
+          }
+        },
+        // Eleven Labs MCP Server Tools
+        {
+          name: "elevenlabs_list_servers",
+          description: "List available Eleven Labs MCP servers that can be added to your MCP client. Eleven Labs provides text-to-speech and voice synthesis capabilities.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "elevenlabs_get_server_info",
+          description: "Get connection information for the Eleven Labs MCP server. Use this to get the server configuration details and setup instructions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // GitHub MCP Server Tools
+        {
+          name: "github_list_servers",
+          description: "List available GitHub MCP servers that can be added to your MCP client. GitHub provides code scanning, issues, pull requests, and repository management capabilities.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "github_get_server_info",
+          description: "Get connection information for the GitHub MCP server. Use this to get the server configuration details and setup instructions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // AgentQL MCP Server Tools
+        {
+          name: "agentql_query_data",
+          description: "Extract structured data from any web page using AgentQL's GraphQL-like query language. Provide a URL and a query to get back structured JSON data. Requires AGENTQL_API_KEY environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              url: {
+                type: "string",
+                description: "The URL of the web page to query"
+              },
+              query: {
+                type: "string",
+                description: "The AgentQL query string using GraphQL-like syntax. Example: '{ products[] { name price rating } }'"
+              },
+              wait_for: {
+                type: "number",
+                description: "Number of seconds to wait for the page to load before querying",
+                default: 0
+              },
+              is_scroll_to_bottom_enabled: {
+                type: "boolean",
+                description: "Whether to scroll to the bottom of the page before querying (useful for lazy-loaded content)",
+                default: false
+              },
+              mode: {
+                type: "string",
+                enum: ["standard", "fast"],
+                description: "Query mode: 'standard' for best accuracy, 'fast' for lower latency",
+                default: "standard"
+              },
+              is_screenshot_mode: {
+                type: "boolean",
+                description: "Whether to take a screenshot of the page during querying",
+                default: false
+              }
+            },
+            required: ["url", "query"]
+          }
+        },
+        {
+          name: "agentql_get_web_element",
+          description: "Locate and retrieve specific web elements from a page using AgentQL's query language. Returns element references useful for identifying interactive page components. Requires AGENTQL_API_KEY environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              url: {
+                type: "string",
+                description: "The URL of the web page to query"
+              },
+              query: {
+                type: "string",
+                description: "The AgentQL query string describing the elements to find. Example: '{ search_btn login_form { username_field password_field } }'"
+              },
+              wait_for: {
+                type: "number",
+                description: "Number of seconds to wait for the page to load before querying",
+                default: 0
+              },
+              is_scroll_to_bottom_enabled: {
+                type: "boolean",
+                description: "Whether to scroll to the bottom of the page before querying",
+                default: false
+              },
+              mode: {
+                type: "string",
+                enum: ["standard", "fast"],
+                description: "Query mode: 'standard' for best accuracy, 'fast' for lower latency",
+                default: "standard"
+              },
+              is_screenshot_mode: {
+                type: "boolean",
+                description: "Whether to take a screenshot of the page during querying",
+                default: false
+              }
+            },
+            required: ["url", "query"]
+          }
+        },
+        {
+          name: "agentql_list_servers",
+          description: "List available AgentQL MCP tools and server information. AgentQL provides AI-powered web data extraction using a GraphQL-like query language.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "agentql_get_server_info",
+          description: "Get connection information and setup instructions for the AgentQL MCP server. Returns npm package name, API key configuration, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // Alby Bitcoin Lightning MCP Server Tools
+        {
+          name: "alby_list_servers",
+          description: "List available Alby MCP tools for Bitcoin Lightning wallet operations. Alby provides NWC-based lightning wallet capabilities including payments, invoices, and balance queries.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "alby_get_server_info",
+          description: "Get connection information and setup instructions for the Alby Bitcoin Lightning MCP server. Returns npm package, NWC connection string configuration, remote server URLs, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // Netlify MCP Server Tools
+        {
+          name: "netlify_list_servers",
+          description: "List available Netlify MCP tools for creating, managing, and deploying Netlify projects. Covers project management, deployments, environment variables, forms, access controls, and extensions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "netlify_get_server_info",
+          description: "Get connection information and setup instructions for the Netlify MCP server. Returns npm package, authentication configuration, available tool domains, and setup guide.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // J.P. Morgan Account Balances API Tools
+        {
+          name: "jpmorgan_retrieve_balances",
+          description: "Retrieve real-time or historical account balances for one or more J.P. Morgan accounts. Supports date range queries (startDate + endDate, max 31 days) or relative date queries (CURRENT_DAY / PRIOR_DAY). Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              account_ids: {
+                type: "array",
+                items: { type: "string" },
+                description: "List of J.P. Morgan account IDs to query (e.g. ['00000000000000304266256'])"
+              },
+              start_date: {
+                type: "string",
+                description: "Start date in yyyy-MM-dd format. Use with end_date. Cannot be combined with relative_date_type. Max range is 31 days."
+              },
+              end_date: {
+                type: "string",
+                description: "End date in yyyy-MM-dd format. Use with start_date. Cannot be combined with relative_date_type."
+              },
+              relative_date_type: {
+                type: "string",
+                enum: ["CURRENT_DAY", "PRIOR_DAY"],
+                description: "Relative date type. CURRENT_DAY returns today's balance; PRIOR_DAY returns yesterday's. Cannot be combined with start_date/end_date."
+              },
+              environment: {
+                type: "string",
+                enum: ["testing", "production"],
+                description: "Target environment. Use 'testing' for client testing (default), 'production' for live data.",
+                default: "testing"
+              }
+            },
+            required: ["account_ids"]
+          }
+        },
+        {
+          name: "jpmorgan_list_tools",
+          description: "List available J.P. Morgan Account Balances API tools and their descriptions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "jpmorgan_get_server_info",
+          description: "Get connection information and setup instructions for the J.P. Morgan Account Balances API. Returns API endpoints, authentication details, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // J.P. Morgan Embedded Payments API Tools
+        {
+          name: "ef_list_clients",
+          description: "List all embedded finance clients in the J.P. Morgan Embedded Payments platform. Supports optional pagination. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              limit: {
+                type: "number",
+                description: "Maximum number of clients to return",
+                default: 20
+              },
+              page: {
+                type: "number",
+                description: "Page number for pagination",
+                default: 1
+              }
+            }
+          }
+        },
+        {
+          name: "ef_get_client",
+          description: "Get a specific embedded finance client by client ID. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              client_id: {
+                type: "string",
+                description: "The unique identifier of the embedded finance client"
+              }
+            },
+            required: ["client_id"]
+          }
+        },
+        {
+          name: "ef_create_client",
+          description: "Create a new embedded finance client in the J.P. Morgan Embedded Payments platform. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                description: "Name of the client"
+              },
+              type: {
+                type: "string",
+                description: "Type of the client (e.g., 'BUSINESS', 'INDIVIDUAL')"
+              },
+              email: {
+                type: "string",
+                description: "Contact email address for the client"
+              },
+              phone: {
+                type: "string",
+                description: "Contact phone number for the client"
+              },
+              address: {
+                type: "object",
+                description: "Client address",
+                properties: {
+                  line1: { type: "string" },
+                  line2: { type: "string" },
+                  city: { type: "string" },
+                  state: { type: "string" },
+                  postalCode: { type: "string" },
+                  country: { type: "string" }
+                }
+              }
+            },
+            required: ["name"]
+          }
+        },
+        {
+          name: "ef_list_accounts",
+          description: "List all accounts for a specific embedded finance client. Supports virtual transaction accounts and limited access payment accounts (Accounts v2 Beta). Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              client_id: {
+                type: "string",
+                description: "The unique identifier of the embedded finance client"
+              },
+              limit: {
+                type: "number",
+                description: "Maximum number of accounts to return",
+                default: 20
+              },
+              page: {
+                type: "number",
+                description: "Page number for pagination",
+                default: 1
+              }
+            },
+            required: ["client_id"]
+          }
+        },
+        {
+          name: "ef_get_account",
+          description: "Get a specific account for an embedded finance client by account ID (Accounts v2 Beta). Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              client_id: {
+                type: "string",
+                description: "The unique identifier of the embedded finance client"
+              },
+              account_id: {
+                type: "string",
+                description: "The unique identifier of the account"
+              }
+            },
+            required: ["client_id", "account_id"]
+          }
+        },
+        {
+          name: "ef_list_tools",
+          description: "List all available J.P. Morgan Embedded Payments API tools and their descriptions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "ef_get_server_info",
+          description: "Get connection information and setup instructions for the J.P. Morgan Embedded Payments API. Returns API endpoints, authentication details, environments, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // J.P. Morgan Payments API Tools (ACH, Wire, RTP, Book)
+        {
+          name: "jpmorgan_create_payment",
+          description: "Initiate an ACH, Wire, RTP, or Book payment via the J.P. Morgan Payments API. For ACH: provide paymentType='ACH', companyId, debitAccount, creditAccount (routingNumber + accountNumber + accountType), amount, and optional memo/effectiveDate. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              payment_type: {
+                type: "string",
+                enum: ["ACH", "WIRE", "RTP", "BOOK"],
+                description: "Payment rail to use. ACH=Automated Clearing House, WIRE=wire transfer, RTP=Real-Time Payments, BOOK=internal book transfer."
+              },
+              debit_account: {
+                type: "string",
+                description: "Source account ID to debit (your J.P. Morgan operating account)"
+              },
+              credit_account: {
+                type: "object",
+                description: "Destination account details. For ACH/RTP: { routingNumber, accountNumber, accountType }. For WIRE: { name, accountNumber, bankCode }. For BOOK: { accountId }.",
+                properties: {
+                  routingNumber: { type: "string", description: "ABA routing number (ACH/RTP)" },
+                  accountNumber: { type: "string", description: "Bank account number (ACH/RTP/WIRE)" },
+                  accountType:   { type: "string", enum: ["CHECKING", "SAVINGS"], description: "Account type (ACH/RTP)" },
+                  accountName:   { type: "string", description: "Account holder name (optional)" },
+                  accountId:     { type: "string", description: "J.P. Morgan internal account ID (BOOK)" },
+                  name:          { type: "string", description: "Beneficiary name (WIRE)" },
+                  bankCode:      { type: "string", description: "Beneficiary bank routing/SWIFT/BIC (WIRE)" }
+                }
+              },
+              amount: {
+                type: "object",
+                description: "Payment amount",
+                properties: {
+                  currency: { type: "string", description: "ISO 4217 currency code (e.g. 'USD')" },
+                  value:    { type: "string", description: "Decimal amount string (e.g. '1500.00')" }
+                },
+                required: ["currency", "value"]
+              },
+              company_id: {
+                type: "string",
+                description: "ACH company ID (required for ACH payments)"
+              },
+              memo: {
+                type: "string",
+                description: "Payment memo or description (e.g. 'Payroll - Employee 104')"
+              },
+              effective_date: {
+                type: "string",
+                description: "Requested settlement date in yyyy-MM-dd format (ACH/WIRE)"
+              },
+              end_to_end_id: {
+                type: "string",
+                description: "End-to-end reference ID for idempotency"
+              },
+              environment: {
+                type: "string",
+                enum: ["testing", "production"],
+                description: "Target environment. Use 'testing' (default) or 'production'.",
+                default: "testing"
+              }
+            },
+            required: ["payment_type", "debit_account", "credit_account", "amount"]
+          }
+        },
+        {
+          name: "jpmorgan_get_payment",
+          description: "Retrieve the status and full details of a specific J.P. Morgan payment by its payment ID. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              payment_id: {
+                type: "string",
+                description: "The unique payment identifier returned when the payment was created"
+              },
+              environment: {
+                type: "string",
+                enum: ["testing", "production"],
+                description: "Target environment. Use 'testing' (default) or 'production'.",
+                default: "testing"
+              }
+            },
+            required: ["payment_id"]
+          }
+        },
+        {
+          name: "jpmorgan_list_payments",
+          description: "List J.P. Morgan payments with optional filters for status, payment type, date range, and pagination. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              status: {
+                type: "string",
+                enum: ["PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED", "RETURNED"],
+                description: "Filter by payment lifecycle status"
+              },
+              payment_type: {
+                type: "string",
+                enum: ["ACH", "WIRE", "RTP", "BOOK"],
+                description: "Filter by payment type"
+              },
+              from_date: {
+                type: "string",
+                description: "Start date filter in yyyy-MM-dd format"
+              },
+              to_date: {
+                type: "string",
+                description: "End date filter in yyyy-MM-dd format"
+              },
+              limit: {
+                type: "number",
+                description: "Maximum number of payments to return",
+                default: 20
+              },
+              offset: {
+                type: "number",
+                description: "Pagination offset",
+                default: 0
+              },
+              environment: {
+                type: "string",
+                enum: ["testing", "production"],
+                description: "Target environment. Use 'testing' (default) or 'production'.",
+                default: "testing"
+              }
+            }
+          }
+        },
+        {
+          name: "jpmorgan_payments_list_tools",
+          description: "List all available J.P. Morgan Payments API tools (ACH, Wire, RTP, Book payment initiation and status).",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "jpmorgan_payments_get_server_info",
+          description: "Get connection information and setup instructions for the J.P. Morgan Payments API. Returns API endpoints, supported payment types, authentication details, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // J.P. Morgan Payroll ACH Payment Tools
+        {
+          name: "jpmorgan_create_payroll_payment",
+          description: "Submit a single employee payroll disbursement as an ACH credit transfer via the J.P. Morgan Payments API. Provide employee details (employeeId, employeeName), bank account details (routingNumber, accountNumber, accountType), amount (USD), and effectiveDate (yyyy-MM-dd). Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              employee_id: {
+                type: "string",
+                description: "Unique employee identifier (e.g. 'EMP-001')"
+              },
+              employee_name: {
+                type: "string",
+                description: "Full name of the employee"
+              },
+              routing_number: {
+                type: "string",
+                description: "ABA routing number of the employee's bank (9 digits)"
+              },
+              account_number: {
+                type: "string",
+                description: "Employee's bank account number"
+              },
+              account_type: {
+                type: "string",
+                enum: ["CHECKING", "SAVINGS"],
+                description: "Bank account type"
+              },
+              amount: {
+                type: "number",
+                description: "Gross pay amount in USD (e.g. 2500.00). Must be greater than 0."
+              },
+              effective_date: {
+                type: "string",
+                description: "Requested ACH settlement date in yyyy-MM-dd format (e.g. '2026-03-14')"
+              }
+            },
+            required: ["employee_id", "employee_name", "routing_number", "account_number", "account_type", "amount", "effective_date"]
+          }
+        },
+        {
+          name: "jpmorgan_create_batch_payroll",
+          description: "Submit a batch of employee payroll disbursements as ACH credit transfers via the J.P. Morgan Payments API. Processes each item sequentially and returns a per-item success/failure summary. Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              payroll_items: {
+                type: "array",
+                description: "Array of payroll items to disburse",
+                items: {
+                  type: "object",
+                  properties: {
+                    employee_id:    { type: "string", description: "Unique employee identifier" },
+                    employee_name:  { type: "string", description: "Full name of the employee" },
+                    routing_number: { type: "string", description: "ABA routing number (9 digits)" },
+                    account_number: { type: "string", description: "Bank account number" },
+                    account_type:   { type: "string", enum: ["CHECKING", "SAVINGS"], description: "Account type" },
+                    amount:         { type: "number", description: "Gross pay amount in USD" },
+                    effective_date: { type: "string", description: "Settlement date in yyyy-MM-dd format" }
+                  },
+                  required: ["employee_id", "employee_name", "routing_number", "account_number", "account_type", "amount", "effective_date"]
+                }
+              }
+            },
+            required: ["payroll_items"]
+          }
+        },
+        {
+          name: "jpmorgan_payroll_list_tools",
+          description: "List all available J.P. Morgan Payroll ACH payment tools and their descriptions.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "jpmorgan_payroll_get_server_info",
+          description: "Get configuration details and setup instructions for the J.P. Morgan Payroll ACH payment module. Returns required environment variables, supported fields, and available tools.",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        // J.P. Morgan Payroll Run Tool (CreatePayrollRunDto)
+        {
+          name: "jpmorgan_create_payroll_run",
+          description: "Submit a named payroll run (CreatePayrollRunDto) with a maker user ID (created_by) and an array of payroll items. Validates the full run before submission and returns a per-item result with the createdBy field attached. Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              created_by: {
+                type: "string",
+                description: "Maker user ID who is initiating the payroll run (e.g. 'user-123')"
+              },
+              items: {
+                type: "array",
+                description: "Array of payroll items to disburse (minimum 1, mirrors CreatePayrollItemDto[])",
+                items: {
+                  type: "object",
+                  properties: {
+                    employee_id:    { type: "string", description: "Unique employee identifier" },
+                    employee_name:  { type: "string", description: "Full name of the employee" },
+                    routing_number: { type: "string", description: "ABA routing number (9 digits)" },
+                    account_number: { type: "string", description: "Bank account number" },
+                    account_type:   { type: "string", enum: ["CHECKING", "SAVINGS"], description: "Account type" },
+                    amount:         { type: "number", description: "Gross pay amount in USD" },
+                    effective_date: { type: "string", description: "Settlement date in yyyy-MM-dd format" }
+                  },
+                  required: ["employee_id", "employee_name", "routing_number", "account_number", "account_type", "amount", "effective_date"]
+                }
+              }
+            },
+            required: ["created_by", "items"]
+          }
+        },
+        // J.P. Morgan Payroll Approval Tool (ApprovePayrollRunDto — maker-checker)
+        {
+          name: "jpmorgan_approve_payroll_run",
+          description: "Approve and execute a payroll run as a checker (maker-checker workflow). Mirrors ApprovePayrollRunDto: provide approved_by (checker user ID) and the payroll items to approve. Validates the approval, submits all ACH payments sequentially, and returns a per-item result with the approvedBy field attached. Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              approved_by: {
+                type: "string",
+                description: "Checker user ID who is approving the payroll run (e.g. 'checker-456')"
+              },
+              items: {
+                type: "array",
+                description: "Array of payroll items to approve and disburse (minimum 1, mirrors CreatePayrollItemDto[])",
+                items: {
+                  type: "object",
+                  properties: {
+                    employee_id:    { type: "string", description: "Unique employee identifier" },
+                    employee_name:  { type: "string", description: "Full name of the employee" },
+                    routing_number: { type: "string", description: "ABA routing number (9 digits)" },
+                    account_number: { type: "string", description: "Bank account number" },
+                    account_type:   { type: "string", enum: ["CHECKING", "SAVINGS"], description: "Account type" },
+                    amount:         { type: "number", description: "Gross pay amount in USD" },
+                    effective_date: { type: "string", description: "Settlement date in yyyy-MM-dd format" }
+                  },
+                  required: ["employee_id", "employee_name", "routing_number", "account_number", "account_type", "amount", "effective_date"]
+                }
+              }
+            },
+            required: ["approved_by", "items"]
+          }
+        },
+        // ── Stateful PayrollService tools (in-memory maker-checker by run ID) ──────
+        {
+          name: "jpmorgan_create_payroll_run_draft",
+          description: "Create a DRAFT payroll run (stateful). Stores the run in memory with a UUID and returns it in DRAFT status. No payments are submitted yet — use jpmorgan_approve_payroll_run_by_id to trigger submission after checker approval. Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              created_by: {
+                type: "string",
+                description: "Maker user ID who is initiating the payroll run (e.g. 'user-123')"
+              },
+              items: {
+                type: "array",
+                description: "Array of payroll items to include in the run (minimum 1)",
+                items: {
+                  type: "object",
+                  properties: {
+                    employee_id:    { type: "string", description: "Unique employee identifier" },
+                    employee_name:  { type: "string", description: "Full name of the employee" },
+                    routing_number: { type: "string", description: "ABA routing number (9 digits)" },
+                    account_number: { type: "string", description: "Bank account number" },
+                    account_type:   { type: "string", enum: ["CHECKING", "SAVINGS"], description: "Account type" },
+                    amount:         { type: "number", description: "Gross pay amount in USD" },
+                    effective_date: { type: "string", description: "Settlement date in yyyy-MM-dd format" }
+                  },
+                  required: ["employee_id", "employee_name", "routing_number", "account_number", "account_type", "amount", "effective_date"]
+                }
+              }
+            },
+            required: ["created_by", "items"]
+          }
+        },
+        {
+          name: "jpmorgan_approve_payroll_run_by_id",
+          description: "Approve a DRAFT payroll run by its run ID (stateful maker-checker). The checker user ID (approved_by) must differ from the maker (createdBy). Sets status to PENDING_SUBMISSION and fires ACH payment submission asynchronously. Returns the run in PENDING_SUBMISSION status immediately — poll with jpmorgan_get_payroll_run to observe SUBMITTED / FAILED. Requires JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              run_id: {
+                type: "string",
+                description: "UUID of the payroll run to approve (returned by jpmorgan_create_payroll_run_draft)"
+              },
+              approved_by: {
+                type: "string",
+                description: "Checker user ID who is approving the run (must differ from the maker)"
+              }
+            },
+            required: ["run_id", "approved_by"]
+          }
+        },
+        {
+          name: "jpmorgan_get_payroll_run",
+          description: "Retrieve a stateful payroll run by its UUID. Returns the full run entity including lifecycle status, per-payment JPMC tracking fields (paymentId, jpmcStatus, jpmcReturnCode), maker/checker metadata, and timestamps.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              run_id: {
+                type: "string",
+                description: "UUID of the payroll run to retrieve"
+              }
+            },
+            required: ["run_id"]
+          }
+        },
+        {
+          name: "jpmorgan_refresh_payroll_run_status",
+          description: "Poll the JPMC Payments API for the latest status of each payment in a submitted run and update the run lifecycle status (SUBMITTED → PARTIALLY_POSTED / POSTED / PARTIALLY_RETURNED / RETURNED). Only runs in SUBMITTED, PARTIALLY_POSTED, or PARTIALLY_RETURNED status are refreshed. Requires JPMORGAN_ACCESS_TOKEN environment variable.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              run_id: {
+                type: "string",
+                description: "UUID of the payroll run to refresh"
+              }
+            },
+            required: ["run_id"]
+          }
+        }
       ];
+
+
       return { tools };
     });
 
@@ -796,7 +1639,545 @@ text: formatResearchResults(researchResponse)
               return { content: [{ type: "text", text: `Stripe error: ${err.message}` }], isError: true };
             }
 
+          // Cloudflare tool handlers
+          case "cloudflare_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatCloudflareServers()
+              }]
+            };
+
+          case "cloudflare_get_server_info":
+            if (!args.service) {
+              throw new McpError(ErrorCode.InvalidRequest, "Service parameter is required. Use 'observability', 'radar', or 'browser'.");
+            }
+            return {
+              content: [{
+                type: "text",
+                text: formatCloudflareServerInfo(args.service)
+              }]
+            };
+
+          // Eleven Labs tool handlers
+          case "elevenlabs_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatElevenLabsServers()
+              }]
+            };
+
+          case "elevenlabs_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatElevenLabsServerInfo()
+              }]
+            };
+
+          // GitHub tool handlers
+          case "github_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatGitHubServers()
+              }]
+            };
+
+          case "github_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatGitHubServerInfo()
+              }]
+            };
+
+          // AgentQL tool handlers
+          case "agentql_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatAgentQLServers()
+              }]
+            };
+
+          case "agentql_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatAgentQLServerInfo()
+              }]
+            };
+
+          case "agentql_query_data":
+            if (!isAgentQLConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "AgentQL is not configured. Please set AGENTQL_API_KEY environment variable.");
+            }
+            try {
+              const agentqlQueryResult = await agentqlQueryData(
+                args.url,
+                args.query,
+                {
+                  wait_for: args.wait_for,
+                  is_scroll_to_bottom_enabled: args.is_scroll_to_bottom_enabled,
+                  mode: args.mode,
+                  is_screenshot_mode: args.is_screenshot_mode
+                }
+              );
+              return { content: [{ type: "text", text: formatAgentQLQueryResult(agentqlQueryResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `AgentQL error: ${err.message}` }], isError: true };
+            }
+
+          case "agentql_get_web_element":
+            if (!isAgentQLConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "AgentQL is not configured. Please set AGENTQL_API_KEY environment variable.");
+            }
+            try {
+              const agentqlWebElementResult = await agentqlGetWebElement(
+                args.url,
+                args.query,
+                {
+                  wait_for: args.wait_for,
+                  is_scroll_to_bottom_enabled: args.is_scroll_to_bottom_enabled,
+                  mode: args.mode,
+                  is_screenshot_mode: args.is_screenshot_mode
+                }
+              );
+              return { content: [{ type: "text", text: formatAgentQLWebElementResult(agentqlWebElementResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `AgentQL error: ${err.message}` }], isError: true };
+            }
+
+          // Alby tool handlers
+          case "alby_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatAlbyServers()
+              }]
+            };
+
+          case "alby_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatAlbyServerInfo()
+              }]
+            };
+
+          // Netlify tool handlers
+          case "netlify_list_servers":
+            return {
+              content: [{
+                type: "text",
+                text: formatNetlifyServers()
+              }]
+            };
+
+          case "netlify_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatNetlifyServerInfo()
+              }]
+            };
+
+          // J.P. Morgan tool handlers
+          case "jpmorgan_list_tools":
+            return {
+              content: [{
+                type: "text",
+                text: formatJPMorganTools()
+              }]
+            };
+
+          case "jpmorgan_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatJPMorganServerInfo()
+              }]
+            };
+
+          case "jpmorgan_retrieve_balances":
+            if (!isJPMorganConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            try {
+              const jpmBalanceResult = await jpmorganRetrieveBalances(
+                {
+                  accountList: (args.account_ids as string[]).map((id: string) => ({ accountId: id })),
+                  startDate: args.start_date,
+                  endDate: args.end_date,
+                  relativeDateType: args.relative_date_type
+                },
+                (args.environment as 'production' | 'testing') || 'testing'
+              );
+              return { content: [{ type: "text", text: formatJPMorganBalances(jpmBalanceResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan API error: ${err.message}` }], isError: true };
+            }
+
+          // J.P. Morgan Embedded Payments tool handlers
+          case "ef_list_tools":
+            return {
+              content: [{
+                type: "text",
+                text: formatEFTools()
+              }]
+            };
+
+          case "ef_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatEFServerInfo()
+              }]
+            };
+
+          case "ef_list_clients":
+            if (!isJPMorganEmbeddedConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Embedded Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            try {
+              const efClientsResult = await efListClients({
+                limit: args.limit,
+                page: args.page
+              });
+              return { content: [{ type: "text", text: formatEFClients(efClientsResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
+            }
+
+          case "ef_get_client":
+            if (!isJPMorganEmbeddedConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Embedded Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            if (!args.client_id) {
+              throw new McpError(ErrorCode.InvalidRequest, "client_id is required.");
+            }
+            try {
+              const efClientResult = await efGetClient(args.client_id);
+              return { content: [{ type: "text", text: formatEFClient(efClientResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
+            }
+
+          case "ef_create_client":
+            if (!isJPMorganEmbeddedConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Embedded Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            if (!args.name) {
+              throw new McpError(ErrorCode.InvalidRequest, "name is required to create a client.");
+            }
+            try {
+              const efNewClient = await efCreateClient({
+                name: args.name,
+                type: args.type,
+                email: args.email,
+                phone: args.phone,
+                address: args.address
+              });
+              return { content: [{ type: "text", text: formatEFClient(efNewClient) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
+            }
+
+          case "ef_list_accounts":
+            if (!isJPMorganEmbeddedConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Embedded Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            if (!args.client_id) {
+              throw new McpError(ErrorCode.InvalidRequest, "client_id is required.");
+            }
+            try {
+              const efAccountsResult = await efListAccounts(args.client_id, {
+                limit: args.limit,
+                page: args.page
+              });
+              return { content: [{ type: "text", text: formatEFAccounts(efAccountsResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
+            }
+
+          case "ef_get_account":
+            if (!isJPMorganEmbeddedConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Embedded Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            if (!args.client_id || !args.account_id) {
+              throw new McpError(ErrorCode.InvalidRequest, "client_id and account_id are required.");
+            }
+            try {
+              const efAccountResult = await efGetAccount(args.client_id, args.account_id);
+              return { content: [{ type: "text", text: formatEFAccount(efAccountResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Embedded Payments error: ${err.message}` }], isError: true };
+            }
+
+          // J.P. Morgan Payments API tool handlers
+          case "jpmorgan_payments_list_tools":
+            return {
+              content: [{
+                type: "text",
+                text: formatJPMorganPaymentsTools()
+              }]
+            };
+
+          case "jpmorgan_payments_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatJPMorganPaymentsServerInfo()
+              }]
+            };
+
+          case "jpmorgan_create_payment":
+            if (!isJPMorganPaymentsConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            try {
+              const jpmPaymentResult = await jpmCreatePayment({
+                paymentType:   args.payment_type,
+                debitAccount:  args.debit_account,
+                creditAccount: args.credit_account,
+                amount:        args.amount,
+                companyId:     args.company_id,
+                memo:          args.memo,
+                effectiveDate: args.effective_date,
+                endToEndId:    args.end_to_end_id
+              });
+              return { content: [{ type: "text", text: formatJPMorganPayment(jpmPaymentResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payments API error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_get_payment":
+            if (!isJPMorganPaymentsConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            if (!args.payment_id) {
+              throw new McpError(ErrorCode.InvalidRequest, "payment_id is required.");
+            }
+            try {
+              const jpmGetPaymentResult = await jpmGetPayment(args.payment_id);
+              return { content: [{ type: "text", text: formatJPMorganPayment(jpmGetPaymentResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payments API error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_list_payments":
+            if (!isJPMorganPaymentsConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payments API is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            try {
+              const jpmListPaymentsResult = await jpmListPayments({
+                status:      args.status,
+                paymentType: args.payment_type,
+                fromDate:    args.from_date,
+                toDate:      args.to_date,
+                limit:       args.limit,
+                offset:      args.offset
+              });
+              return { content: [{ type: "text", text: formatJPMorganPaymentsList(jpmListPaymentsResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payments API error: ${err.message}` }], isError: true };
+            }
+
+          // J.P. Morgan Payroll tool handlers
+          case "jpmorgan_payroll_list_tools":
+            return {
+              content: [{
+                type: "text",
+                text: formatPayrollTools()
+              }]
+            };
+
+          case "jpmorgan_payroll_get_server_info":
+            return {
+              content: [{
+                type: "text",
+                text: formatPayrollServerInfo()
+              }]
+            };
+
+          case "jpmorgan_create_payroll_payment":
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.");
+            }
+            try {
+              const payrollItem: PayrollItem = {
+                employeeId:    args.employee_id,
+                employeeName:  args.employee_name,
+                routingNumber: args.routing_number,
+                accountNumber: args.account_number,
+                accountType:   args.account_type,
+                amount:        args.amount,
+                effectiveDate: args.effective_date
+              };
+              const payrollPaymentResult = await jpmCreatePayrollPayment(payrollItem);
+              return { content: [{ type: "text", text: formatPayrollPayment(payrollItem, payrollPaymentResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payroll error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_create_batch_payroll":
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.");
+            }
+            if (!Array.isArray(args.payroll_items) || args.payroll_items.length === 0) {
+              throw new McpError(ErrorCode.InvalidRequest, "payroll_items must be a non-empty array of payroll item objects.");
+            }
+            try {
+              const batchItems: PayrollItem[] = (args.payroll_items as any[]).map((item: any) => ({
+                employeeId:    item.employee_id,
+                employeeName:  item.employee_name,
+                routingNumber: item.routing_number,
+                accountNumber: item.account_number,
+                accountType:   item.account_type,
+                amount:        item.amount,
+                effectiveDate: item.effective_date
+              }));
+              const batchResult = await jpmCreateBatchPayroll(batchItems);
+              return { content: [{ type: "text", text: formatBatchPayrollResult(batchResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Batch Payroll error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_create_payroll_run":
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.");
+            }
+            if (!args.created_by || typeof args.created_by !== 'string' || args.created_by.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "created_by is required and must be a non-empty string (maker user ID).");
+            }
+            if (!Array.isArray(args.items) || args.items.length === 0) {
+              throw new McpError(ErrorCode.InvalidRequest, "items must be a non-empty array of payroll item objects.");
+            }
+            try {
+              const payrollRun: PayrollRun = {
+                createdBy: args.created_by,
+                items: (args.items as any[]).map((item: any) => ({
+                  employeeId:    item.employee_id,
+                  employeeName:  item.employee_name,
+                  routingNumber: item.routing_number,
+                  accountNumber: item.account_number,
+                  accountType:   item.account_type,
+                  amount:        item.amount,
+                  effectiveDate: item.effective_date
+                }))
+              };
+              const payrollRunResult: PayrollRunResult = await jpmCreatePayrollRun(payrollRun);
+              return { content: [{ type: "text", text: formatPayrollRunResult(payrollRunResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payroll Run error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_approve_payroll_run":
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.");
+            }
+            if (!args.approved_by || typeof args.approved_by !== 'string' || args.approved_by.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "approved_by is required and must be a non-empty string (checker user ID).");
+            }
+            if (!Array.isArray(args.items) || args.items.length === 0) {
+              throw new McpError(ErrorCode.InvalidRequest, "items must be a non-empty array of payroll item objects.");
+            }
+            try {
+              const payrollApproval: PayrollRunApproval = {
+                approvedBy: args.approved_by,
+                items: (args.items as any[]).map((item: any) => ({
+                  employeeId:    item.employee_id,
+                  employeeName:  item.employee_name,
+                  routingNumber: item.routing_number,
+                  accountNumber: item.account_number,
+                  accountType:   item.account_type,
+                  amount:        item.amount,
+                  effectiveDate: item.effective_date
+                }))
+              };
+              const approvalResult: PayrollRunApprovalResult = await jpmApprovePayrollRun(payrollApproval);
+              return { content: [{ type: "text", text: formatPayrollRunApprovalResult(approvalResult) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payroll Approval error: ${err.message}` }], isError: true };
+            }
+
+          // ── Stateful PayrollService tool handlers ─────────────────────────────
+
+          case "jpmorgan_create_payroll_run_draft":
+            if (!args.created_by || typeof args.created_by !== 'string' || args.created_by.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "created_by is required and must be a non-empty string (maker user ID).");
+            }
+            if (!Array.isArray(args.items) || args.items.length === 0) {
+              throw new McpError(ErrorCode.InvalidRequest, "items must be a non-empty array of payroll item objects.");
+            }
+            try {
+              const draftRun: PayrollRunEntity = await payrollService.createRun({
+                createdBy: args.created_by,
+                items: (args.items as any[]).map((item: any) => ({
+                  employeeId:    item.employee_id,
+                  employeeName:  item.employee_name,
+                  routingNumber: item.routing_number,
+                  accountNumber: item.account_number,
+                  accountType:   item.account_type,
+                  amount:        item.amount,
+                  effectiveDate: item.effective_date
+                }))
+              });
+              return { content: [{ type: "text", text: formatPayrollRunEntity(draftRun) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payroll Draft Run error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_approve_payroll_run_by_id":
+            if (!args.run_id || typeof args.run_id !== 'string' || args.run_id.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "run_id is required and must be a non-empty string (UUID of the payroll run).");
+            }
+            if (!args.approved_by || typeof args.approved_by !== 'string' || args.approved_by.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "approved_by is required and must be a non-empty string (checker user ID).");
+            }
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMC_ACH_DEBIT_ACCOUNT, JPMC_ACH_COMPANY_ID, and JPMORGAN_ACCESS_TOKEN environment variables.");
+            }
+            try {
+              const approvedRun: PayrollRunEntity = await payrollService.approveRun(
+                args.run_id.trim(),
+                { approvedBy: args.approved_by.trim() }
+              );
+              return { content: [{ type: "text", text: formatPayrollRunEntity(approvedRun) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Payroll Approve-by-ID error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_get_payroll_run":
+            if (!args.run_id || typeof args.run_id !== 'string' || args.run_id.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "run_id is required and must be a non-empty string (UUID of the payroll run).");
+            }
+            try {
+              const fetchedRun: PayrollRunEntity = await payrollService.getRun(args.run_id.trim());
+              return { content: [{ type: "text", text: formatPayrollRunEntity(fetchedRun) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Get Payroll Run error: ${err.message}` }], isError: true };
+            }
+
+          case "jpmorgan_refresh_payroll_run_status":
+            if (!args.run_id || typeof args.run_id !== 'string' || args.run_id.trim() === '') {
+              throw new McpError(ErrorCode.InvalidRequest, "run_id is required and must be a non-empty string (UUID of the payroll run).");
+            }
+            if (!isPayrollConfigured()) {
+              throw new McpError(ErrorCode.InvalidRequest, "J.P. Morgan Payroll is not configured. Please set JPMORGAN_ACCESS_TOKEN environment variable.");
+            }
+            try {
+              const refreshedRun: PayrollRunEntity = await payrollService.refreshRunStatus(args.run_id.trim());
+              return { content: [{ type: "text", text: formatPayrollRunEntity(refreshedRun) }] };
+            } catch (err: any) {
+              return { content: [{ type: "text", text: `J.P. Morgan Refresh Payroll Run Status error: ${err.message}` }], isError: true };
+            }
+
           default:
+
+
             throw new McpError(
               ErrorCode.MethodNotFound,
               `Unknown tool: ${request.params.name}`
@@ -1175,6 +2556,1176 @@ function formatStripeCheckoutSession(session: any): string {
   if (session.metadata) {
     output.push(`Metadata: ${JSON.stringify(session.metadata)}`);
   }
+  return output.join('\n');
+}
+
+// Cloudflare format functions
+function formatCloudflareServers(): string {
+  const output: string[] = [];
+  output.push('Available Cloudflare MCP Servers:');
+  output.push('');
+  output.push('These are remote MCP servers that you can add to your MCP client configuration.');
+  output.push('');
+  
+  const servers = listCloudflareServers();
+  servers.forEach((server, index) => {
+    output.push(`[${index + 1}] ${server.name}`);
+    output.push(`    URL: ${server.url}`);
+    output.push(`    Description: ${server.description}`);
+    output.push('');
+  });
+  
+  output.push('To add these servers to your MCP client, add them to your configuration file:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "cloudflare-observability": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@cloudflare/mcp-server"],');
+  output.push('      "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Or use the remote server approach with the URLs above.');
+  
+  return output.join('\n');
+}
+
+function formatCloudflareServerInfo(service: string): string {
+  const output: string[] = [];
+  
+  const validServices = ['observability', 'radar', 'browser'];
+  if (!validServices.includes(service)) {
+    return `Invalid service: ${service}. Use one of: observability, radar, browser`;
+  }
+  
+  const serverUrl = CLOUDFLARE_MCP_SERVERS[service as keyof typeof CLOUDFLARE_MCP_SERVERS];
+  
+  output.push(`Cloudflare ${service.charAt(0).toUpperCase() + service.slice(1)} MCP Server:`);
+  output.push(`Server URL: ${serverUrl}`);
+  output.push('');
+  output.push('To connect to this server:');
+  output.push('');
+  output.push('1. Add the following to your MCP client configuration:');
+  
+  if (service === 'observability') {
+    output.push('   Claude Desktop:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-observability": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "@cloudflare/mcp-server"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+    output.push('');
+    output.push('   Or use remote server:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-observability": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "mcp-remote", "https://observability.mcp.cloudflare.com/mcp"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+  } else if (service === 'radar') {
+    output.push('   Claude Desktop:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-radar": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "@cloudflare/mcp-server"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+    output.push('');
+    output.push('   Or use remote server:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-radar": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "mcp-remote", "https://radar.mcp.cloudflare.com/mcp"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+  } else if (service === 'browser') {
+    output.push('   Claude Desktop:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-browser": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "@cloudflare/mcp-server"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+    output.push('');
+    output.push('   Or use remote server:');
+    output.push('   {');
+    output.push('     "mcpServers": {');
+    output.push('       "cloudflare-browser": {');
+    output.push('         "command": "npx",');
+    output.push('         "args": ["-y", "mcp-remote", "https://browser.mcp.cloudflare.com/mcp"],');
+    output.push('         "env": { "CLOUDFLARE_API_TOKEN": "your-api-token" }');
+    output.push('       }');
+    output.push('     }');
+    output.push('   }');
+  }
+  
+  output.push('');
+  output.push('2. Replace "your-api-token" with your Cloudflare API token.');
+  output.push('   Get your token from: https://dash.cloudflare.com/profile/api-tokens');
+  
+  return output.join('\n');
+}
+
+// Eleven Labs format functions
+function formatElevenLabsServers(): string {
+  const output: string[] = [];
+  output.push('Available Eleven Labs MCP Server:');
+  output.push('');
+  output.push('Eleven Labs provides text-to-speech and voice synthesis capabilities.');
+  output.push('');
+  
+  const servers = listElevenLabsServers();
+  servers.forEach((server, index) => {
+    output.push(`[${index + 1}] ${server.name}`);
+    output.push(`    Description: ${server.description}`);
+    output.push('');
+  });
+  
+  output.push('To add Eleven Labs MCP server to your MCP client:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "elevenlabs": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@elevenlabs/mcp-server"],');
+  output.push('      "env": { "ELEVENLABS_API_KEY": "your-api-key" }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Get your Eleven Labs API key from: https://elevenlabs.io/app/settings/api-keys');
+  
+  return output.join('\n');
+}
+
+function formatElevenLabsServerInfo(): string {
+  const output: string[] = [];
+  const config = getElevenLabsConfig();
+  
+  output.push('Eleven Labs MCP Server Information:');
+  output.push('');
+  output.push(`Package: ${config.npmPackage}`);
+  output.push(`Command: ${config.npmCommand}`);
+  output.push(`API Key Environment Variable: ${config.apiKeyEnvVar}`);
+  output.push('');
+  output.push('Available Tools:');
+  output.push('  - elevenlabs-text-to-speech: Convert text to speech');
+  output.push('  - elevenlabs-voices: List available voices');
+  output.push('  - elevenlabs-models: List available TTS models');
+  output.push('  - elevenlabs-settings: Get or set user preferences');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Get your API key from https://elevenlabs.io/app/settings/api-keys');
+  output.push(`2. Set the environment variable: ${config.apiKeyEnvVar}=your-api-key`);
+  output.push('3. Add the server to your MCP client configuration');
+  output.push('');
+  output.push('Documentation: https://elevenlabs.io/docs');
+  output.push('GitHub: https://github.com/elevenlabs/elevenlabs-mcp');
+  
+  return output.join('\n');
+}
+
+// GitHub format functions
+function formatGitHubServers(): string {
+  const output: string[] = [];
+  output.push('Available GitHub MCP Server:');
+  output.push('');
+  output.push('GitHub provides code scanning, issues, pull requests, and repository management capabilities.');
+  output.push('');
+  
+  const servers = listGitHubServers();
+  servers.forEach((server, index) => {
+    output.push(`[${index + 1}] ${server.name}`);
+    output.push(`    Description: ${server.description}`);
+    output.push('');
+  });
+  
+  output.push('To add GitHub MCP server to your MCP client:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "github": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@github/mcp-server"],');
+  output.push('      "env": { "GITHUB_TOKEN": "your-github-token" }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Get your GitHub token from: https://github.com/settings/tokens');
+  
+  return output.join('\n');
+}
+
+function formatGitHubServerInfo(): string {
+  const output: string[] = [];
+  const config = getGitHubConfig();
+  
+  output.push('GitHub MCP Server Information:');
+  output.push('');
+  output.push(`Package: ${config.npmPackage}`);
+  output.push(`Command: ${config.command}`);
+  output.push(`API Token Environment Variable: GITHUB_TOKEN`);
+  output.push(`Configured: ${config.configured ? 'Yes' : 'No'}`);
+  output.push('');
+  output.push('Available Tools:');
+  output.push('  - github-code-scanning: Security vulnerability detection');
+  output.push('  - github-issues: Create, read, update, and search issues');
+  output.push('  - github-pull-requests: Create, read, update, and search PRs');
+  output.push('  - github-repositories: Manage repositories, branches, and commits');
+  output.push('  - github-search: Search code, issues, PRs, and repositories');
+  output.push('  - github-actions: Manage workflows and runs');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Get your GitHub token from https://github.com/settings/tokens');
+  output.push('2. Set the environment variable: GITHUB_TOKEN=your-github-token');
+  output.push('3. Add the server to your MCP client configuration');
+  output.push('');
+  output.push('Documentation: https://github.com/github/github-mcp-server');
+  
+  return output.join('\n');
+}
+
+// AgentQL format functions
+function formatAgentQLServers(): string {
+  const output: string[] = [];
+  output.push('Available AgentQL MCP Server:');
+  output.push('');
+  output.push('AgentQL provides AI-powered web scraping and data extraction capabilities.');
+  output.push('');
+  
+  const servers = listAgentQLServers();
+  servers.forEach((server, index) => {
+    output.push(`[${index + 1}] ${server.name}`);
+    output.push(`    Description: ${server.description}`);
+    output.push('');
+  });
+  
+  output.push('To add AgentQL MCP server to your MCP client:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "agentql": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "agentql-mcp"],');
+  output.push('      "env": { "AGENTQL_API_KEY": "your-api-key" }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Get your AgentQL API key from: https://agentql.com');
+  
+  return output.join('\n');
+}
+
+function formatAgentQLServerInfo(): string {
+  const output: string[] = [];
+  const config = getAgentQLConfig();
+  
+  output.push('AgentQL MCP Server Information:');
+  output.push('');
+  output.push(`Package: ${config.npmPackage}`);
+  output.push(`Command: ${config.command}`);
+  output.push(`API Key Environment Variable: AGENTQL_API_KEY`);
+  output.push(`Configured: ${config.configured ? 'Yes' : 'No'}`);
+  output.push('');
+  output.push('Available Tools:');
+  output.push('  - query_data: Extract structured data from any web page using AgentQL query language');
+  output.push('  - get_web_element: Get web elements from a page using natural language queries');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Get your API key from https://agentql.com');
+  output.push('2. Set the environment variable: AGENTQL_API_KEY=your-api-key');
+  output.push('3. Add the server to your MCP client configuration');
+  output.push('');
+  output.push('GitHub: https://github.com/tinyfish-io/agentql-mcp');
+  
+  return output.join('\n');
+}
+
+
+
+// Alby format functions
+function formatAlbyServers(): string {
+  const output: string[] = [];
+  output.push('Available Alby Bitcoin Lightning MCP Server:');
+  output.push('');
+  output.push('Alby provides Bitcoin Lightning wallet operations via Nostr Wallet Connect (NWC).');
+  output.push('');
+
+  const servers = listAlbyServers();
+  const nwcTools = servers.slice(0, 7);
+  const lightningTools = servers.slice(7);
+
+  output.push('NWC Wallet Tools:');
+  nwcTools.forEach((server, index) => {
+    output.push(`  [${index + 1}] ${server.name}`);
+    output.push(`      ${server.description}`);
+  });
+  output.push('');
+  output.push('Lightning Tools:');
+  lightningTools.forEach((server, index) => {
+    output.push(`  [${index + 8}] ${server.name}`);
+    output.push(`      ${server.description}`);
+  });
+  output.push('');
+  output.push('To add Alby MCP server to your MCP client:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "alby": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@getalby/mcp"],');
+  output.push('      "env": { "NWC_CONNECTION_STRING": "nostr+walletconnect://..." }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Or connect to the remote Alby MCP server:');
+  output.push(`  HTTP Streamable: ${ALBY_MCP_SERVER.remoteUrls.httpStreamable}`);
+  output.push(`  SSE:             ${ALBY_MCP_SERVER.remoteUrls.sse}`);
+  output.push('');
+  output.push('Get your NWC connection string from: https://nwc.getalby.com');
+
+  return output.join('\n');
+}
+
+function formatAlbyServerInfo(): string {
+  const output: string[] = [];
+  const config = getAlbyConfig();
+
+  output.push('Alby Bitcoin Lightning MCP Server Information:');
+  output.push('');
+  output.push(`Package: ${config.npmPackage}`);
+  output.push(`Command: ${config.command} ${config.args.join(' ')}`);
+  output.push(`Auth Environment Variable: NWC_CONNECTION_STRING`);
+  output.push(`Configured: ${config.configured ? 'Yes' : 'No'}`);
+  output.push('');
+  output.push('Remote Server URLs:');
+  output.push(`  HTTP Streamable: ${ALBY_MCP_SERVER.remoteUrls.httpStreamable}`);
+  output.push(`  SSE (deprecated): ${ALBY_MCP_SERVER.remoteUrls.sse}`);
+  output.push('');
+  output.push('Available Tools (11 total):');
+  output.push('  NWC Wallet Tools:');
+  output.push('  - get_balance: Get the balance of the connected lightning wallet');
+  output.push('  - get_info: Get NWC capabilities and wallet/node information');
+  output.push('  - get_wallet_service_info: Get NWC capabilities and supported encryption types');
+  output.push('  - lookup_invoice: Look up a lightning invoice by BOLT-11 or payment hash');
+  output.push('  - make_invoice: Create a lightning invoice');
+  output.push('  - pay_invoice: Pay a lightning invoice');
+  output.push('  - list_transactions: List wallet transactions with optional filtering');
+  output.push('  Lightning Tools:');
+  output.push('  - fetch_l402: Fetch a paid resource protected by L402');
+  output.push('  - fiat_to_sats: Convert fiat currency amounts to satoshis');
+  output.push('  - parse_invoice: Parse a BOLT-11 lightning invoice');
+  output.push('  - request_invoice: Request an invoice from a lightning address');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Get a NWC connection string from https://nwc.getalby.com or any NWC-compatible wallet');
+  output.push('2. Set the environment variable: NWC_CONNECTION_STRING=nostr+walletconnect://...');
+  output.push('3. Add the server to your MCP client configuration');
+  output.push('');
+  output.push('Remote Server Authentication:');
+  output.push('  Bearer: Authorization: Bearer nostr+walletconnect://...');
+  output.push('  Query param: https://mcp.getalby.com/mcp?nwc=ENCODED_NWC_URL');
+  output.push('');
+  output.push('GitHub: https://github.com/getAlby/mcp');
+
+  return output.join('\n');
+}
+
+// Netlify format functions
+function formatNetlifyServers(): string {
+  const output: string[] = [];
+  output.push('Available Netlify MCP Server:');
+  output.push('');
+  output.push('Netlify MCP Server enables AI agents to create, manage, and deploy Netlify projects using natural language.');
+  output.push('');
+
+  const tools = listNetlifyTools();
+  const domains = [...new Set(tools.map(t => t.domain))];
+
+  domains.forEach(domain => {
+    const domainTools = tools.filter(t => t.domain === domain);
+    output.push(`${domain.charAt(0).toUpperCase() + domain.slice(1)} Tools:`);
+    domainTools.forEach((tool, index) => {
+      output.push(`  [${index + 1}] ${tool.name}`);
+      output.push(`      ${tool.description}`);
+    });
+    output.push('');
+  });
+
+  output.push('To add Netlify MCP server to your MCP client:');
+  output.push('');
+  output.push('Claude Desktop (claude_desktop_config.json):');
+  output.push('  "mcpServers": {');
+  output.push('    "netlify": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@netlify/mcp"]');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('With optional PAT for non-interactive use:');
+  output.push('  "mcpServers": {');
+  output.push('    "netlify": {');
+  output.push('      "command": "npx",');
+  output.push('      "args": ["-y", "@netlify/mcp"],');
+  output.push('      "env": { "NETLIFY_PERSONAL_ACCESS_TOKEN": "your-pat" }');
+  output.push('    }');
+  output.push('  }');
+  output.push('');
+  output.push('Get your Netlify PAT from: https://app.netlify.com/user/applications#personal-access-tokens');
+
+  return output.join('\n');
+}
+
+function formatNetlifyServerInfo(): string {
+  const output: string[] = [];
+  const config = getNetlifyConfig();
+
+  output.push('Netlify MCP Server Information:');
+  output.push('');
+  output.push(`Package: ${config.npmPackage}`);
+  output.push(`Command: ${config.command} ${config.args.join(' ')}`);
+  output.push(`Auth Environment Variable: NETLIFY_PERSONAL_ACCESS_TOKEN (optional)`);
+  output.push(`Configured (PAT): ${config.configured ? 'Yes' : 'No (uses OAuth by default)'}`);
+  output.push('');
+  output.push('Available Tool Domains (16 tools across 5 domains):');
+  output.push('  Project tools: get-project, get-projects, create-new-project, update-project-name,');
+  output.push('    update-visitor-access-controls, update-project-forms, get-forms-for-project,');
+  output.push('    manage-form-submissions, manage-project-env-vars');
+  output.push('  Deploy tools: get-deploy, get-deploy-for-site, deploy-site, deploy-site-remotely');
+  output.push('  User tools: get-user');
+  output.push('  Team tools: get-team');
+  output.push('  Extension tools: manage-extensions');
+  output.push('');
+  output.push('Use Cases:');
+  output.push('  - Create, manage, and deploy Netlify projects');
+  output.push('  - Modify access controls for enhanced project security');
+  output.push('  - Install or uninstall Netlify extensions');
+  output.push('  - Fetch user and team information');
+  output.push('  - Enable and manage form submissions');
+  output.push('  - Create and manage environment variables and secrets');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Install Node.js 22 or higher');
+  output.push('2. Add the server to your MCP client configuration (no API key required for OAuth)');
+  output.push('3. Optionally set NETLIFY_PERSONAL_ACCESS_TOKEN for non-interactive use');
+  output.push('');
+  output.push('Documentation: https://docs.netlify.com/welcome/build-with-ai/netlify-mcp-server/');
+  output.push('GitHub: https://github.com/netlify/netlify-mcp');
+
+  return output.join('\n');
+}
+
+// AgentQL format helper functions
+function formatAgentQLQueryResult(result: any): string {
+  const output: string[] = [];
+  output.push('AgentQL Query Data Result:');
+  output.push('');
+  if (result.data) {
+    output.push('Data:');
+    output.push(JSON.stringify(result.data, null, 2));
+  }
+  if (result.metadata) {
+    output.push('');
+    output.push('Metadata:');
+    if (result.metadata.request_id) {
+      output.push(`  Request ID: ${result.metadata.request_id}`);
+    }
+    const otherMeta = Object.entries(result.metadata).filter(([k]) => k !== 'request_id');
+    if (otherMeta.length > 0) {
+      otherMeta.forEach(([k, v]) => output.push(`  ${k}: ${JSON.stringify(v)}`));
+    }
+  }
+  return output.join('\n');
+}
+
+function formatAgentQLWebElementResult(result: any): string {
+  const output: string[] = [];
+  output.push('AgentQL Web Element Result:');
+  output.push('');
+  if (result.data) {
+    output.push('Elements:');
+    output.push(JSON.stringify(result.data, null, 2));
+  }
+  if (result.metadata) {
+    output.push('');
+    output.push('Metadata:');
+    if (result.metadata.request_id) {
+      output.push(`  Request ID: ${result.metadata.request_id}`);
+    }
+    const otherMeta = Object.entries(result.metadata).filter(([k]) => k !== 'request_id');
+    if (otherMeta.length > 0) {
+      otherMeta.forEach(([k, v]) => output.push(`  ${k}: ${JSON.stringify(v)}`));
+    }
+  }
+  return output.join('\n');
+}
+
+// J.P. Morgan format functions
+function formatJPMorganTools(): string {
+  const output: string[] = [];
+  output.push('Available J.P. Morgan Account Balances API Tools:');
+  output.push('');
+  output.push('Access real-time and historical balances for J.P. Morgan accounts.');
+  output.push('');
+
+  const tools = listJPMorganTools();
+  tools.forEach((tool, index) => {
+    output.push(`[${index + 1}] ${tool.name}`);
+    output.push(`    ${tool.description}`);
+    output.push('');
+  });
+
+  output.push('Authentication: OAuth Bearer token (JPMORGAN_ACCESS_TOKEN)');
+  output.push('');
+  output.push('Environments:');
+  output.push(`  Testing OAuth:    ${JPMORGAN_API_SERVER.baseUrls.testingOAuth}`);
+  output.push(`  Production OAuth: ${JPMORGAN_API_SERVER.baseUrls.productionOAuth}`);
+
+  return output.join('\n');
+}
+
+function formatJPMorganServerInfo(): string {
+  const output: string[] = [];
+  const config = getJPMorganConfig();
+
+  output.push('J.P. Morgan Account Balances API Information:');
+  output.push('');
+  output.push(`API Title:   ${JPMORGAN_API_SERVER.title}`);
+  output.push(`Version:     ${JPMORGAN_API_SERVER.version}`);
+  output.push(`Endpoint:    POST ${JPMORGAN_API_SERVER.endpoint}`);
+  output.push(`Auth:        OAuth Bearer token`);
+  output.push(`Env Var:     JPMORGAN_ACCESS_TOKEN`);
+  output.push(`Configured:  ${config.configured ? 'Yes' : 'No'}`);
+  output.push(`Active Env:  ${config.activeEnv}`);
+  output.push(`Active URL:  ${config.activeBaseUrl}`);
+  output.push('');
+  output.push('Available Environments:');
+  output.push(`  Production OAuth: ${JPMORGAN_API_SERVER.baseUrls.productionOAuth}`);
+  output.push(`  Production MTLS:  ${JPMORGAN_API_SERVER.baseUrls.productionMTLS}`);
+  output.push(`  Testing OAuth:    ${JPMORGAN_API_SERVER.baseUrls.testingOAuth}`);
+  output.push(`  Testing MTLS:     ${JPMORGAN_API_SERVER.baseUrls.testingMTLS}`);
+  output.push('');
+  output.push('Available Tools:');
+  output.push('  - retrieve_balances: Query real-time or historical account balances');
+  output.push('');
+  output.push('Query Modes:');
+  output.push('  1. Date Range: startDate + endDate (yyyy-MM-dd, max 31 days apart)');
+  output.push('  2. Relative:   relativeDateType = CURRENT_DAY | PRIOR_DAY');
+  output.push('');
+  output.push('Error Codes:');
+  output.push('  GCA-001/003: Unauthorized Access');
+  output.push('  GCA-005:     Date range exceeds 31 days');
+  output.push('  GCA-018/019: Invalid combination of startDate/endDate + relativeDateType');
+  output.push('  GCA-021:     Account ID is required');
+  output.push('  GCA-025:     No transactions found for date range');
+  output.push('  GCA-026:     Invalid date format (use yyyy-MM-dd)');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Obtain an OAuth access token from the J.P. Morgan Developer Portal');
+  output.push('2. Set the environment variable: JPMORGAN_ACCESS_TOKEN=your-token');
+  output.push('3. Set JPMORGAN_ENV=testing (default) or JPMORGAN_ENV=production');
+  output.push('');
+  output.push('Documentation: https://developer.jpmorgan.com');
+
+  return output.join('\n');
+}
+
+function formatJPMorganBalances(response: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Account Balances:');
+  output.push('');
+
+  if (!response.accountList || response.accountList.length === 0) {
+    output.push('No accounts found in response.');
+    return output.join('\n');
+  }
+
+  response.accountList.forEach((account: any, idx: number) => {
+    output.push(`Account [${idx + 1}]:`);
+    output.push(`  Account ID:   ${account.accountId}`);
+    if (account.accountName) output.push(`  Name:         ${account.accountName}`);
+    if (account.bankName)    output.push(`  Bank:         ${account.bankName}`);
+    if (account.branchId)    output.push(`  Branch ID:    ${account.branchId}`);
+    if (account.currency?.code) output.push(`  Currency:     ${account.currency.code}`);
+    output.push('');
+
+    if (account.balanceList && account.balanceList.length > 0) {
+      output.push('  Balances:');
+      account.balanceList.forEach((bal: any, bidx: number) => {
+        output.push(`    [${bidx + 1}] As Of Date:              ${bal.asOfDate}`);
+        if (bal.currentDay !== undefined) output.push(`        Current Day:             ${bal.currentDay}`);
+        if (bal.openingAvailableAmount !== undefined) output.push(`        Opening Available:       ${bal.openingAvailableAmount}`);
+        if (bal.openingLedgerAmount !== undefined)    output.push(`        Opening Ledger:          ${bal.openingLedgerAmount}`);
+        if (bal.endingAvailableAmount !== undefined)  output.push(`        Ending Available:        ${bal.endingAvailableAmount}`);
+        if (bal.endingLedgerAmount !== undefined)     output.push(`        Ending Ledger:           ${bal.endingLedgerAmount}`);
+      });
+    } else {
+      output.push('  No balance records found.');
+    }
+    output.push('');
+  });
+
+  return output.join('\n');
+}
+
+// J.P. Morgan Embedded Payments format functions
+function formatEFTools(): string {
+  const output: string[] = [];
+  output.push('Available J.P. Morgan Embedded Payments API Tools:');
+  output.push('');
+  output.push('Manage embedded finance clients and accounts via the J.P. Morgan Embedded Payments API.');
+  output.push('');
+
+  const tools = listJPMorganEmbeddedTools();
+  tools.forEach((tool, index) => {
+    output.push(`[${index + 1}] ${tool.name} (${tool.resource})`);
+    output.push(`    ${tool.description}`);
+    output.push('');
+  });
+
+  output.push('Authentication: OAuth Bearer token (JPMORGAN_ACCESS_TOKEN)');
+  output.push('');
+  output.push('Environments:');
+  output.push(`  Production: ${JPMORGAN_EMBEDDED_SERVER.baseUrls.production}`);
+  output.push(`  Mock:       ${JPMORGAN_EMBEDDED_SERVER.baseUrls.mock}`);
+
+  return output.join('\n');
+}
+
+function formatEFServerInfo(): string {
+  const output: string[] = [];
+  const config = getJPMorganEmbeddedConfig();
+
+  output.push('J.P. Morgan Embedded Payments API Information:');
+  output.push('');
+  output.push(`API Title:    ${JPMORGAN_EMBEDDED_SERVER.title}`);
+  output.push(`Version:      ${JPMORGAN_EMBEDDED_SERVER.version}`);
+  output.push(`API Version:  ${JPMORGAN_EMBEDDED_SERVER.apiVersion}`);
+  output.push(`Auth:         OAuth Bearer token`);
+  output.push(`Env Var:      JPMORGAN_ACCESS_TOKEN`);
+  output.push(`Configured:   ${config.configured ? 'Yes' : 'No'}`);
+  output.push(`Active Env:   ${config.activeEnv}`);
+  output.push(`Active URL:   ${config.activeBaseUrl}`);
+  output.push('');
+  output.push('Available Environments:');
+  output.push(`  Production: ${JPMORGAN_EMBEDDED_SERVER.baseUrls.production}`);
+  output.push(`  Mock:       ${JPMORGAN_EMBEDDED_SERVER.baseUrls.mock}`);
+  output.push('');
+  output.push('Available Tools (5 total):');
+  output.push('  Client Tools:');
+  output.push('  - ef_list_clients:  List all embedded finance clients');
+  output.push('  - ef_get_client:    Get a specific client by ID');
+  output.push('  - ef_create_client: Create a new embedded finance client');
+  output.push('  Account Tools (Accounts v2 Beta):');
+  output.push('  - ef_list_accounts: List all accounts for a client');
+  output.push('  - ef_get_account:   Get a specific account by ID');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Obtain an OAuth access token from the J.P. Morgan Developer Portal');
+  output.push('2. Set the environment variable: JPMORGAN_ACCESS_TOKEN=your-token');
+  output.push('3. Set JPMORGAN_PAYMENTS_ENV=production (default) or JPMORGAN_PAYMENTS_ENV=mock');
+  output.push('');
+  output.push('Documentation: https://developer.payments.jpmorgan.com');
+
+  return output.join('\n');
+}
+
+function formatEFClients(response: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Embedded Finance Clients:');
+  output.push('');
+
+  const items = response.data || response.items || (Array.isArray(response) ? response : []);
+
+  if (items.length === 0) {
+    output.push('No clients found.');
+    return output.join('\n');
+  }
+
+  if (response.total !== undefined) output.push(`Total: ${response.total}`);
+  output.push('');
+
+  items.forEach((client: any, idx: number) => {
+    output.push(`Client [${idx + 1}]:`);
+    output.push(`  ID:     ${client.id || client.clientId || 'N/A'}`);
+    if (client.name)   output.push(`  Name:   ${client.name}`);
+    if (client.type)   output.push(`  Type:   ${client.type}`);
+    if (client.status) output.push(`  Status: ${client.status}`);
+    if (client.email)  output.push(`  Email:  ${client.email}`);
+    output.push('');
+  });
+
+  return output.join('\n');
+}
+
+function formatEFClient(client: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Embedded Finance Client:');
+  output.push('');
+  output.push(`  ID:        ${client.id || client.clientId || 'N/A'}`);
+  if (client.name)      output.push(`  Name:      ${client.name}`);
+  if (client.type)      output.push(`  Type:      ${client.type}`);
+  if (client.status)    output.push(`  Status:    ${client.status}`);
+  if (client.email)     output.push(`  Email:     ${client.email}`);
+  if (client.phone)     output.push(`  Phone:     ${client.phone}`);
+  if (client.createdAt) output.push(`  Created:   ${client.createdAt}`);
+  if (client.updatedAt) output.push(`  Updated:   ${client.updatedAt}`);
+  if (client.address) {
+    const a = client.address;
+    output.push('  Address:');
+    if (a.line1)      output.push(`    Line 1:  ${a.line1}`);
+    if (a.line2)      output.push(`    Line 2:  ${a.line2}`);
+    if (a.city)       output.push(`    City:    ${a.city}`);
+    if (a.state)      output.push(`    State:   ${a.state}`);
+    if (a.postalCode) output.push(`    Postal:  ${a.postalCode}`);
+    if (a.country)    output.push(`    Country: ${a.country}`);
+  }
+  return output.join('\n');
+}
+
+function formatEFAccounts(response: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Embedded Finance Accounts (v2 Beta):');
+  output.push('');
+
+  const items = response.data || response.items || (Array.isArray(response) ? response : []);
+
+  if (items.length === 0) {
+    output.push('No accounts found.');
+    return output.join('\n');
+  }
+
+  if (response.total !== undefined) output.push(`Total: ${response.total}`);
+  output.push('');
+
+  items.forEach((account: any, idx: number) => {
+    output.push(`Account [${idx + 1}]:`);
+    output.push(`  ID:       ${account.id || account.accountId || 'N/A'}`);
+    if (account.type)     output.push(`  Type:     ${account.type}`);
+    if (account.status)   output.push(`  Status:   ${account.status}`);
+    if (account.currency) output.push(`  Currency: ${account.currency}`);
+    if (account.balance !== undefined)          output.push(`  Balance:  ${account.balance}`);
+    if (account.availableBalance !== undefined) output.push(`  Available: ${account.availableBalance}`);
+    output.push('');
+  });
+
+  return output.join('\n');
+}
+
+function formatEFAccount(account: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Embedded Finance Account (v2 Beta):');
+  output.push('');
+  output.push(`  ID:              ${account.id || account.accountId || 'N/A'}`);
+  if (account.clientId)           output.push(`  Client ID:       ${account.clientId}`);
+  if (account.type)               output.push(`  Type:            ${account.type}`);
+  if (account.status)             output.push(`  Status:          ${account.status}`);
+  if (account.currency)           output.push(`  Currency:        ${account.currency}`);
+  if (account.balance !== undefined)          output.push(`  Balance:         ${account.balance}`);
+  if (account.availableBalance !== undefined) output.push(`  Available Bal:   ${account.availableBalance}`);
+  if (account.routingNumber)      output.push(`  Routing Number:  ${account.routingNumber}`);
+  if (account.accountNumber)      output.push(`  Account Number:  ${account.accountNumber}`);
+  if (account.createdAt)          output.push(`  Created:         ${account.createdAt}`);
+  if (account.updatedAt)          output.push(`  Updated:         ${account.updatedAt}`);
+  return output.join('\n');
+}
+
+// ─── J.P. Morgan Payments API format functions ────────────────────────────────
+
+function formatJPMorganPayment(payment: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payment:');
+  output.push('');
+
+  const id = payment.paymentId || payment.id || 'N/A';
+  output.push(`  Payment ID:     ${id}`);
+  if (payment.status)        output.push(`  Status:         ${payment.status}`);
+  if (payment.paymentType)   output.push(`  Payment Type:   ${payment.paymentType}`);
+  if (payment.debitAccount)  output.push(`  Debit Account:  ${payment.debitAccount}`);
+
+  if (payment.creditAccount) {
+    const ca = payment.creditAccount;
+    output.push('  Credit Account:');
+    if (ca.routingNumber)  output.push(`    Routing #:    ${ca.routingNumber}`);
+    if (ca.accountNumber)  output.push(`    Account #:    ${ca.accountNumber}`);
+    if (ca.accountType)    output.push(`    Account Type: ${ca.accountType}`);
+    if (ca.accountName)    output.push(`    Name:         ${ca.accountName}`);
+    if (ca.accountId)      output.push(`    Account ID:   ${ca.accountId}`);
+    if (ca.name)           output.push(`    Beneficiary:  ${ca.name}`);
+    if (ca.bankCode)       output.push(`    Bank Code:    ${ca.bankCode}`);
+  }
+
+  if (payment.amount) {
+    output.push(`  Amount:         ${payment.amount.value} ${payment.amount.currency}`);
+  }
+  if (payment.companyId)     output.push(`  Company ID:     ${payment.companyId}`);
+  if (payment.memo)          output.push(`  Memo:           ${payment.memo}`);
+  if (payment.effectiveDate) output.push(`  Effective Date: ${payment.effectiveDate}`);
+  if (payment.endToEndId)    output.push(`  End-to-End ID:  ${payment.endToEndId}`);
+  if (payment.createdAt)     output.push(`  Created:        ${payment.createdAt}`);
+  if (payment.updatedAt)     output.push(`  Updated:        ${payment.updatedAt}`);
+
+  return output.join('\n');
+}
+
+function formatJPMorganPaymentsList(response: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payments:');
+  output.push('');
+
+  const items = response.payments || response.data || (Array.isArray(response) ? response : []);
+
+  if (items.length === 0) {
+    output.push('No payments found.');
+    return output.join('\n');
+  }
+
+  if (response.total !== undefined) output.push(`Total: ${response.total}`);
+  output.push('');
+
+  items.forEach((payment: any, idx: number) => {
+    const id = payment.paymentId || payment.id || 'N/A';
+    output.push(`Payment [${idx + 1}]:`);
+    output.push(`  ID:           ${id}`);
+    if (payment.status)        output.push(`  Status:       ${payment.status}`);
+    if (payment.paymentType)   output.push(`  Type:         ${payment.paymentType}`);
+    if (payment.amount)        output.push(`  Amount:       ${payment.amount.value} ${payment.amount.currency}`);
+    if (payment.effectiveDate) output.push(`  Effective:    ${payment.effectiveDate}`);
+    if (payment.memo)          output.push(`  Memo:         ${payment.memo}`);
+    if (payment.createdAt)     output.push(`  Created:      ${payment.createdAt}`);
+    output.push('');
+  });
+
+  return output.join('\n');
+}
+
+function formatJPMorganPaymentsTools(): string {
+  const output: string[] = [];
+  output.push('Available J.P. Morgan Payments API Tools:');
+  output.push('');
+  output.push('Initiate and track ACH, Wire, RTP, and Book payments via the J.P. Morgan Payments API.');
+  output.push('');
+
+  const tools = listJPMorganPaymentsTools();
+  tools.forEach((tool, index) => {
+    output.push(`[${index + 1}] ${tool.name}`);
+    output.push(`    ${tool.method} ${tool.endpoint}`);
+    output.push(`    ${tool.description}`);
+    output.push('');
+  });
+
+  output.push('Authentication: OAuth Bearer token (JPMORGAN_ACCESS_TOKEN)');
+  output.push('');
+  output.push('Environments:');
+  output.push(`  Testing:    ${JPMORGAN_PAYMENTS_SERVER.baseUrls.testing}`);
+  output.push(`  Production: ${JPMORGAN_PAYMENTS_SERVER.baseUrls.production}`);
+
+  return output.join('\n');
+}
+
+function formatJPMorganPaymentsServerInfo(): string {
+  const output: string[] = [];
+  const config = getJPMorganPaymentsConfig();
+
+  output.push('J.P. Morgan Payments API Information:');
+  output.push('');
+  output.push(`API Title:    ${JPMORGAN_PAYMENTS_SERVER.title}`);
+  output.push(`Version:      ${JPMORGAN_PAYMENTS_SERVER.version}`);
+  output.push(`Auth:         OAuth Bearer token`);
+  output.push(`Env Var:      JPMORGAN_ACCESS_TOKEN`);
+  output.push(`Configured:   ${config.configured ? 'Yes' : 'No'}`);
+  output.push(`Active Env:   ${config.activeEnv}`);
+  output.push(`Active URL:   ${config.activeBaseUrl}`);
+  output.push('');
+  output.push('Available Environments:');
+  output.push(`  Testing:    ${JPMORGAN_PAYMENTS_SERVER.baseUrls.testing}`);
+  output.push(`  Production: ${JPMORGAN_PAYMENTS_SERVER.baseUrls.production}`);
+  output.push('');
+  output.push('Supported Payment Types:');
+  output.push('  ACH  — Automated Clearing House (domestic US, batch-settled)');
+  output.push('         Required: paymentType, companyId, debitAccount,');
+  output.push('                   creditAccount.{routingNumber, accountNumber, accountType},');
+  output.push('                   amount.{currency, value}');
+  output.push('  WIRE — Domestic/international wire transfer');
+  output.push('         Required: paymentType, debitAccount,');
+  output.push('                   creditAccount.{name, accountNumber, bankCode}, amount');
+  output.push('  RTP  — Real-Time Payments (instant, 24/7)');
+  output.push('         Required: paymentType, debitAccount,');
+  output.push('                   creditAccount.{routingNumber, accountNumber, accountType}, amount');
+  output.push('  BOOK — Internal book transfer between J.P. Morgan accounts');
+  output.push('         Required: paymentType, debitAccount,');
+  output.push('                   creditAccount.{accountId}, amount');
+  output.push('');
+  output.push('Available Tools (3 total):');
+  output.push('  - jpmorgan_create_payment: POST /payments — Initiate a payment');
+  output.push('  - jpmorgan_get_payment:    GET  /payments/{id} — Get payment status');
+  output.push('  - jpmorgan_list_payments:  GET  /payments — List payments with filters');
+  output.push('');
+  output.push('Setup Instructions:');
+  output.push('1. Obtain an OAuth access token from the J.P. Morgan Developer Portal');
+  output.push('2. Set the environment variable: JPMORGAN_ACCESS_TOKEN=your-token');
+  output.push('3. Set JPMORGAN_PAYMENTS_ENV=testing (default) or JPMORGAN_PAYMENTS_ENV=production');
+  output.push('');
+  output.push('Documentation: https://developer.jpmorgan.com');
+
+  return output.join('\n');
+}
+
+// ─── J.P. Morgan Payroll format functions ────────────────────────────────────
+
+function formatPayrollTools(): string {
+  const output: string[] = [];
+  output.push('Available J.P. Morgan Payroll ACH Payment Tools:');
+  output.push('');
+  output.push('Disburse employee payroll via ACH credit transfers through the J.P. Morgan Payments API.');
+  output.push('');
+
+  const tools = listPayrollTools();
+  tools.forEach((tool, index) => {
+    output.push(`[${index + 1}] ${tool.name}`);
+    output.push(`    ${tool.method} ${tool.endpoint}`);
+    output.push(`    ${tool.description}`);
+    output.push('');
+  });
+
+  output.push('Authentication: OAuth Bearer token (JPMORGAN_ACCESS_TOKEN)');
+  output.push('');
+  output.push('Required Environment Variables:');
+  output.push('  JPMC_ACH_DEBIT_ACCOUNT  — Your J.P. Morgan operating account ID');
+  output.push('  JPMC_ACH_COMPANY_ID     — Your ACH company ID');
+  output.push('  JPMORGAN_ACCESS_TOKEN   — OAuth bearer token');
+  output.push('  (or JPMC_CLIENT_ID + JPMC_CLIENT_SECRET + JPMC_TOKEN_URL for OAuth client credentials)');
+
+  return output.join('\n');
+}
+
+function formatPayrollServerInfo(): string {
+  const output: string[] = [];
+  const config = getPayrollConfig();
+
+  output.push('J.P. Morgan Payroll ACH Payment Module:');
+  output.push('');
+  output.push(`Module:       ${PAYROLL_SERVER.name}`);
+  output.push(`Title:        ${PAYROLL_SERVER.title}`);
+  output.push(`Version:      ${PAYROLL_SERVER.version}`);
+  output.push(`Auth:         OAuth Bearer token`);
+  output.push(`Configured:   ${config.configured ? 'Yes' : 'No'}`);
+  output.push(`Active Env:   ${config.activeEnv}`);
+  output.push(`Active URL:   ${config.activeBaseUrl}`);
+  output.push('');
+  output.push('Required Environment Variables:');
+  output.push('  JPMC_ACH_DEBIT_ACCOUNT  — Your J.P. Morgan operating account ID (debit side)');
+  output.push('  JPMC_ACH_COMPANY_ID     — Your ACH company ID');
+  output.push('  JPMORGAN_ACCESS_TOKEN   — Pre-obtained OAuth bearer token');
+  output.push('  OR:');
+  output.push('  JPMC_CLIENT_ID          — OAuth client ID (client credentials grant)');
+  output.push('  JPMC_CLIENT_SECRET      — OAuth client secret');
+  output.push('  JPMC_TOKEN_URL          — OAuth token endpoint');
+  output.push('');
+  output.push('Optional:');
+  output.push('  JPMORGAN_PAYMENTS_ENV   — sandbox | testing | production (default: sandbox)');
+  output.push('');
+  output.push('PayrollItem Fields:');
+  output.push('  employeeId    (string)  — Unique employee identifier (e.g. EMP-001)');
+  output.push('  employeeName  (string)  — Full name of the employee');
+  output.push('  routingNumber (string)  — ABA routing number (9 digits)');
+  output.push('  accountNumber (string)  — Bank account number');
+  output.push('  accountType   (enum)    — CHECKING | SAVINGS');
+  output.push('  amount        (number)  — Gross pay in USD (> 0)');
+  output.push('  effectiveDate (string)  — Settlement date in yyyy-MM-dd format');
+  output.push('');
+  output.push('Available Tools (4 total):');
+  output.push('  - jpmorgan_create_payroll_payment: Submit a single employee payroll ACH payment');
+  output.push('  - jpmorgan_create_batch_payroll:   Submit a batch of payroll ACH payments');
+  output.push('  - jpmorgan_create_payroll_run:     Submit a named payroll run (maker, CreatePayrollRunDto)');
+  output.push('  - jpmorgan_approve_payroll_run:    Approve and execute a payroll run (checker, ApprovePayrollRunDto)');
+  output.push('');
+  output.push('Documentation: https://developer.jpmorgan.com');
+
+  return output.join('\n');
+}
+
+function formatPayrollRunResult(result: PayrollRunResult): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payroll Run Result:');
+  output.push('');
+  output.push(`  Created By:   ${result.createdBy}`);
+  output.push(`  Processed At: ${result.processedAt}`);
+  output.push(`  Total:        ${result.total}`);
+  output.push(`  Succeeded:    ${result.succeeded}`);
+  output.push(`  Failed:       ${result.failed}`);
+  output.push('');
+
+  if (result.results.length === 0) {
+    output.push('No items processed.');
+    return output.join('\n');
+  }
+
+  output.push('Per-Item Results:');
+  result.results.forEach((r, idx) => {
+    const status = r.success ? '✓ SUCCESS' : '✗ FAILED';
+    output.push(`\n  [${idx + 1}] ${status} — ${r.item.employeeName} (${r.item.employeeId})`);
+    output.push(`       Amount:         $${r.item.amount.toFixed(2)} USD`);
+    output.push(`       Effective Date: ${r.item.effectiveDate}`);
+    output.push(`       Account Type:   ${r.item.accountType}`);
+    if (r.success && r.payment) {
+      const pid = r.payment.paymentId || r.payment.id || 'N/A';
+      output.push(`       Payment ID:     ${pid}`);
+      if (r.payment.status) output.push(`       Status:         ${r.payment.status}`);
+    }
+    if (!r.success && r.error) {
+      output.push(`       Error:          ${r.error}`);
+    }
+  });
+
+  return output.join('\n');
+}
+
+function formatPayrollRunApprovalResult(result: PayrollRunApprovalResult): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payroll Run Approval Result:');
+  output.push('');
+  output.push(`  Approved By:  ${result.approvedBy}`);
+  output.push(`  Processed At: ${result.processedAt}`);
+  output.push(`  Total:        ${result.total}`);
+  output.push(`  Succeeded:    ${result.succeeded}`);
+  output.push(`  Failed:       ${result.failed}`);
+  output.push('');
+
+  if (result.results.length === 0) {
+    output.push('No items processed.');
+    return output.join('\n');
+  }
+
+  output.push('Per-Item Results:');
+  result.results.forEach((r, idx) => {
+    const status = r.success ? '✓ SUCCESS' : '✗ FAILED';
+    output.push(`\n  [${idx + 1}] ${status} — ${r.item.employeeName} (${r.item.employeeId})`);
+    output.push(`       Amount:         $${r.item.amount.toFixed(2)} USD`);
+    output.push(`       Effective Date: ${r.item.effectiveDate}`);
+    output.push(`       Account Type:   ${r.item.accountType}`);
+    if (r.success && r.payment) {
+      const pid = r.payment.paymentId || r.payment.id || 'N/A';
+      output.push(`       Payment ID:     ${pid}`);
+      if (r.payment.status) output.push(`       Status:         ${r.payment.status}`);
+    }
+    if (!r.success && r.error) {
+      output.push(`       Error:          ${r.error}`);
+    }
+  });
+
+  return output.join('\n');
+}
+
+function formatPayrollPayment(item: PayrollItem, payment: any): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payroll Payment Submitted:');
+  output.push('');
+  output.push('Employee:');
+  output.push(`  ID:             ${item.employeeId}`);
+  output.push(`  Name:           ${item.employeeName}`);
+  output.push(`  Account Type:   ${item.accountType}`);
+  output.push(`  Routing #:      ${item.routingNumber}`);
+  output.push(`  Account #:      ${item.accountNumber}`);
+  output.push(`  Amount:         $${item.amount.toFixed(2)} USD`);
+  output.push(`  Effective Date: ${item.effectiveDate}`);
+  output.push('');
+  output.push('Payment Response:');
+
+  const id = payment?.paymentId || payment?.id || 'N/A';
+  output.push(`  Payment ID:     ${id}`);
+  if (payment?.status)        output.push(`  Status:         ${payment.status}`);
+  if (payment?.paymentType)   output.push(`  Payment Type:   ${payment.paymentType}`);
+  if (payment?.effectiveDate) output.push(`  Effective Date: ${payment.effectiveDate}`);
+  if (payment?.memo)          output.push(`  Memo:           ${payment.memo}`);
+  if (payment?.createdAt)     output.push(`  Created:        ${payment.createdAt}`);
+
+  return output.join('\n');
+}
+
+function formatBatchPayrollResult(result: BatchPayrollResult): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Batch Payroll Result:');
+  output.push('');
+  output.push(`  Processed At: ${result.processedAt}`);
+  output.push(`  Total:        ${result.total}`);
+  output.push(`  Succeeded:    ${result.succeeded}`);
+  output.push(`  Failed:       ${result.failed}`);
+  output.push('');
+
+  if (result.results.length === 0) {
+    output.push('No items processed.');
+    return output.join('\n');
+  }
+
+  output.push('Per-Item Results:');
+  result.results.forEach((r, idx) => {
+    const status = r.success ? '✓ SUCCESS' : '✗ FAILED';
+    output.push(`\n  [${idx + 1}] ${status} — ${r.item.employeeName} (${r.item.employeeId})`);
+    output.push(`       Amount:         $${r.item.amount.toFixed(2)} USD`);
+    output.push(`       Effective Date: ${r.item.effectiveDate}`);
+    output.push(`       Account Type:   ${r.item.accountType}`);
+    if (r.success && r.payment) {
+      const pid = r.payment.paymentId || r.payment.id || 'N/A';
+      output.push(`       Payment ID:     ${pid}`);
+      if (r.payment.status) output.push(`       Status:         ${r.payment.status}`);
+    }
+    if (!r.success && r.error) {
+      output.push(`       Error:          ${r.error}`);
+    }
+  });
+
+  return output.join('\n');
+}
+
+// ─── J.P. Morgan Payroll Run Entity formatter (stateful PayrollService) ───────
+
+function formatPayrollRunEntity(run: PayrollRunEntity): string {
+  const output: string[] = [];
+  output.push('J.P. Morgan Payroll Run:');
+  output.push('');
+  output.push(`  Run ID:       ${run.id}`);
+  output.push(`  Status:       ${run.status}`);
+  output.push(`  Created By:   ${run.createdBy}`);
+  output.push(`  Created At:   ${run.createdAt instanceof Date ? run.createdAt.toISOString() : run.createdAt}`);
+  if (run.approvedBy) output.push(`  Approved By:  ${run.approvedBy}`);
+  if (run.approvedAt) output.push(`  Approved At:  ${run.approvedAt instanceof Date ? run.approvedAt.toISOString() : run.approvedAt}`);
+  output.push(`  Total Amount: $${run.totalAmount.toFixed(2)} USD`);
+  output.push(`  Payments:     ${run.payments.length}`);
+  output.push('');
+
+  if (run.payments.length === 0) {
+    output.push('No payment records.');
+    return output.join('\n');
+  }
+
+  output.push('Payment Records:');
+  run.payments.forEach((p, idx) => {
+    output.push(`\n  [${idx + 1}] ${p.employeeName} (${p.employeeId})`);
+    output.push(`       Amount:         $${p.amount.toFixed(2)} USD`);
+    output.push(`       Effective Date: ${p.effectiveDate}`);
+    output.push(`       Account Type:   ${p.accountType}`);
+    if (p.jpmcPaymentId) output.push(`       JPMC Payment ID: ${p.jpmcPaymentId}`);
+    if (p.jpmcStatus)    output.push(`       JPMC Status:     ${p.jpmcStatus}`);
+    if (p.jpmcReturnCode) output.push(`       Return Code:    ${p.jpmcReturnCode}`);
+  });
+
   return output.join('\n');
 }
 
