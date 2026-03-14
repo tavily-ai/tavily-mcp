@@ -172,8 +172,8 @@ class TavilyClient {
               },
               topic : {
                 type: "string",
-                enum: ["general"],
-                description: "The category of the search. This will determine which of our agents will be used for the search",
+                enum: ["general", "news", "finance"],
+                description: "The category of the search. This will determine which of our agents will be used for the search. 'general' is for broader, general-purpose searches. 'news' is useful for retrieving real-time updates, particularly about politics, sports, and major current events covered by mainstream media sources. 'finance' is for financial data and market information.",
                 default: "general"
               },
               time_range: {
