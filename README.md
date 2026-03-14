@@ -103,6 +103,14 @@ You will then be redirected to your `mcp.json` file where you have to add `your-
 }
 ```
 
+## Connect to Gemini CLI
+
+Run the following command in your terminal to install Tavily MCP server on Gemini CLI:
+
+```bash
+gemini extensions install https://github.com/tavily-ai/tavily-mcp
+```
+
 ### Remote MCP Server OAuth Flow
 
 The Tavily Remote MCP server supports secure OAuth authentication, allowing you to connect and authorize seamlessly with compatible clients.
