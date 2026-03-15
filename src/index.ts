@@ -596,9 +596,9 @@ class TavilyClient {
         api_key: API_KEY,
       };
       
-      // Apply default parameters
-      for (const key in searchParams) {
-        if (key in defaults) {
+      // Apply default parameters only for keys not explicitly provided by the user
+      for (const key in defaults) {
+        if (key in searchParams && (searchParams[key] === undefined || searchParams[key] === null)) {
           searchParams[key] = defaults[key];
         }
       }
