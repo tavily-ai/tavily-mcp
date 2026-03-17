@@ -1,4 +1,6 @@
 # Tavily MCP Server
+
+[![AgentRank](https://agentrank-ai.com/api/badge/tool/tavily-ai--tavily-mcp)](https://agentrank-ai.com/tool/tavily-ai--tavily-mcp/)
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 ![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
