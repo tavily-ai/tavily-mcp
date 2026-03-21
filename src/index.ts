@@ -634,9 +634,22 @@ class TavilyClient {
   }
 
   async extract(params: any): Promise<TavilyResponse> {
+    // 🛡️ SECURITY PATCH: Array Exhaustion Prevention
+    if (!params.urls || !Array.isArray(params.urls)) {
+      throw new McpError(ErrorCode.InvalidParams, "The 'urls' parameter must be an array of strings.");
+    }
+    if (params.urls.length > 20) {
+      throw new McpError(ErrorCode.InvalidParams, "Maximum of 20 URLs allowed per extract request to prevent API quota exhaustion.");
+    }
+    
+    // Clean out undefined values to prevent API schema rejection
+    const safeParams = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v !== undefined)
+    );
+
     try {
       const response = await this.axiosInstance.post(this.baseURLs.extract, {
-        ...params,
+        ...safeParams,
         api_key: API_KEY
       });
       return response.data;
@@ -651,9 +664,24 @@ class TavilyClient {
   }
 
   async crawl(params: any): Promise<TavilyCrawlResponse> {
+    // 🛡️ SECURITY PATCH: Crawl Limit Guardrails
+    if (!params.url || typeof params.url !== 'string') {
+      throw new McpError(ErrorCode.InvalidParams, "The 'url' parameter must be a valid string.");
+    }
+    if (params.limit && typeof params.limit === 'number' && params.limit > 100) {
+      throw new McpError(ErrorCode.InvalidParams, "The 'limit' parameter cannot exceed 100 to prevent runaway crawl billing.");
+    }
+    if (params.max_depth && typeof params.max_depth === 'number' && params.max_depth > 5) {
+      throw new McpError(ErrorCode.InvalidParams, "The 'max_depth' parameter cannot exceed 5.");
+    }
+
+    const safeParams = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v !== undefined)
+    );
+
     try {
       const response = await this.axiosInstance.post(this.baseURLs.crawl, {
-        ...params,
+        ...safeParams,
         api_key: API_KEY
       });
       return response.data;
@@ -668,9 +696,21 @@ class TavilyClient {
   }
 
   async map(params: any): Promise<TavilyMapResponse> {
+    // 🛡️ SECURITY PATCH: Map Limit Guardrails
+    if (!params.url || typeof params.url !== 'string') {
+      throw new McpError(ErrorCode.InvalidParams, "The 'url' parameter must be a valid string.");
+    }
+    if (params.limit && typeof params.limit === 'number' && params.limit > 100) {
+      throw new McpError(ErrorCode.InvalidParams, "The 'limit' parameter cannot exceed 100 to prevent runaway mapping operations.");
+    }
+
+    const safeParams = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v !== undefined)
+    );
+
     try {
       const response = await this.axiosInstance.post(this.baseURLs.map, {
-        ...params,
+        ...safeParams,
         api_key: API_KEY
       });
       return response.data;
