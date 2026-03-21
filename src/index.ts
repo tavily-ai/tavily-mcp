@@ -703,6 +703,10 @@ class TavilyClient {
     if (params.limit && typeof params.limit === 'number' && params.limit > 100) {
       throw new McpError(ErrorCode.InvalidParams, "The 'limit' parameter cannot exceed 100 to prevent runaway mapping operations.");
     }
+    // ADDED: Enforce max_depth on map operations just like crawl
+    if (params.max_depth && typeof params.max_depth === 'number' && params.max_depth > 5) {
+      throw new McpError(ErrorCode.InvalidParams, "The 'max_depth' parameter cannot exceed 5.");
+    }
 
     const safeParams = Object.fromEntries(
       Object.entries(params).filter(([_, v]) => v !== undefined)
