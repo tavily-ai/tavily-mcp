@@ -664,15 +664,16 @@ class TavilyClient {
   }
 
   async crawl(params: any): Promise<TavilyCrawlResponse> {
-    // 🛡️ SECURITY PATCH: Crawl Limit Guardrails
+    // 🛡️ SECURITY PATCH: Strict Crawl Limit Guardrails
     if (!params.url || typeof params.url !== 'string') {
       throw new McpError(ErrorCode.InvalidParams, "The 'url' parameter must be a valid string.");
     }
-    if (params.limit && typeof params.limit === 'number' && params.limit > 100) {
-      throw new McpError(ErrorCode.InvalidParams, "The 'limit' parameter cannot exceed 100 to prevent runaway crawl billing.");
+    // Reject if it exists AND (is not a number OR is too large)
+    if (params.limit !== undefined && (typeof params.limit !== 'number' || params.limit > 100)) {
+      throw new McpError(ErrorCode.InvalidParams, "The 'limit' parameter must be a number and cannot exceed 100.");
     }
-    if (params.max_depth && typeof params.max_depth === 'number' && params.max_depth > 5) {
-      throw new McpError(ErrorCode.InvalidParams, "The 'max_depth' parameter cannot exceed 5.");
+    if (params.max_depth !== undefined && (typeof params.max_depth !== 'number' || params.max_depth > 5)) {
+      throw new McpError(ErrorCode.InvalidParams, "The 'max_depth' parameter must be a number and cannot exceed 5.");
     }
 
     const safeParams = Object.fromEntries(
@@ -696,16 +697,16 @@ class TavilyClient {
   }
 
   async map(params: any): Promise<TavilyMapResponse> {
-    // 🛡️ SECURITY PATCH: Map Limit Guardrails
+    // 🛡️ SECURITY PATCH: Strict Map Limit Guardrails
     if (!params.url || typeof params.url !== 'string') {
       throw new McpError(ErrorCode.InvalidParams, "The 'url' parameter must be a valid string.");
     }
-    if (params.limit && typeof params.limit === 'number' && params.limit > 100) {
-      throw new McpError(ErrorCode.InvalidParams, "The 'limit' parameter cannot exceed 100 to prevent runaway mapping operations.");
+    // Reject if it exists AND (is not a number OR is too large)
+    if (params.limit !== undefined && (typeof params.limit !== 'number' || params.limit > 100)) {
+      throw new McpError(ErrorCode.InvalidParams, "The 'limit' parameter must be a number and cannot exceed 100.");
     }
-    // ADDED: Enforce max_depth on map operations just like crawl
-    if (params.max_depth && typeof params.max_depth === 'number' && params.max_depth > 5) {
-      throw new McpError(ErrorCode.InvalidParams, "The 'max_depth' parameter cannot exceed 5.");
+    if (params.max_depth !== undefined && (typeof params.max_depth !== 'number' || params.max_depth > 5)) {
+      throw new McpError(ErrorCode.InvalidParams, "The 'max_depth' parameter must be a number and cannot exceed 5.");
     }
 
     const safeParams = Object.fromEntries(
