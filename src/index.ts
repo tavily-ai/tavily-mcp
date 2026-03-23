@@ -495,7 +495,7 @@ class TavilyClient {
             break;
 
           case "tavily_crawl":
-            await this.reportProgress(progressToken, `Crawling the url: ${args.url} for relevant informatioin`);
+            await this.reportProgress(progressToken, `Crawling the url: ${args.url} for relevant information`);
             const crawlResponse = await this.crawl({
               url: args.url,
               max_depth: args.max_depth,
@@ -518,6 +518,7 @@ class TavilyClient {
             };
 
           case "tavily_map":
+            await this.reportProgress(progressToken, `Mapping the structure of the site: ${args.url}`);
             const mapResponse = await this.map({
               url: args.url,
               max_depth: args.max_depth,
