@@ -1,9 +1,13 @@
 name: KYA Security Scan
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   kya-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Thezenmonster/kya-scan-action@v1
+      - uses: Thezenmonster/kya-scan-action@d4d86df07bacaefe57970b69db6fa7a776dfe15b
+
