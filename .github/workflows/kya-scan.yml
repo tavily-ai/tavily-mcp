@@ -1,0 +1,9 @@
+name: KYA Security Scan
+on: [push, pull_request]
+
+jobs:
+  kya-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Thezenmonster/kya-scan-action@v1
