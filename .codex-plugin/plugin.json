@@ -1,0 +1,24 @@
+{
+  "name": "tavily-mcp",
+  "version": "0.1.0",
+  "description": "Real-time web search, extract, map and crawl from Codex via MCP",
+  "author": {
+    "name": "tavily-ai",
+    "url": "https://github.com/tavily-ai/tavily-mcp"
+  },
+  "homepage": "https://github.com/tavily-ai/tavily-mcp",
+  "repository": "https://github.com/tavily-ai/tavily-mcp",
+  "keywords": [
+    "mcp",
+    "codex"
+  ],
+  "mcpServers": "./.mcp.json",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Tavily MCP",
+    "shortDescription": "Real-time web search, extract, map and crawl from Codex via MCP",
+    "longDescription": "Production ready MCP server with real-time search, extract, map and crawl. Uses remote HTTP endpoint.",
+    "category": "Research",
+    "websiteURL": "https://github.com/tavily-ai/tavily-mcp"
+  }
+}
