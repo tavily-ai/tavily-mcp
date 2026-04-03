@@ -587,8 +587,8 @@ class TavilyClient {
         include_images: params.include_images,
         include_image_descriptions: params.include_image_descriptions,
         include_raw_content: params.include_raw_content,
-        include_domains: params.include_domains || [],
-        exclude_domains: params.exclude_domains || [],
+        include_domains: params.include_domains,
+        exclude_domains: params.exclude_domains,
         country: params.country,
         include_favicon: params.include_favicon,
         start_date: params.start_date,
@@ -596,12 +596,16 @@ class TavilyClient {
         api_key: API_KEY,
       };
       
-      // Apply default parameters
-      for (const key in searchParams) {
-        if (key in defaults) {
+      // Apply default parameters only for keys not explicitly provided by the user
+      for (const key in defaults) {
+        if (key in searchParams && (searchParams[key] === undefined || searchParams[key] === null)) {
           searchParams[key] = defaults[key];
         }
       }
+
+      // Ensure array fields are never undefined (API expects arrays)
+      searchParams.include_domains = searchParams.include_domains ?? [];
+      searchParams.exclude_domains = searchParams.exclude_domains ?? [];
       
       // We have to set defaults due to the issue with optional parameter types or defaults = None
       // Because of this, we have to set the time_range to None if start_date or end_date is set
