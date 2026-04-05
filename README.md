@@ -47,7 +47,7 @@ Authorization: Bearer <your-api-key>
 Pass your API key directly in the URL. Replace `<your-api-key>` with your actual [Tavily API key](https://www.tavily.com/):
 
 ```bash
-claude mcp add --transport http tavily https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>
+claude mcp add --transport http tavily 'https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>'
 ```
 
 #### Option 2: OAuth Authentication Flow
@@ -66,7 +66,7 @@ After adding, you'll need to complete the authentication flow:
 **Tip:** Add `--scope user` to either command to make the Tavily MCP server available globally across all your projects:
 
 ```bash
-claude mcp add --transport http --scope user tavily https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>
+claude mcp add --transport http --scope user tavily 'https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>'
 ```
 
 Once configured, you'll have access to the Tavily search, extract, map, and crawl tools.
