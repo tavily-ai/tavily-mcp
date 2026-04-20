@@ -68,6 +68,21 @@ class TavilyClient {
     map: 'https://api.tavily.com/map',
     research: 'https://api.tavily.com/research'
   };
+  
+  private async reportProgress(
+    progressToken: string | number | undefined,
+    message: string
+  ): Promise<void> {
+    if (progressToken === undefined) return;
+    await this.server.notification({
+      method: "notifications/progress",
+      params: {
+        progressToken,
+        progress: 0,   // required by schema, but meaningless here
+        message        // the human-readable status text
+      }
+    });
+  }
 
   private docsURLs: Record<string, string> = {
     search: 'https://docs.tavily.com/documentation/api-reference/endpoint/search',
@@ -439,6 +454,7 @@ class TavilyClient {
           "TAVILY_API_KEY environment variable is required. Please set it before using this MCP server."
         );
       }
+      const progressToken = request.params._meta?.progressToken;
 
       try {
         let response: TavilyResponse;
@@ -450,6 +466,7 @@ class TavilyClient {
             if (args.country) {
               args.topic = "general";
             }
+            await this.reportProgress(progressToken, `Searching the internet for the query: ${args.query}`);
             
             response = await this.search({
               query: args.query,
@@ -471,6 +488,7 @@ class TavilyClient {
             break;
           
           case "tavily_extract":
+            await this.reportProgress(progressToken, `Extracting information from: ${args.urls}`);
             response = await this.extract({
               urls: args.urls,
               extract_depth: args.extract_depth,
@@ -482,6 +500,7 @@ class TavilyClient {
             break;
 
           case "tavily_crawl":
+            await this.reportProgress(progressToken, `Crawling the url: ${args.url} for relevant information`);
             const crawlResponse = await this.crawl({
               url: args.url,
               max_depth: args.max_depth,
@@ -504,6 +523,7 @@ class TavilyClient {
             };
 
           case "tavily_map":
+            await this.reportProgress(progressToken, `Mapping the structure of the site: ${args.url}`);
             const mapResponse = await this.map({
               url: args.url,
               max_depth: args.max_depth,
@@ -522,6 +542,7 @@ class TavilyClient {
             };
 
           case "tavily_research":
+            await this.reportProgress(progressToken, "Enabling Deep Research through Internet for detailed information");
             const researchResponse = await this.research({
               input: args.input,
               model: args.model
