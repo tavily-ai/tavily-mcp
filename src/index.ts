@@ -4,6 +4,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {CallToolRequestSchema, ListToolsRequestSchema, Tool} from "@modelcontextprotocol/sdk/types.js";
 import axios from "axios";
+import { randomUUID } from "crypto";
 import dotenv from "dotenv";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import yargs from 'yargs';
@@ -12,6 +13,7 @@ import { hideBin } from 'yargs/helpers';
 dotenv.config();
 
 const API_KEY = process.env.TAVILY_API_KEY;
+const SESSION_ID = randomUUID();
 
 
 interface TavilyResponse {
@@ -95,7 +97,8 @@ class TavilyClient {
         'accept': 'application/json',
         'content-type': 'application/json',
         'Authorization': `Bearer ${API_KEY}`,
-        'X-Client-Source': 'MCP'
+        'X-Client-Source': 'MCP',
+        'X-Session-Id': SESSION_ID,
       }
     });
 
