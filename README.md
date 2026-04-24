@@ -206,6 +206,29 @@ export DEFAULT_PARAMETERS='{"include_images": true}'
 }
 ```
 
+## Identifying the End User (Optional)
+
+You can optionally identify the end user on whose behalf requests are being made by setting the `TAVILY_HUMAN_ID` environment variable. When set, Tavily MCP forwards it as the `X-Human-Id` header on every API call, enabling per-user analytics.
+
+This is **entirely optional** — leave it unset and behavior is unchanged.
+
+```json
+{
+  "mcpServers": {
+    "tavily-mcp": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "env": {
+        "TAVILY_API_KEY": "your-api-key-here",
+        "TAVILY_HUMAN_ID": "your-user-id"
+      }
+    }
+  }
+}
+```
+
+**Privacy note:** Tavily hashes `human_id` server-side (SHA-256) before storage, so the raw value is never persisted. Even so, prefer opaque identifiers (e.g. an internal user ID) over raw PII like emails when possible.
+
 ## Acknowledgments ✨
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
