@@ -13,6 +13,7 @@ import { hideBin } from 'yargs/helpers';
 dotenv.config();
 
 const API_KEY = process.env.TAVILY_API_KEY;
+const HUMAN_ID = process.env.TAVILY_HUMAN_ID;
 const SESSION_ID = randomUUID();
 
 
@@ -99,6 +100,7 @@ class TavilyClient {
         'Authorization': `Bearer ${API_KEY}`,
         'X-Client-Source': 'MCP',
         'X-Session-Id': SESSION_ID,
+        ...(HUMAN_ID ? { 'X-Human-Id': HUMAN_ID } : {}),
       }
     });
 
