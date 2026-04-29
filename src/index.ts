@@ -437,12 +437,16 @@ class TavilyClient {
     });
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
-      // Check for API key at request time and return proper JSON-RPC error
+      // Return a graceful isError response when the API key is missing,
+      // so agents can self-correct instead of seeing a server crash.
       if (!API_KEY) {
-        throw new McpError(
-          ErrorCode.InvalidRequest,
-          "TAVILY_API_KEY environment variable is required. Please set it before using this MCP server."
-        );
+        return {
+          content: [{
+            type: "text",
+            text: "TAVILY_API_KEY environment variable is required. Please set it before using this MCP server."
+          }],
+          isError: true,
+        };
       }
 
       try {
