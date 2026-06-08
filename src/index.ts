@@ -4,6 +4,8 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {CallToolRequestSchema, ListToolsRequestSchema, Tool} from "@modelcontextprotocol/sdk/types.js";
 import axios from "axios";
+import fs from "fs";
+import path from "path";
 import { randomUUID } from "crypto";
 import dotenv from "dotenv";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
@@ -17,6 +19,25 @@ const IS_KEYLESS = !API_KEY;
 const HUMAN_ID = process.env.TAVILY_HUMAN_ID;
 const SESSION_ID = randomUUID();
 
+function readPackageVersion(): string {
+  const entrypoint = process.argv[1] ? fs.realpathSync(process.argv[1]) : process.cwd();
+  let dir = path.dirname(path.resolve(entrypoint));
+  for (let i = 0; i < 5; i++) {
+    const packagePath = path.join(dir, "package.json");
+    if (fs.existsSync(packagePath)) {
+      const packageJSON = JSON.parse(fs.readFileSync(packagePath, "utf8")) as { version?: unknown };
+      if (typeof packageJSON.version === "string") return packageJSON.version;
+    }
+
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  return "unknown";
+}
+
+const PACKAGE_VERSION = readPackageVersion();
 
 interface TavilyResponse {
   // Response structure from Tavily API
@@ -85,7 +106,7 @@ class TavilyClient {
     this.server = new Server(
       {
         name: "tavily-mcp",
-        version: "0.2.20",
+        version: PACKAGE_VERSION,
       },
       {
         capabilities: {
@@ -898,6 +919,7 @@ interface Arguments {
 
 // Modify the command line parsing section to use proper typing
 const argv = yargs(hideBin(process.argv))
+  .version(PACKAGE_VERSION)
   .option('list-tools', {
     type: 'boolean',
     description: 'List all available tools and exit',
