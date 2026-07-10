@@ -143,18 +143,19 @@ class TavilyClient {
    * - 每次请求从 KeyManager 选择最佳 key
    * - 遇到 432/433/401/429 自动切换 key 重试
    * - 钥匙数量决定了最大重试次数
+   * @returns { data, usedKey } — data 为响应体，usedKey 为实际使用的 key（keyless 模式为 null）
    */
   private async makeAuthenticatedRequest(
     method: 'post' | 'get',
     url: string,
     data?: any
-  ): Promise<any> {
+  ): Promise<{ data: any; usedKey: string | null }> {
     if (IS_KEYLESS || !keyManager) {
       // keyless 模式：直接请求，不带鉴权
       const response = method === 'post'
         ? await this.axiosInstance.post(url, data)
         : await this.axiosInstance.get(url);
-      return response.data;
+      return { data: response.data, usedKey: null };
     }
 
     const maxRetries = keyManager.getTotalKeyCount();
@@ -163,8 +164,14 @@ class TavilyClient {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const selectedKey = keyManager.selectKey();
       if (!selectedKey) {
+        // 生成有诊断价值的错误信息
+        const totalKeys = keyManager.getTotalKeyCount();
+        const statusSummary = keyManager.getKeyStatusSummary();
+        const waitHint = keyManager.getMinCooldownRemainingMinutes();
         throw new Error(
-          '[tavily-mcp] 所有 API key 均已不可用（满额或无效），请检查 key 状态'
+          `[tavily-mcp] 所有 ${totalKeys} 个 key 均不可用` +
+          `（${statusSummary}）` +
+          (waitHint > 0 ? `，预计 ${waitHint} 分钟后有 key 冷却到期，或请检查 key 配置` : '，请检查 key 配置')
         );
       }
 
@@ -174,23 +181,34 @@ class TavilyClient {
         },
       };
 
-      // 在请求体中注入 api_key
+      // 在请求体中注入 api_key（与 Authorization header 双重保障；
+      // Tavily API 支持两种鉴权方式，Authorization 是标准做法，body api_key 作为兼容保留）
       const requestData = data ? { ...data, api_key: selectedKey } : { api_key: selectedKey };
 
       try {
         const response = method === 'post'
           ? await this.axiosInstance.post(url, requestData, config)
           : await this.axiosInstance.get(url, config);
-        return response.data;
+        return { data: response.data, usedKey: selectedKey };
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
           const status = error.response?.status;
           if (status === 432 || status === 433 || status === 401 || status === 429) {
-            const canRetry = keyManager.handleError(selectedKey, status);
+            // 429 时读取 retry-after 响应头，精确设置冷却时间
+            let retryAfterSec: number | undefined;
+            if (status === 429) {
+              const retryAfterHeader = error.response?.headers?.['retry-after'];
+              if (retryAfterHeader) {
+                retryAfterSec = parseInt(retryAfterHeader, 10);
+                if (isNaN(retryAfterSec)) retryAfterSec = undefined;
+              }
+            }
+            const canRetry = keyManager.handleError(selectedKey, status, retryAfterSec);
             if (canRetry && attempt < maxRetries - 1) {
               console.error(
                 `[tavily-mcp] key ${sanitizeKey(selectedKey)} 异常 ` +
-                `(status=${status})，自动切换重试 (${attempt + 1}/${maxRetries - 1})`
+                `(status=${status}${retryAfterSec ? `, retry-after=${retryAfterSec}s` : ''})，` +
+                `自动切换重试 (${attempt + 1}/${maxRetries - 1})`
               );
               continue;
             }
@@ -721,21 +739,21 @@ class TavilyClient {
       
       // keyless 模式下 api_key 字段不需要（在 makeAuthenticatedRequest 中自动添加）
       // 但为了兼容 keyless 的 request body，保持不添加
-      return await this.makeAuthenticatedRequest('post', endpoint, cleanedParams);
+      return (await this.makeAuthenticatedRequest('post', endpoint, cleanedParams)).data;
   }
 
   async extract(params: any): Promise<TavilyResponse> {
-    return await this.makeAuthenticatedRequest('post', this.baseURLs.extract, params);
+    return (await this.makeAuthenticatedRequest('post', this.baseURLs.extract, params)).data;
   }
 
   async crawl(params: any): Promise<TavilyCrawlResponse> {
-    const response = await this.makeAuthenticatedRequest('post', this.baseURLs.crawl, params);
-    return response;
+    const { data } = await this.makeAuthenticatedRequest('post', this.baseURLs.crawl, params);
+    return data;
   }
 
   async map(params: any): Promise<TavilyMapResponse> {
-    const response = await this.makeAuthenticatedRequest('post', this.baseURLs.map, params);
-    return response;
+    const { data } = await this.makeAuthenticatedRequest('post', this.baseURLs.map, params);
+    return data;
   }
 
   async research(params: any): Promise<TavilyResearchResponse> {
@@ -747,7 +765,7 @@ class TavilyClient {
 
     try {
       // 使用 makeAuthenticatedRequest 发起初始 research 请求（自动处理 key 选择和重试）
-      const response = await this.makeAuthenticatedRequest('post', this.baseURLs.research, {
+      const { data: response, usedKey } = await this.makeAuthenticatedRequest('post', this.baseURLs.research, {
         input: params.input,
         model: params.model || 'auto',
       });
@@ -757,10 +775,9 @@ class TavilyClient {
         return { error: `No request_id returned from research endpoint. Documentation: ${this.docsURLs.research}` };
       }
 
-      // 选择用于轮询的 key（与初始请求的 key 一致，保持任务绑定）
-      const pollingKey = keyManager?.selectKey();
-      const pollingConfig: any = pollingKey
-        ? { headers: { 'Authorization': `Bearer ${pollingKey}` } }
+      // 轮询固定使用初始请求的 key，避免查询别 key 创建的任务导致 404
+      const pollingConfig: any = usedKey
+        ? { headers: { 'Authorization': `Bearer ${usedKey}` } }
         : {};
 
       // For model=auto, use pro timeout since we don't know which model will be used

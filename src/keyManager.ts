@@ -97,7 +97,15 @@ export class KeyManager {
       if (envKey.startsWith("TAVILY_API_KEY_") && envKey !== "TAVILY_API_KEYS") {
         const value = process.env[envKey];
         if (value && typeof value === "string" && value.trim()) {
-          keysSet.add(value.trim());
+          const trimmed = value.trim();
+          // 校验 key 格式：只接受以 tvly- 开头的值（Tavily 标准 key 前缀）
+          if (trimmed.startsWith("tvly-")) {
+            keysSet.add(trimmed);
+          } else {
+            console.error(
+              `[KeyManager] 跳过非 Tavily key 格式的环境变量: ${envKey}=${sanitizeKey(trimmed)}`
+            );
+          }
         }
       }
     }
@@ -243,12 +251,23 @@ export class KeyManager {
         if (info.cooldownUntil > 0 && now < info.cooldownUntil) {
           continue; // 仍在冷却中
         }
-        // 冷却到期，自动恢复为 active（等定时刷新更新额度）
+        // 冷却到期，恢复为 active
         info.status = KeyStatus.ACTIVE;
         info.cooldownUntil = 0;
-        console.error(
-          `[KeyManager] ${sanitizeKey(info.key)} 冷却到期，恢复为 active`
-        );
+        if (info.limit === null) {
+          // limit=null（免费 key）：remaining 不可信（可能仍满额），置 null + 标记待验证
+          // lastQueryAt=0 作为降级标识，排序时此类 key 排在已知状态 key 之后
+          info.remaining = null;
+          info.lastQueryAt = 0;
+          console.error(
+            `[KeyManager] ${sanitizeKey(info.key)} 冷却到期，恢复为 active（免费 key，剩余未知，降级优先级）`
+          );
+        } else {
+          // 付费 key（已知 limit）：正常恢复，等待定时刷新更新 remaining
+          console.error(
+            `[KeyManager] ${sanitizeKey(info.key)} 冷却到期，恢复为 active`
+          );
+        }
       }
 
       if (info.status === KeyStatus.INVALID) continue;
@@ -270,7 +289,11 @@ export class KeyManager {
       if (a.remaining === null && b.remaining !== null) return -1;
       if (a.remaining !== null && b.remaining === null) return 1;
       if (a.remaining === null && b.remaining === null) {
-        // 两个都不限，随机打散
+        // 两个都不限：优先选 lastQueryAt > 0 的（已探查过的可信 key）
+        // lastQueryAt=0 表示刚从冷却恢复的免费 key，额度未知，降级排后
+        if (a.lastQueryAt > 0 && b.lastQueryAt === 0) return -1;
+        if (a.lastQueryAt === 0 && b.lastQueryAt > 0) return 1;
+        // 同级随机打散
         return Math.random() - 0.5;
       }
       // 按 remaining 降序
@@ -286,9 +309,12 @@ export class KeyManager {
 
   /**
    * 处理 API 错误，更新 key 状态
+   * @param key 触发错误的 key
+   * @param statusCode HTTP 状态码
+   * @param retryAfterSec 429 时可选的 retry-after 秒数（用于精确冷却）
    * @returns true 表示可重试（有其他 key 可用），false 表示不应重试
    */
-  handleError(key: string, statusCode: number | undefined): boolean {
+  handleError(key: string, statusCode: number | undefined, retryAfterSec?: number): boolean {
     const info = this.keyMap.get(key);
     if (!info) return false;
 
@@ -315,9 +341,19 @@ export class KeyManager {
 
       case 429: // 临时限流
         info.status = KeyStatus.RATE_LIMITED;
-        console.error(
-          `[KeyManager] ${sanitizeKey(key)} 返回 429（速率限制），切换其他 key`
-        );
+        if (retryAfterSec && retryAfterSec > 0) {
+          // 使用 retry-after 精确设置冷却时间（上限 5 分钟避免永久锁定）
+          const cooldownMs = Math.min(retryAfterSec * 1000, 5 * 60 * 1000);
+          info.cooldownUntil = now + cooldownMs;
+          console.error(
+            `[KeyManager] ${sanitizeKey(key)} 返回 429（速率限制），` +
+            `retry-after=${retryAfterSec}s，冷却 ${(cooldownMs / 1000).toFixed(0)}s`
+          );
+        } else {
+          console.error(
+            `[KeyManager] ${sanitizeKey(key)} 返回 429（速率限制），切换其他 key`
+          );
+        }
         return this.hasActiveKey();
 
       default:
@@ -337,6 +373,50 @@ export class KeyManager {
       return true;
     }
     return false;
+  }
+
+  /**
+   * 获取 key 状态摘要（用于错误信息诊断）
+   * @returns 如 "2 活跃、1 满额冷却中、1 无效"
+   */
+  getKeyStatusSummary(): string {
+    const now = Date.now();
+    let active = 0, exhaustedCooling = 0, invalid = 0, rateLimited = 0, other = 0;
+    for (const info of this.keyMap.values()) {
+      switch (info.status) {
+        case KeyStatus.ACTIVE: active++; break;
+        case KeyStatus.QUOTA_EXHAUSTED:
+          if (info.cooldownUntil > now) exhaustedCooling++;
+          else active++; // 冷却已到期但尚未被 selectKey 恢复
+          break;
+        case KeyStatus.INVALID: invalid++; break;
+        case KeyStatus.RATE_LIMITED: rateLimited++; break;
+        default: other++; break;
+      }
+    }
+    const parts: string[] = [];
+    if (active > 0) parts.push(`${active} 个活跃`);
+    if (rateLimited > 0) parts.push(`${rateLimited} 个限流`);
+    if (exhaustedCooling > 0) parts.push(`${exhaustedCooling} 个满额冷却中`);
+    if (invalid > 0) parts.push(`${invalid} 个无效`);
+    if (other > 0) parts.push(`${other} 个其他`);
+    return parts.length > 0 ? parts.join('，') : '无';
+  }
+
+  /**
+   * 获取最近冷却到期的剩余分钟数（用于错误提示）
+   * @returns 最小剩余分钟数，若无冷却中的 key 则返回 0
+   */
+  getMinCooldownRemainingMinutes(): number {
+    const now = Date.now();
+    let minRemaining = Infinity;
+    for (const info of this.keyMap.values()) {
+      if (info.cooldownUntil > now) {
+        const remaining = info.cooldownUntil - now;
+        if (remaining < minRemaining) minRemaining = remaining;
+      }
+    }
+    return minRemaining === Infinity ? 0 : Math.ceil(minRemaining / 60000);
   }
 
   /**

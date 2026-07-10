@@ -75,9 +75,9 @@ describe('KeyManager - key 加载', () => {
   });
 
   it('从 TAVILY_API_KEY_* 后缀加载多个 key', () => {
-    process.env.TAVILY_API_KEY_A = 'suffix-key1';
-    process.env.TAVILY_API_KEY_B = 'suffix-key2';
-    process.env.TAVILY_API_KEY_C = 'suffix-key3';
+    process.env.TAVILY_API_KEY_A = 'tvly-suffix-key1';
+    process.env.TAVILY_API_KEY_B = 'tvly-suffix-key2';
+    process.env.TAVILY_API_KEY_C = 'tvly-suffix-key3';
     const km = new KeyManager();
     expect(km.getTotalKeyCount()).toBe(3);
   });
@@ -448,16 +448,15 @@ describe('KeyManager - 初始化流程', () => {
   });
 
   it('initialize 空 keyMap 不报错', async () => {
-    // 创建一个空的 KeyManager（不能用 constructor，因为会抛异常）
-    // 直接用已存在的 km 但清空 keyMap
-    // 使用 _addKeyForTest 不会清空，我们测试边界：keyMap 为空时 initialize 安全返回
-    // 实际上 initialize 会检查 keys.length === 0
-    // 绕过：手动模拟空 keyMap
-    const km2 = new (KeyManager as any)(); // 不调用构造函数
-    // 这种方法不行，直接测试原逻辑
-    // 改为验证 selectKey 在空 keyMap 返回 null
-    // 已经在之前的测试中覆盖
-    expect(true).toBe(true); // 占位
+    // 创建 KeyManager 后清空 keyMap，验证 initialize() 安全返回不抛异常
+    const km2 = new KeyManager();
+    // 通过反射清空 keyMap 模拟空池场景
+    (km2 as any).keyMap.clear();
+    // initialize 应安全返回（keys.length === 0 时直接 return）
+    await expect(km2.initialize()).resolves.toBeUndefined();
+    // 确认没有定时器残留
+    expect((km2 as any).refreshTimer).toBeNull();
+    km2.stopPeriodicRefresh();
   });
 });
 
