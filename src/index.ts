@@ -3,19 +3,28 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {CallToolRequestSchema, ListToolsRequestSchema, Tool} from "@modelcontextprotocol/sdk/types.js";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { randomUUID } from "crypto";
 import dotenv from "dotenv";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { KeyManager, sanitizeKey } from "./keyManager.js";
 
 dotenv.config();
 
-const API_KEY = process.env.TAVILY_API_KEY;
-const IS_KEYLESS = !API_KEY;
+// 判断是否为 keyless 模式：既没有 TAVILY_API_KEY 也没有多 key 配置
+const HAS_ANY_KEY = !!(
+  process.env.TAVILY_API_KEY ||
+  process.env.TAVILY_API_KEYS ||
+  Object.keys(process.env).some((k) => k.startsWith("TAVILY_API_KEY_"))
+);
+const IS_KEYLESS = !HAS_ANY_KEY;
 const HUMAN_ID = process.env.TAVILY_HUMAN_ID;
 const SESSION_ID = randomUUID();
+
+// 全局 KeyManager 实例（在 TavilyClient 初始化时创建）
+let keyManager: KeyManager | null = null;
 
 
 interface TavilyResponse {
@@ -81,7 +90,9 @@ class TavilyClient {
     research: 'https://docs.tavily.com/documentation/api-reference/endpoint/research',
   };
 
-  constructor() {
+  constructor(km: KeyManager | null) {
+    keyManager = km;
+
     this.server = new Server(
       {
         name: "tavily-mcp",
@@ -100,7 +111,7 @@ class TavilyClient {
         'content-type': 'application/json',
         ...(IS_KEYLESS
           ? { 'X-Tavily-Access-Mode': 'keyless', 'X-Client-Source': 'tavily-mcp-keyless' }
-          : { 'Authorization': `Bearer ${API_KEY}`, 'X-Client-Source': 'MCP' }),
+          : { 'X-Client-Source': 'MCP' }),
         'X-Session-Id': SESSION_ID,
         ...(HUMAN_ID ? { 'X-Human-Id': HUMAN_ID } : {}),
       }
@@ -108,6 +119,8 @@ class TavilyClient {
 
     if (IS_KEYLESS) {
       console.error('[tavily-mcp] no TAVILY_API_KEY set; running in keyless mode. Search and extract are available; other tools will return a message explaining that an API key is required.');
+    } else {
+      console.error(`[tavily-mcp] 多 key 模式，管理 ${km!.getTotalKeyCount()} 个 key`);
     }
 
     this.setupHandlers();
@@ -123,6 +136,73 @@ class TavilyClient {
       await this.server.close();
       process.exit(0);
     });
+  }
+
+  /**
+   * 带 key 选择与故障切换的请求包装方法
+   * - 每次请求从 KeyManager 选择最佳 key
+   * - 遇到 432/433/401/429 自动切换 key 重试
+   * - 钥匙数量决定了最大重试次数
+   */
+  private async makeAuthenticatedRequest(
+    method: 'post' | 'get',
+    url: string,
+    data?: any
+  ): Promise<any> {
+    if (IS_KEYLESS || !keyManager) {
+      // keyless 模式：直接请求，不带鉴权
+      const response = method === 'post'
+        ? await this.axiosInstance.post(url, data)
+        : await this.axiosInstance.get(url);
+      return response.data;
+    }
+
+    const maxRetries = keyManager.getTotalKeyCount();
+    let lastError: any;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const selectedKey = keyManager.selectKey();
+      if (!selectedKey) {
+        throw new Error(
+          '[tavily-mcp] 所有 API key 均已不可用（满额或无效），请检查 key 状态'
+        );
+      }
+
+      const config: any = {
+        headers: {
+          'Authorization': `Bearer ${selectedKey}`,
+        },
+      };
+
+      // 在请求体中注入 api_key
+      const requestData = data ? { ...data, api_key: selectedKey } : { api_key: selectedKey };
+
+      try {
+        const response = method === 'post'
+          ? await this.axiosInstance.post(url, requestData, config)
+          : await this.axiosInstance.get(url, config);
+        return response.data;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const status = error.response?.status;
+          if (status === 432 || status === 433 || status === 401 || status === 429) {
+            const canRetry = keyManager.handleError(selectedKey, status);
+            if (canRetry && attempt < maxRetries - 1) {
+              console.error(
+                `[tavily-mcp] key ${sanitizeKey(selectedKey)} 异常 ` +
+                `(status=${status})，自动切换重试 (${attempt + 1}/${maxRetries - 1})`
+              );
+              continue;
+            }
+          }
+        }
+        // 不可重试的错误，或所有 key 已耗尽
+        lastError = error;
+        break;
+      }
+    }
+
+    throw lastError || new Error('[tavily-mcp] 请求失败：未知错误');
   }
 
   private getDefaultParameters(): Record<string, any> {
@@ -582,6 +662,9 @@ class TavilyClient {
 
 
   async run(): Promise<void> {
+    if (keyManager && !IS_KEYLESS) {
+      await keyManager.initialize();
+    }
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     console.error("Tavily MCP server running on stdio");
@@ -609,7 +692,6 @@ class TavilyClient {
         start_date: params.start_date,
         end_date: params.end_date,
         exact_match: params.exact_match,
-        ...(IS_KEYLESS ? {} : { api_key: API_KEY }),
       };
       
       // Apply default parameters
@@ -637,32 +719,23 @@ class TavilyClient {
         }
       }
       
-      const response = await this.axiosInstance.post(endpoint, cleanedParams);
-      return response.data;
+      // keyless 模式下 api_key 字段不需要（在 makeAuthenticatedRequest 中自动添加）
+      // 但为了兼容 keyless 的 request body，保持不添加
+      return await this.makeAuthenticatedRequest('post', endpoint, cleanedParams);
   }
 
   async extract(params: any): Promise<TavilyResponse> {
-    const response = await this.axiosInstance.post(this.baseURLs.extract, {
-      ...params,
-      ...(IS_KEYLESS ? {} : { api_key: API_KEY })
-    });
-    return response.data;
+    return await this.makeAuthenticatedRequest('post', this.baseURLs.extract, params);
   }
 
   async crawl(params: any): Promise<TavilyCrawlResponse> {
-    const response = await this.axiosInstance.post(this.baseURLs.crawl, {
-      ...params,
-      ...(IS_KEYLESS ? {} : { api_key: API_KEY })
-    });
-    return response.data;
+    const response = await this.makeAuthenticatedRequest('post', this.baseURLs.crawl, params);
+    return response;
   }
 
   async map(params: any): Promise<TavilyMapResponse> {
-    const response = await this.axiosInstance.post(this.baseURLs.map, {
-      ...params,
-      ...(IS_KEYLESS ? {} : { api_key: API_KEY })
-    });
-    return response.data;
+    const response = await this.makeAuthenticatedRequest('post', this.baseURLs.map, params);
+    return response;
   }
 
   async research(params: any): Promise<TavilyResearchResponse> {
@@ -673,16 +746,22 @@ class TavilyClient {
     const MAX_MINI_MODEL_POLL_DURATION = 300000; // 5 minutes in ms
 
     try {
-      const response = await this.axiosInstance.post(this.baseURLs.research, {
+      // 使用 makeAuthenticatedRequest 发起初始 research 请求（自动处理 key 选择和重试）
+      const response = await this.makeAuthenticatedRequest('post', this.baseURLs.research, {
         input: params.input,
         model: params.model || 'auto',
-        ...(IS_KEYLESS ? {} : { api_key: API_KEY })
       });
 
-      const requestId = response.data.request_id;
+      const requestId = response.request_id;
       if (!requestId) {
         return { error: `No request_id returned from research endpoint. Documentation: ${this.docsURLs.research}` };
       }
+
+      // 选择用于轮询的 key（与初始请求的 key 一致，保持任务绑定）
+      const pollingKey = keyManager?.selectKey();
+      const pollingConfig: any = pollingKey
+        ? { headers: { 'Authorization': `Bearer ${pollingKey}` } }
+        : {};
 
       // For model=auto, use pro timeout since we don't know which model will be used
       const maxPollDuration = params.model === 'mini'
@@ -698,7 +777,8 @@ class TavilyClient {
 
         try {
           const pollResponse = await this.axiosInstance.get(
-            `${this.baseURLs.research}/${requestId}`
+            `${this.baseURLs.research}/${requestId}`,
+            pollingConfig
           );
 
           const status = pollResponse.data.status;
@@ -912,5 +992,6 @@ if (argv['list-tools']) {
 }
 
 // Otherwise start the server
-const server = new TavilyClient();
+const km = IS_KEYLESS ? null : new KeyManager();
+const server = new TavilyClient(km);
 server.run().catch(console.error);
