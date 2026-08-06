@@ -1,3 +1,6 @@
 node_modules/
 build/
 .env*
+coverage/
+# 真实 key 临时测试脚本（含 key 时禁止入库；无 key 清理后可按需恢复）
+test/key-manager-live-test.mjs
