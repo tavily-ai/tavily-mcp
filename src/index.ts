@@ -1055,8 +1055,35 @@ interface Arguments {
   $0: string;
 }
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Resolve the actual package version
+let packageVersion = 'unknown';
+try {
+  const currentFileUrl = import.meta.url;
+  let currentDir = currentFileUrl ? path.dirname(fileURLToPath(currentFileUrl)) : __dirname;
+  
+  // Walk up to find package.json
+  while (currentDir !== path.parse(currentDir).root) {
+    const pkgPath = path.join(currentDir, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      if (pkg.version) {
+        packageVersion = pkg.version;
+      }
+      break;
+    }
+    currentDir = path.dirname(currentDir);
+  }
+} catch (e) {
+  // Fallback to unknown if something goes wrong
+}
+
 // Modify the command line parsing section to use proper typing
 const argv = yargs(hideBin(process.argv))
+  .version(packageVersion)
   .option('list-tools', {
     type: 'boolean',
     description: 'List all available tools and exit',
