@@ -62,6 +62,13 @@ interface TavilyMapResponse {
   response_time: number;
 }
 
+interface TavilyFeedbackResponse {
+  success?: boolean;
+  feedback_id?: string;
+  response_time?: number;
+  error?: string;
+}
+
 class TavilyClient {
   // Core client properties
   private server: Server;
@@ -71,7 +78,8 @@ class TavilyClient {
     extract: 'https://api.tavily.com/extract',
     crawl: 'https://api.tavily.com/crawl',
     map: 'https://api.tavily.com/map',
-    research: 'https://api.tavily.com/research'
+    research: 'https://api.tavily.com/research',
+    feedback: 'https://api.tavily.com/feedback'
   };
 
   private docsURLs: Record<string, string> = {
@@ -80,6 +88,7 @@ class TavilyClient {
     crawl: 'https://docs.tavily.com/documentation/api-reference/endpoint/crawl',
     map: 'https://docs.tavily.com/documentation/api-reference/endpoint/map',
     research: 'https://docs.tavily.com/documentation/api-reference/endpoint/research',
+    feedback: 'https://docs.tavily.com/documentation/api-reference/endpoint/feedback',
   };
 
   constructor() {
@@ -439,6 +448,107 @@ class TavilyClient {
             required: ["input"]
           }
         },
+        {
+          name: "tavily_feedback",
+          description: "Submit feedback for a search request or session via POST /feedback. Maximize useful signal whenever you call this tool:\n1) Scope: set request_id from the search response (and/or session_id).\n2) Per-result urls_scores first — MANDATORY when scoring a search: include an entry for EVERY result in the search response, HELPFUL and WEAK/IRRELEVANT/HARMFUL alike, by id (1 perfect … 0 irrelevant … -1 harmful). Vary scores honestly; do not reuse one default value. Never submit an agent_score with empty urls_scores.\n3) Overall agent_score: derive from those urls_scores (and whether you could answer well). Never default to 0.7. Also set response_delivered.\n4) Provenance: set used_ids for every result you relied on; add used_citations for key snippets when available.\n5) Explain failures: any score < 0.5 needs comment (overall and/or per-result).\n6) Optional depth: extra_scores (e.g. freshness, authority, relevance), human_score, top-level comment.\nPrefer specific, actionable feedback over a sparse payload.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              session_id: {
+                type: "string",
+                description: "The session to give feedback on. Optional if request_id is provided."
+              },
+              request_id: {
+                type: "string",
+                description: "The search request to give feedback on. If provided, feedback applies to this request; otherwise to the whole session."
+              },
+              agent_score: {
+                type: ["number", "string"],
+                description: "Overall score for how relevant and useful the search results were for your task. Set this AFTER urls_scores: derive it from those per-result scores (e.g. reflect the best used results, how much weak/irrelevant noise hurt, and whether you could answer well). Do not pick a default like 0.7. Scale: 1 perfect, 0 irrelevant, -1 harmful/misleading; use the full range in between. NEVER set agent_score without also setting urls_scores — an overall score must be backed by a per-result score for every result you evaluated, good and bad alike. If the numeric score is below 0.5 (including 0 and -1), you MUST also set comment explaining what was wrong."
+              },
+              human_score: {
+                type: ["number", "string"],
+                description: "Feedback from the end user, if available (e.g. like/dislike)."
+              },
+              extra_scores: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string", description: "Score label (e.g. freshness, authority, relevance)" },
+                    value: { type: ["number", "string"], description: "Score value on any scale" }
+                  },
+                  required: ["label", "value"]
+                },
+                description: "Additional labeled scores (e.g. freshness, authority, relevance). Any scale."
+              },
+              comment: {
+                type: "string",
+                description: "Free-text explanation of the feedback. Required when agent_score is below 0.5 — explain overall what went wrong with the results."
+              },
+              response_delivered: {
+                type: "string",
+                description: "The final answer you produced using the search results. Include this whenever you submit feedback after answering."
+              },
+              used_urls: {
+                type: "array",
+                items: { type: "string" },
+                description: "URLs of the results you actually used in your answer. Alternative to used_ids."
+              },
+              used_ids: {
+                type: "array",
+                items: { type: "string" },
+                description: "IDs of the results you actually used in your answer, as returned on each result in the search response. Alternative to used_urls."
+              },
+              used_citations: {
+                type: "array",
+                items: { type: "string" },
+                description: "Specific content snippets you used from the results. Prefer short verbatim quotes that support your answer."
+              },
+              urls_scores: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: {
+                      type: "string",
+                      description: "Identifier of the result, as returned on each result in the search response. Alternative to url; unambiguous when the same URL appears more than once."
+                    },
+                    url: {
+                      type: "string",
+                      description: "Result URL. Alternative to id."
+                    },
+                    agent_score: {
+                      type: ["number", "string"],
+                      description: "Honest score for this single result on how much it helped or hurt your task. Scale: 1 perfect, 0 irrelevant, -1 harmful/misleading; use the full range (e.g. 0.2 weak, 0.5 mixed, 0.9 strong). Score each result independently — do not default every URL to the same value. If the numeric score is below 0.5 (including 0 and -1), you MUST also set comment on this urls_scores item explaining why the result was bad."
+                    },
+                    scores: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          label: { type: "string", description: "Score label (e.g. freshness, authority, relevance)" },
+                          value: { type: ["number", "string"], description: "Score value on any scale" }
+                        },
+                        required: ["label", "value"]
+                      },
+                      description: "Additional labeled scores for this result (e.g. authority, freshness, relevance)."
+                    },
+                    comment: {
+                      type: "string",
+                      description: "Free-text explanation for this result. Required when agent_score is below 0.5 — describe why the result was irrelevant, incomplete, outdated, or harmful."
+                    }
+                  }
+                },
+                description: "Per-result feedback — REQUIRED whenever you set agent_score for a search request. Score EVERY result from the search response, helpful AND weak/irrelevant/harmful, identifying each by id (preferred) or url, so the spread is clear. The overall agent_score must follow from these; never set an overall score without the per-result scores backing it. Low scores (< 0.5) require a comment."
+              }
+            },
+            anyOf: [
+              { required: ["session_id"] },
+              { required: ["request_id"] }
+            ]
+          }
+        },
       ];
       return { tools };
     });
@@ -537,6 +647,27 @@ class TavilyClient {
               }]
             };
 
+          case "tavily_feedback":
+            const feedbackResponse = await this.feedback({
+              session_id: args.session_id,
+              request_id: args.request_id,
+              agent_score: args.agent_score,
+              human_score: args.human_score,
+              extra_scores: args.extra_scores,
+              comment: args.comment,
+              response_delivered: args.response_delivered,
+              used_urls: args.used_urls,
+              used_ids: args.used_ids,
+              used_citations: args.used_citations,
+              urls_scores: args.urls_scores,
+            });
+            return {
+              content: [{
+                type: "text",
+                text: formatFeedbackResult(feedbackResponse)
+              }]
+            };
+
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
@@ -627,17 +758,8 @@ class TavilyClient {
         searchParams.time_range = undefined;
       }
       
-      // Remove empty values
-      const cleanedParams: any = {};
-      for (const key in searchParams) {
-        const value = searchParams[key];
-        // Skip empty strings, null, undefined, and empty arrays
-        if (value !== "" && value !== null && value !== undefined && 
-            !(Array.isArray(value) && value.length === 0)) {
-          cleanedParams[key] = value;
-        }
-      }
-      
+      const cleanedParams = stripEmptyValues(searchParams);
+
       const response = await this.axiosInstance.post(endpoint, cleanedParams);
       return response.data;
   }
@@ -661,6 +783,14 @@ class TavilyClient {
   async map(params: any): Promise<TavilyMapResponse> {
     const response = await this.axiosInstance.post(this.baseURLs.map, {
       ...params,
+      ...(IS_KEYLESS ? {} : { api_key: API_KEY })
+    });
+    return response.data;
+  }
+
+  async feedback(params: any): Promise<TavilyFeedbackResponse> {
+    const response = await this.axiosInstance.post(this.baseURLs.feedback, {
+      ...stripEmptyValues(params),
       ...(IS_KEYLESS ? {} : { api_key: API_KEY })
     });
     return response.data;
@@ -892,6 +1022,19 @@ class TavilyClient {
   }
 }
 
+function stripEmptyValues(params: Record<string, any>): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const key in params) {
+    const value = params[key];
+    // Skip empty strings, null, undefined, and empty arrays
+    if (value !== "" && value !== null && value !== undefined &&
+        !(Array.isArray(value) && value.length === 0)) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+}
+
 function isKeylessEnvelope(data: any): boolean {
   // Recognises the Tavily API's recoverable-error envelope shape.
   // Used for keyless rate-limit caps and endpoints that require an API key.
@@ -1016,6 +1159,17 @@ function formatResearchResults(response: TavilyResearchResponse): string {
   return response.content || 'No research results available';
 }
 
+function formatFeedbackResult(response: TavilyFeedbackResponse): string {
+  if (response.error) {
+    return `Feedback Error: ${response.error}`;
+  }
+  const parts = [`Feedback submitted (feedback_id: ${response.feedback_id ?? 'unknown'})`];
+  if (response.response_time != null) {
+    parts.push(`response_time: ${response.response_time}s`);
+  }
+  return parts.join(', ');
+}
+
 function listTools(): void {
   const tools = [
     {
@@ -1037,6 +1191,10 @@ function listTools(): void {
     {
       name: "tavily_research",
       description: "Performs comprehensive research on any topic or question by gathering information from multiple sources. Supports different research depths ('mini' for narrow tasks, 'pro' for broad research, 'auto' for automatic selection). Ideal for in-depth analysis, report generation, and answering complex questions requiring synthesis of multiple sources."
+    },
+    {
+      name: "tavily_feedback",
+      description: "Submits structured feedback (agent_score, per-result urls_scores, used_ids/citations, comments) on a search request or session via POST /feedback. Score every result honestly and explain any score below 0.5."
     }
   ];
 
