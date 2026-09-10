@@ -1,0 +1,30 @@
+schema_version: "1.0"
+
+target:
+  command: "node"
+  args: ["build/index.js"]
+
+redact:
+  server_url: false
+
+scenarios:
+  protocol_and_errors:
+    description: "Protocol handshake, tool schema listing, and error handling"
+    actions:
+      - list_tools
+      - call_tool:
+          name: tavily_search
+          arguments:
+            query: "test query"
+      - call_tool:
+          name: tavily_extract
+          arguments:
+            urls: ["https://example.com"]
+      - call_tool:
+          name: tavily_map
+          arguments:
+            url: "https://example.com"
+      - call_tool:
+          name: tavily_crawl
+          arguments:
+            url: "https://example.com"
