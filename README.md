@@ -2,6 +2,7 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 ![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
+[![Add to Kiro](https://kiro.dev/images/add-to-kiro.svg)](https://kiro.dev/launch/mcp/add?name=tavily-mcp&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22tavily-mcp%40latest%22%5D%2C%22env%22%3A%7B%22TAVILY_API_KEY%22%3A%22your-api-key-here%22%7D%7D)
 
 The Tavily MCP server provides:
 - search, extract, map, crawl tools
@@ -154,6 +155,26 @@ After successful OAuth authentication, you can control which API key is used by 
 - If you are part of a **team** that has a key named `mcp_auth_default`, that key will be used for the auth flow.
 - If you have **both** a personal key and a team key named `mcp_auth_default`, the **personal key will be prioritized**.
 - If no `mcp_auth_default` key is set, the `default` key in your personal account will be used. If no `default` key is set, the first available key will be used.
+
+## Connect to Kiro
+
+To install in [Kiro](https://kiro.dev), click the badge at the top of this README or manually add the following to your Kiro MCP config file (`.kiro/settings/mcp.json` or `~/.kiro/settings/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "tavily-mcp": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "env": {
+        "TAVILY_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+Get your Tavily API key from [tavily.com](https://www.tavily.com/).
 
 ## Local MCP 
 
