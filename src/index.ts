@@ -9,7 +9,7 @@ import dotenv from "dotenv";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { formatResults, type TavilyResponse } from './format-results.js';
+import { formatResults, type TavilyResponse, type TavilyExtractResponse } from './format-results.js';
 
 dotenv.config();
 
@@ -535,7 +535,7 @@ class TavilyClient {
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       try {
-        let response: TavilyResponse;
+        let response: TavilyResponse | TavilyExtractResponse;
         const args = request.params.arguments ?? {};
 
         switch (request.params.name) {
@@ -744,7 +744,7 @@ class TavilyClient {
       return response.data;
   }
 
-  async extract(params: any): Promise<TavilyResponse> {
+  async extract(params: any): Promise<TavilyExtractResponse> {
     const response = await this.axiosInstance.post(this.baseURLs.extract, {
       ...params,
       ...(IS_KEYLESS ? {} : { api_key: API_KEY })

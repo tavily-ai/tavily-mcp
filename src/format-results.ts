@@ -20,7 +20,20 @@ export interface TavilyResponse {
   }>;
 }
 
-export function formatResults(response: TavilyResponse): string {
+export interface TavilyExtractResponse {
+  request_id?: string;
+  results: Array<{
+    url: string;
+    title?: string;
+    raw_content: string;
+    images?: string[];
+    favicon?: string;
+  }>;
+  failed_results: Array<{ url: string; error: string }>;
+  response_time: number;
+}
+
+export function formatResults(response: TavilyResponse | TavilyExtractResponse): string {
   // Format API response into human-readable text
   const output: string[] = [];
 
@@ -30,19 +43,24 @@ export function formatResults(response: TavilyResponse): string {
   }
 
   // Include answer if available
-  if (response.answer) {
+  if ('answer' in response && response.answer) {
     output.push(`Answer: ${response.answer}`);
   }
 
   // Format detailed search results
   output.push('Detailed Results:');
   response.results.forEach(result => {
-    output.push(`\nTitle: ${result.title}`);
-    if (result.id) {
+    output.push('');
+    if (result.title) {
+      output.push(`Title: ${result.title}`);
+    }
+    if ('id' in result && result.id) {
       output.push(`ID: ${result.id}`);
     }
     output.push(`URL: ${result.url}`);
-    output.push(`Content: ${result.content}`);
+    if ('content' in result && result.content != null) {
+      output.push(`Content: ${result.content}`);
+    }
     if (result.raw_content) {
       output.push(`Raw Content: ${result.raw_content}`);
     }
@@ -52,7 +70,7 @@ export function formatResults(response: TavilyResponse): string {
   });
 
     // Add images section if available
-    if (response.images && response.images.length > 0) {
+    if ('images' in response && response.images && response.images.length > 0) {
       output.push('\nImages:');
       response.images.forEach((image, index) => {
         if (typeof image === 'string') {

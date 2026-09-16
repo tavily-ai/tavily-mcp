@@ -60,3 +60,41 @@ test('exposes the request ID even when a search returns no results', () => {
     'Request ID: ' + requestId + '\nDetailed Results:',
   );
 });
+
+test('formats Extract raw content without a nonexistent search snippet', () => {
+  assert.equal(formatResults({
+    request_id: requestId,
+    results: [{
+      title: 'Tavily MCP Server',
+      url: 'https://docs.tavily.com/documentation/mcp',
+      raw_content: '# MCP setup\n\nUse OAuth or an API key.',
+      favicon: 'https://docs.tavily.com/favicon.ico',
+    }],
+    failed_results: [],
+    response_time: 0.1,
+  }), [
+    'Request ID: ' + requestId,
+    'Detailed Results:',
+    '',
+    'Title: Tavily MCP Server',
+    'URL: https://docs.tavily.com/documentation/mcp',
+    'Raw Content: # MCP setup\n\nUse OAuth or an API key.',
+    'Favicon: https://docs.tavily.com/favicon.ico',
+  ].join('\n'));
+});
+
+test('formats Extract results that have no title or content field', () => {
+  assert.equal(formatResults({
+    results: [{
+      url: 'https://example.com/article',
+      raw_content: 'Extracted article text.',
+    }],
+    failed_results: [],
+    response_time: 0.1,
+  }), [
+    'Detailed Results:',
+    '',
+    'URL: https://example.com/article',
+    'Raw Content: Extracted article text.',
+  ].join('\n'));
+});
