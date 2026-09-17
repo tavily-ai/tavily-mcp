@@ -1,7 +1,7 @@
 # Tavily MCP Server
 ![GitHub Repo stars](https://img.shields.io/github/stars/tavily-ai/tavily-mcp?style=social)
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
-![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
+[![LightNow capabilities](https://lightnow.ai/badge/io.github.tavily-ai/tavily-mcp)](https://lightnow.ai/servers/io.github.tavily-ai/tavily-mcp)
 
 The Tavily MCP server provides:
 - search, extract, map, crawl tools
