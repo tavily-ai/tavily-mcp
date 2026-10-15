@@ -173,8 +173,8 @@ class TavilyClient {
               },
               topic : {
                 type: "string",
-                enum: ["general"],
-                description: "The category of the search. This will determine which of our agents will be used for the search",
+                enum: ["general", "news"],
+                description: "Search category. Use 'general' for almost all searches, including current events and requests that combine news with other information. Use 'news' only when the user explicitly asks for news, headlines, or news coverage.",
                 default: "general"
               },
               time_range: {
