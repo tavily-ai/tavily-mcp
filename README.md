@@ -3,15 +3,20 @@
 ![npm](https://img.shields.io/npm/dt/tavily-mcp)
 ![smithery badge](https://smithery.ai/badge/@tavily-ai/tavily-mcp)
 
-The Tavily MCP server provides:
-- search, extract, map, crawl tools
-- Real-time web search capabilities through the tavily-search tool
-- Intelligent data extraction from web pages via the tavily-extract tool
-- Powerful web mapping tool that creates a structured map of website 
-- Web crawler that systematically explores websites 
+The Tavily MCP server provides five tools for web search and research:
+
+| Tool | Description |
+|------|-------------|
+| `tavily_search` | Fast web search — returns ranked snippets and URLs for a query |
+| `tavily_research` | Deep multi-source research — synthesizes findings from many sources into a comprehensive answer |
+| `tavily_extract` | Extract full content from specific URLs |
+| `tavily_map` | Map a website's URL structure |
+| `tavily_crawl` | Bulk-crawl many pages from a site |
+
+**When to use `tavily_search` vs `tavily_research`:** Use `tavily_search` for quick lookups where a snippet-level answer is enough. Use `tavily_research` when you need a thorough, synthesized answer drawn from multiple sources — it is slower and costs more credits (up to 250 per call), but returns a detailed report rather than a list of results.
 
 
-### 📚 Helpful Resources
+### Helpful Resources
 - [Tutorial](https://medium.com/@dustin_36183/building-a-knowledge-graph-assistant-combining-tavily-and-neo4j-mcp-servers-with-claude-db92de075df9) on combining Tavily MCP with Neo4j MCP server
 - [Tutorial](https://medium.com/@dustin_36183/connect-your-coding-assistant-to-the-web-integrating-tavily-mcp-with-cline-in-vs-code-5f923a4983d1) on integrating Tavily MCP with Cline in VS Code
 
@@ -69,12 +74,12 @@ After adding, you'll need to complete the authentication flow:
 claude mcp add --transport http --scope user tavily https://mcp.tavily.com/mcp/?tavilyApiKey=<your-api-key>
 ```
 
-Once configured, you'll have access to the Tavily search, extract, map, and crawl tools.
+Once configured, you'll have access to all five Tavily tools: search, research, extract, map, and crawl.
 
 ## Connect to Cursor
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=tavily-remote-mcp&config=eyJjb21tYW5kIjoibnB4IC15IG1jcC1yZW1vdGUgaHR0cHM6Ly9tY3AudGF2aWx5LmNvbS9tY3AvP3RhdmlseUFwaUtleT08eW91ci1hcGkta2V5PiIsImVudiI6e319)
 
-Click the ⬆️ Add to Cursor ⬆️ button, this will do most of the work for you but you will still need to edit the configuration to add your API-KEY. You can get a Tavily API key [here](https://www.tavily.com/).
+Click the Add to Cursor button, this will do most of the work for you but you will still need to edit the configuration to add your API-KEY. You can get a Tavily API key [here](https://www.tavily.com/).
 
 
 once you click the button you should be redirect to Cursor ...
@@ -157,7 +162,7 @@ After successful OAuth authentication, you can control which API key is used by 
 
 ## Local MCP 
 
-### Prerequisites 🔧
+### Prerequisites
 
 Before you begin, ensure you have:
 
@@ -180,7 +185,7 @@ Before you begin, ensure you have:
 npx -y tavily-mcp@latest 
 ```
 
-## Default Parameters Configuration ⚙️
+## Default Parameters Configuration
 
 You can set default parameter values for the `tavily-search` tool using the `DEFAULT_PARAMETERS` environment variable. This allows you to configure default search behavior without specifying these parameters in every request.
 
@@ -229,7 +234,7 @@ This is **entirely optional** — leave it unset and behavior is unchanged.
 
 **Privacy note:** Tavily hashes `human_id` server-side (SHA-256) before storage, so the raw value is never persisted. Even so, prefer opaque identifiers (e.g. an internal user ID) over raw PII like emails when possible.
 
-## Acknowledgments ✨
+## Acknowledgments
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
 - [Anthropic](https://anthropic.com) for Claude Desktop
