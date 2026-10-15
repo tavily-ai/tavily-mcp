@@ -1,0 +1,16 @@
+{
+    "name": "tavily-mcp",
+    "version": "1.0.0",
+    "mcpServers": {
+        "tavily-mcp": {
+            "httpUrl": "https://mcp.tavily.com/mcp/?tavilyApiKey=${TAVILY_API_KEY}"
+        }
+    },
+    "settings": [
+        {
+            "name": "Tavily API Key",
+            "description": "Tavily API Key",
+            "envVar": "TAVILY_API_KEY"
+        }
+    ]
+}
