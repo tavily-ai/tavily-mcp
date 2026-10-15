@@ -47,7 +47,7 @@
   "author": "Tavily",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.30.0",
+    "@modelcontextprotocol/sdk": "1.31.0",
     "dotenv": "^16.4.5",
     "axios": "^1.6.7",
     "yargs": "^17.7.2"
