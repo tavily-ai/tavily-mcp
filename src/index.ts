@@ -9,6 +9,7 @@ import dotenv from "dotenv";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { formatResults, type TavilyResponse, type TavilyExtractResponse } from './format-results.js';
 
 dotenv.config();
 
@@ -28,27 +29,6 @@ const KEYLESS_TOOL_NOTE =
 const describeTool = (description: string, requiresKey: boolean): string =>
   requiresKey && IS_KEYLESS ? description + KEYLESS_TOOL_NOTE : description;
 
-
-interface TavilyResponse {
-  // Response structure from Tavily API
-  query: string;
-  follow_up_questions?: Array<string>;
-  answer?: string;
-  images?: Array<string | {
-    url: string;
-    description?: string;
-  }>;
-  results: Array<{
-    title: string;
-    url: string;
-    content: string;
-    score: number;
-    published_date?: string;
-    raw_content?: string;
-    favicon?: string;
-    id: string;
-  }>;
-}
 
 interface TavilyCrawlResponse {
   base_url: string;
@@ -73,6 +53,13 @@ interface TavilyMapResponse {
   response_time: number;
 }
 
+interface TavilyFeedbackResponse {
+  success?: boolean;
+  feedback_id?: string;
+  response_time?: number;
+  error?: string;
+}
+
 class TavilyClient {
   // Core client properties
   private server: Server;
@@ -82,7 +69,8 @@ class TavilyClient {
     extract: 'https://api.tavily.com/extract',
     crawl: 'https://api.tavily.com/crawl',
     map: 'https://api.tavily.com/map',
-    research: 'https://api.tavily.com/research'
+    research: 'https://api.tavily.com/research',
+    feedback: 'https://api.tavily.com/feedback'
   };
 
   private docsURLs: Record<string, string> = {
@@ -91,6 +79,7 @@ class TavilyClient {
     crawl: 'https://docs.tavily.com/documentation/api-reference/endpoint/crawl',
     map: 'https://docs.tavily.com/documentation/api-reference/endpoint/map',
     research: 'https://docs.tavily.com/documentation/api-reference/endpoint/research',
+    feedback: 'https://docs.tavily.com/documentation/api-reference/endpoint/feedback',
   };
 
   constructor() {
@@ -103,7 +92,7 @@ class TavilyClient {
         capabilities: {
           tools: {},
         },
-        instructions: `Tavily provides five web tools. Pick the right one:
+        instructions: `Tavily provides six tools — five web-research tools plus a feedback utility. Pick the right one:
 
 TOOL SELECTION
 - tavily_search (DEFAULT - start here): fast web search returning titles, URLs, and content snippets. Use for facts, news, current info, lookups. ALWAYS try this first.
@@ -111,6 +100,7 @@ TOOL SELECTION
 - tavily_extract: read FULL content of specific URLs you ALREADY have. Takes a urls[] array - NOT a search query.
 - tavily_crawl: bulk-extract many pages from one website (configurable depth/breadth). Heavier than tavily_extract.
 - tavily_map: list a website's URLs (site structure) to target crawl/extract.
+- tavily_feedback (optional utility): rate search quality via POST /feedback (agent_score + per-result urls_scores). Use only to give feedback on results — never to fetch web content.
 
 HOW TOOLS COMBINE
 - Find then read: tavily_search to discover a source, then tavily_extract to read it in full.
@@ -120,8 +110,8 @@ RETURN FORMAT (important)
 Every Tavily tool returns ONE markdown TEXT STRING. The whole result is plain text (titles, URLs, content). It is NOT a JSON object: there is no .results array, no .answer, and no .data property. Treat the return value itself as the text; do not index properties on it.
 
 ${IS_KEYLESS
-  ? `Running in KEYLESS mode (no TAVILY_API_KEY set): tavily_search and tavily_extract are available now. tavily_crawl, tavily_map, and tavily_research require the TAVILY_API_KEY environment variable and will return an 'API key required' message if called.`
-  : `tavily_search and tavily_extract also work in keyless mode; tavily_crawl, tavily_map, and tavily_research require the TAVILY_API_KEY environment variable (currently set). If a result says 'API key required', the key env var is missing.`}`,
+  ? `Running in KEYLESS mode (no TAVILY_API_KEY set): tavily_search and tavily_extract are available now. tavily_crawl, tavily_map, tavily_research, and tavily_feedback require the TAVILY_API_KEY environment variable and will return an 'API key required' message if called.`
+  : `tavily_search and tavily_extract also work in keyless mode; tavily_crawl, tavily_map, tavily_research, and tavily_feedback require the TAVILY_API_KEY environment variable (currently set). If a result says 'API key required', the key env var is missing.`}`,
       }
     );
 
@@ -214,8 +204,8 @@ ${IS_KEYLESS
               },
               topic : {
                 type: "string",
-                enum: ["general"],
-                description: "The category of the search. This will determine which of our agents will be used for the search",
+                enum: ["general", "news"],
+                description: "Search category. Use 'general' for almost all searches, including current events and requests that combine news with other information. Use 'news' only when the user explicitly asks for news, headlines, or news coverage.",
                 default: "general"
               },
               time_range: {
@@ -469,13 +459,114 @@ ${IS_KEYLESS
             required: ["input"]
           }
         },
+        {
+          name: "tavily_feedback",
+          description: describeTool("Submit feedback for a search request or session via POST /feedback. Maximize useful signal whenever you call this tool:\n1) Scope: set request_id from the search response (and/or session_id).\n2) Per-result urls_scores first — MANDATORY when scoring a search: include an entry for EVERY result in the search response, HELPFUL and WEAK/IRRELEVANT/HARMFUL alike, by id (1 perfect … 0 irrelevant … -1 harmful). Vary scores honestly; do not reuse one default value. Never submit an agent_score with empty urls_scores.\n3) Overall agent_score: derive from those urls_scores (and whether you could answer well). Never default to 0.7. Also set response_delivered.\n4) Provenance: set used_ids for every result you relied on; add used_citations for key snippets when available.\n5) Explain failures: any score < 0.5 needs comment (overall and/or per-result).\n6) Optional depth: extra_scores (e.g. freshness, authority, relevance), human_score, top-level comment.\nPrefer specific, actionable feedback over a sparse payload.", true),
+          inputSchema: {
+            type: "object",
+            properties: {
+              session_id: {
+                type: "string",
+                description: "The session to give feedback on. Optional if request_id is provided."
+              },
+              request_id: {
+                type: "string",
+                description: "The search request to give feedback on. If provided, feedback applies to this request; otherwise to the whole session."
+              },
+              agent_score: {
+                type: ["number", "string"],
+                description: "Overall score for how relevant and useful the search results were for your task. Set this AFTER urls_scores: derive it from those per-result scores (e.g. reflect the best used results, how much weak/irrelevant noise hurt, and whether you could answer well). Do not pick a default like 0.7. Scale: 1 perfect, 0 irrelevant, -1 harmful/misleading; use the full range in between. NEVER set agent_score without also setting urls_scores — an overall score must be backed by a per-result score for every result you evaluated, good and bad alike. If the numeric score is below 0.5 (including 0 and -1), you MUST also set comment explaining what was wrong."
+              },
+              human_score: {
+                type: ["number", "string"],
+                description: "Feedback from the end user, if available (e.g. like/dislike)."
+              },
+              extra_scores: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string", description: "Score label (e.g. freshness, authority, relevance)" },
+                    value: { type: ["number", "string"], description: "Score value on any scale" }
+                  },
+                  required: ["label", "value"]
+                },
+                description: "Additional labeled scores (e.g. freshness, authority, relevance). Any scale."
+              },
+              comment: {
+                type: "string",
+                description: "Free-text explanation of the feedback. Required when agent_score is below 0.5 — explain overall what went wrong with the results."
+              },
+              response_delivered: {
+                type: "string",
+                description: "The final answer you produced using the search results. Include this whenever you submit feedback after answering."
+              },
+              used_urls: {
+                type: "array",
+                items: { type: "string" },
+                description: "URLs of the results you actually used in your answer. Alternative to used_ids."
+              },
+              used_ids: {
+                type: "array",
+                items: { type: "string" },
+                description: "IDs of the results you actually used in your answer, as returned on each result in the search response. Alternative to used_urls."
+              },
+              used_citations: {
+                type: "array",
+                items: { type: "string" },
+                description: "Specific content snippets you used from the results. Prefer short verbatim quotes that support your answer."
+              },
+              urls_scores: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: {
+                      type: "string",
+                      description: "Identifier of the result, as returned on each result in the search response. Alternative to url; unambiguous when the same URL appears more than once."
+                    },
+                    url: {
+                      type: "string",
+                      description: "Result URL. Alternative to id."
+                    },
+                    agent_score: {
+                      type: ["number", "string"],
+                      description: "Honest score for this single result on how much it helped or hurt your task. Scale: 1 perfect, 0 irrelevant, -1 harmful/misleading; use the full range (e.g. 0.2 weak, 0.5 mixed, 0.9 strong). Score each result independently — do not default every URL to the same value. If the numeric score is below 0.5 (including 0 and -1), you MUST also set comment on this urls_scores item explaining why the result was bad."
+                    },
+                    scores: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          label: { type: "string", description: "Score label (e.g. freshness, authority, relevance)" },
+                          value: { type: ["number", "string"], description: "Score value on any scale" }
+                        },
+                        required: ["label", "value"]
+                      },
+                      description: "Additional labeled scores for this result (e.g. authority, freshness, relevance)."
+                    },
+                    comment: {
+                      type: "string",
+                      description: "Free-text explanation for this result. Required when agent_score is below 0.5 — describe why the result was irrelevant, incomplete, outdated, or harmful."
+                    }
+                  }
+                },
+                description: "Per-result feedback — REQUIRED whenever you set agent_score for a search request. Score EVERY result from the search response, helpful AND weak/irrelevant/harmful, identifying each by id (preferred) or url, so the spread is clear. The overall agent_score must follow from these; never set an overall score without the per-result scores backing it. Low scores (< 0.5) require a comment."
+              }
+            },
+            anyOf: [
+              { required: ["session_id"] },
+              { required: ["request_id"] }
+            ]
+          }
+        },
       ];
       return { tools };
     });
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       try {
-        let response: TavilyResponse;
+        let response: TavilyResponse | TavilyExtractResponse;
         const args = request.params.arguments ?? {};
 
         switch (request.params.name) {
@@ -564,6 +655,27 @@ ${IS_KEYLESS
               content: [{
                 type: "text",
                 text: formatResearchResults(researchResponse)
+              }]
+            };
+
+          case "tavily_feedback":
+            const feedbackResponse = await this.feedback({
+              session_id: args.session_id,
+              request_id: args.request_id,
+              agent_score: args.agent_score,
+              human_score: args.human_score,
+              extra_scores: args.extra_scores,
+              comment: args.comment,
+              response_delivered: args.response_delivered,
+              used_urls: args.used_urls,
+              used_ids: args.used_ids,
+              used_citations: args.used_citations,
+              urls_scores: args.urls_scores,
+            });
+            return {
+              content: [{
+                type: "text",
+                text: formatFeedbackResult(feedbackResponse)
               }]
             };
 
@@ -657,22 +769,13 @@ ${IS_KEYLESS
         searchParams.time_range = undefined;
       }
       
-      // Remove empty values
-      const cleanedParams: any = {};
-      for (const key in searchParams) {
-        const value = searchParams[key];
-        // Skip empty strings, null, undefined, and empty arrays
-        if (value !== "" && value !== null && value !== undefined && 
-            !(Array.isArray(value) && value.length === 0)) {
-          cleanedParams[key] = value;
-        }
-      }
-      
+      const cleanedParams = stripEmptyValues(searchParams);
+
       const response = await this.axiosInstance.post(endpoint, cleanedParams);
       return response.data;
   }
 
-  async extract(params: any): Promise<TavilyResponse> {
+  async extract(params: any): Promise<TavilyExtractResponse> {
     const response = await this.axiosInstance.post(this.baseURLs.extract, {
       ...params,
       ...(IS_KEYLESS ? {} : { api_key: API_KEY })
@@ -691,6 +794,14 @@ ${IS_KEYLESS
   async map(params: any): Promise<TavilyMapResponse> {
     const response = await this.axiosInstance.post(this.baseURLs.map, {
       ...params,
+      ...(IS_KEYLESS ? {} : { api_key: API_KEY })
+    });
+    return response.data;
+  }
+
+  async feedback(params: any): Promise<TavilyFeedbackResponse> {
+    const response = await this.axiosInstance.post(this.baseURLs.feedback, {
+      ...stripEmptyValues(params),
       ...(IS_KEYLESS ? {} : { api_key: API_KEY })
     });
     return response.data;
@@ -922,6 +1033,19 @@ ${IS_KEYLESS
   }
 }
 
+function stripEmptyValues(params: Record<string, any>): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const key in params) {
+    const value = params[key];
+    // Skip empty strings, null, undefined, and empty arrays
+    if (value !== "" && value !== null && value !== undefined &&
+        !(Array.isArray(value) && value.length === 0)) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+}
+
 function isKeylessEnvelope(data: any): boolean {
   // Recognises the Tavily API's recoverable-error envelope shape.
   // Used for keyless rate-limit caps and endpoints that require an API key.
@@ -954,50 +1078,6 @@ function formatKeylessEnvelope(data: any): string {
     }
   }
   return lines.filter(Boolean).join('\n');
-}
-
-function formatResults(response: TavilyResponse): string {
-  // Format API response into human-readable text
-  const output: string[] = [];
-
-  // Include answer if available
-  if (response.answer) {
-    output.push(`Answer: ${response.answer}`);
-  }
-
-  // Format detailed search results
-  output.push('Detailed Results:');
-  response.results.forEach(result => {
-    output.push(`\nTitle: ${result.title}`);
-    if (result.id) {
-      output.push(`ID: ${result.id}`);
-    }
-    output.push(`URL: ${result.url}`);
-    output.push(`Content: ${result.content}`);
-    if (result.raw_content) {
-      output.push(`Raw Content: ${result.raw_content}`);
-    }
-    if (result.favicon) {
-      output.push(`Favicon: ${result.favicon}`);
-    }
-  });
-
-    // Add images section if available
-    if (response.images && response.images.length > 0) {
-      output.push('\nImages:');
-      response.images.forEach((image, index) => {
-        if (typeof image === 'string') {
-          output.push(`\n[${index + 1}] URL: ${image}`);
-        } else {
-          output.push(`\n[${index + 1}] URL: ${image.url}`);
-          if (image.description) {
-            output.push(`   Description: ${image.description}`);
-          }
-        }
-      });
-    }  
-
-  return output.join('\n');
 }
 
 function formatCrawlResults(response: TavilyCrawlResponse): string {
@@ -1046,6 +1126,17 @@ function formatResearchResults(response: TavilyResearchResponse): string {
   return response.content || 'No research results available';
 }
 
+function formatFeedbackResult(response: TavilyFeedbackResponse): string {
+  if (response.error) {
+    return `Feedback Error: ${response.error}`;
+  }
+  const parts = [`Feedback submitted (feedback_id: ${response.feedback_id ?? 'unknown'})`];
+  if (response.response_time != null) {
+    parts.push(`response_time: ${response.response_time}s`);
+  }
+  return parts.join(', ');
+}
+
 function listTools(): void {
   const tools = [
     {
@@ -1067,6 +1158,10 @@ function listTools(): void {
     {
       name: "tavily_research",
       description: describeTool("Perform deep multi-source research on a topic, synthesizing across many sources. Escalate here from tavily_search only for broad or complex questions one search cannot answer. Rate-limited (20 requests/min). Returns a markdown text string.", true)
+    },
+    {
+      name: "tavily_feedback",
+      description: describeTool("Submits structured feedback (agent_score, per-result urls_scores, used_ids/citations, comments) on a search request or session via POST /feedback. Score every result honestly and explain any score below 0.5.", true)
     }
   ];
 

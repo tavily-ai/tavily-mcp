@@ -1,6 +1,6 @@
 {
   "name": "tavily-mcp",
-  "version": "0.2.22",
+  "version": "0.2.23",
   "mcpName": "io.github.tavily-ai/tavily-mcp",
   "description": "MCP server for advanced web search using Tavily",
   "repository": {
@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
     "prepare": "npm run build",
+    "test": "npm run build && node --test tests/*.test.mjs",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
     "prepublishOnly": "npm run build"
@@ -46,7 +47,7 @@
   "author": "Tavily",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.30.0",
+    "@modelcontextprotocol/sdk": "1.31.0",
     "dotenv": "^16.4.5",
     "axios": "^1.6.7",
     "yargs": "^17.7.2"
