@@ -18,6 +18,17 @@ const IS_KEYLESS = !API_KEY;
 const HUMAN_ID = process.env.TAVILY_HUMAN_ID;
 const SESSION_ID = randomUUID();
 
+/**
+ * When running without a TAVILY_API_KEY (keyless mode), append a note to the
+ * descriptions of tools that require a key, so agents don't attempt tools that
+ * can't run. tavily_search and tavily_extract work without a key; tavily_crawl,
+ * tavily_map, and tavily_research require the TAVILY_API_KEY environment variable.
+ */
+const KEYLESS_TOOL_NOTE =
+  " Requires the TAVILY_API_KEY environment variable, which is not set (keyless mode); calling this tool returns an 'API key required' message.";
+const describeTool = (description: string, requiresKey: boolean): string =>
+  requiresKey && IS_KEYLESS ? description + KEYLESS_TOOL_NOTE : description;
+
 
 interface TavilyCrawlResponse {
   base_url: string;
@@ -81,6 +92,26 @@ class TavilyClient {
         capabilities: {
           tools: {},
         },
+        instructions: `Tavily provides six tools — five web-research tools plus a feedback utility. Pick the right one:
+
+TOOL SELECTION
+- tavily_search (DEFAULT - start here): fast web search returning titles, URLs, and content snippets. Use for facts, news, current info, lookups. ALWAYS try this first.
+- tavily_research: deep multi-source synthesis for broad or complex questions. Slower; rate-limited (20/min). Escalate from tavily_search only when a single search is insufficient.
+- tavily_extract: read FULL content of specific URLs you ALREADY have. Takes a urls[] array - NOT a search query.
+- tavily_crawl: bulk-extract many pages from one website (configurable depth/breadth). Heavier than tavily_extract.
+- tavily_map: list a website's URLs (site structure) to target crawl/extract.
+- tavily_feedback (optional utility): rate search quality via POST /feedback (agent_score + per-result urls_scores). Use only to give feedback on results — never to fetch web content.
+
+HOW TOOLS COMBINE
+- Find then read: tavily_search to discover a source, then tavily_extract to read it in full.
+- Survey then mine: tavily_map to list a site's URLs, then tavily_crawl to pull them all.
+
+RETURN FORMAT (important)
+Every Tavily tool returns ONE markdown TEXT STRING. The whole result is plain text (titles, URLs, content). It is NOT a JSON object: there is no .results array, no .answer, and no .data property. Treat the return value itself as the text; do not index properties on it.
+
+${IS_KEYLESS
+  ? `Running in KEYLESS mode (no TAVILY_API_KEY set): tavily_search and tavily_extract are available now. tavily_crawl, tavily_map, tavily_research, and tavily_feedback require the TAVILY_API_KEY environment variable and will return an 'API key required' message if called.`
+  : `tavily_search and tavily_extract also work in keyless mode; tavily_crawl, tavily_map, tavily_research, and tavily_feedback require the TAVILY_API_KEY environment variable (currently set). If a result says 'API key required', the key env var is missing.`}`,
       }
     );
 
@@ -157,7 +188,7 @@ class TavilyClient {
       const tools: Tool[] = [
         {
           name: "tavily_search",
-          description: "Search the web for current information on any topic. Use for news, facts, or data beyond your knowledge cutoff. Returns snippets and source URLs.",
+          description: "Search the web for current information on any topic - the DEFAULT tool for facts, news, and lookups (start here). Returns a single markdown text string of titles, URLs, and snippets; the return value is plain text, NOT a JSON object (no .results or .answer array).",
           inputSchema: {
             type: "object",
             properties: {
@@ -246,7 +277,7 @@ class TavilyClient {
         },
         {
           name: "tavily_extract",
-          description: "Extract content from URLs. Returns raw page content in markdown or text format.",
+          description: "Extract the FULL content of specific URLs you already have. Takes a urls[] array - NOT a search query; use tavily_search first to find URLs. Returns a single markdown/text string (not a JSON object).",
           inputSchema: {
             type: "object",
             properties: {
@@ -287,7 +318,7 @@ class TavilyClient {
         },
         {
           name: "tavily_crawl",
-          description: "Crawl a website starting from a URL. Extracts content from pages with configurable depth and breadth.",
+          description: describeTool("Crawl a website from a base URL, bulk-extracting content from many pages with configurable depth and breadth. Heavier than tavily_extract. Returns markdown text.", true),
           inputSchema: {
             type: "object",
             properties: {
@@ -357,7 +388,7 @@ class TavilyClient {
         },
         {
           name: "tavily_map",
-          description: "Map a website's structure. Returns a list of URLs found starting from the base URL.",
+          description: describeTool("Map a website's structure: returns the URLs found starting from a base URL. Use to discover targets for tavily_crawl or tavily_extract. Returns markdown text.", true),
           inputSchema: {
             type: "object",
             properties: {
@@ -410,7 +441,7 @@ class TavilyClient {
         },
         {
           name: "tavily_research",
-          description: "Perform comprehensive research on a given topic or question. Use this tool when you need to gather information from multiple sources to answer a question or complete a task. Returns a detailed response based on the research findings. Rate limit: 20 requests per minute.",
+          description: describeTool("Perform deep multi-source research on a topic, synthesizing across many sources. Escalate here from tavily_search only for broad or complex questions one search cannot answer. Rate-limited (20 requests/min). Returns a markdown text string.", true),
           inputSchema: {
             type: "object",
             properties: {
@@ -430,7 +461,7 @@ class TavilyClient {
         },
         {
           name: "tavily_feedback",
-          description: "Submit feedback for a search request or session via POST /feedback. Maximize useful signal whenever you call this tool:\n1) Scope: set request_id from the search response (and/or session_id).\n2) Per-result urls_scores first — MANDATORY when scoring a search: include an entry for EVERY result in the search response, HELPFUL and WEAK/IRRELEVANT/HARMFUL alike, by id (1 perfect … 0 irrelevant … -1 harmful). Vary scores honestly; do not reuse one default value. Never submit an agent_score with empty urls_scores.\n3) Overall agent_score: derive from those urls_scores (and whether you could answer well). Never default to 0.7. Also set response_delivered.\n4) Provenance: set used_ids for every result you relied on; add used_citations for key snippets when available.\n5) Explain failures: any score < 0.5 needs comment (overall and/or per-result).\n6) Optional depth: extra_scores (e.g. freshness, authority, relevance), human_score, top-level comment.\nPrefer specific, actionable feedback over a sparse payload.",
+          description: describeTool("Submit feedback for a search request or session via POST /feedback. Maximize useful signal whenever you call this tool:\n1) Scope: set request_id from the search response (and/or session_id).\n2) Per-result urls_scores first — MANDATORY when scoring a search: include an entry for EVERY result in the search response, HELPFUL and WEAK/IRRELEVANT/HARMFUL alike, by id (1 perfect … 0 irrelevant … -1 harmful). Vary scores honestly; do not reuse one default value. Never submit an agent_score with empty urls_scores.\n3) Overall agent_score: derive from those urls_scores (and whether you could answer well). Never default to 0.7. Also set response_delivered.\n4) Provenance: set used_ids for every result you relied on; add used_citations for key snippets when available.\n5) Explain failures: any score < 0.5 needs comment (overall and/or per-result).\n6) Optional depth: extra_scores (e.g. freshness, authority, relevance), human_score, top-level comment.\nPrefer specific, actionable feedback over a sparse payload.", true),
           inputSchema: {
             type: "object",
             properties: {
@@ -1110,27 +1141,27 @@ function listTools(): void {
   const tools = [
     {
       name: "tavily_search",
-      description: "A real-time web search tool powered by Tavily's AI engine. Features include customizable search depth (basic/advanced/fast/ultra-fast), domain filtering, time-based filtering, and support for both general and news-specific searches. Returns comprehensive results with titles, URLs, content snippets, and optional image results."
+      description: "Search the web for current information on any topic - the DEFAULT tool for facts, news, and lookups (start here). Returns a single markdown text string of titles, URLs, and snippets; the return value is plain text, NOT a JSON object (no .results or .answer array)."
     },
     {
       name: "tavily_extract",
-      description: "Extracts and processes content from specified URLs with advanced parsing capabilities. Supports both basic and advanced extraction modes, with the latter providing enhanced data retrieval including tables and embedded content. Ideal for data collection, content analysis, and research tasks."
+      description: "Extract the FULL content of specific URLs you already have. Takes a urls[] array - NOT a search query; use tavily_search first to find URLs. Returns a single markdown/text string (not a JSON object)."
     },
     {
       name: "tavily_crawl",
-      description: "A sophisticated web crawler that systematically explores websites starting from a base URL. Features include configurable depth and breadth limits, domain filtering, path pattern matching, and category-based filtering. Perfect for comprehensive site analysis, content discovery, and structured data collection."
+      description: describeTool("Crawl a website from a base URL, bulk-extracting content from many pages with configurable depth and breadth. Heavier than tavily_extract. Returns markdown text.", true)
     },
     {
       name: "tavily_map",
-      description: "Creates detailed site maps by analyzing website structure and navigation paths. Offers configurable exploration depth, domain restrictions, and category filtering. Ideal for site audits, content organization analysis, and understanding website architecture and navigation patterns."
+      description: describeTool("Map a website's structure: returns the URLs found starting from a base URL. Use to discover targets for tavily_crawl or tavily_extract. Returns markdown text.", true)
     },
     {
       name: "tavily_research",
-      description: "Performs comprehensive research on any topic or question by gathering information from multiple sources. Supports different research depths ('mini' for narrow tasks, 'pro' for broad research, 'auto' for automatic selection). Ideal for in-depth analysis, report generation, and answering complex questions requiring synthesis of multiple sources."
+      description: describeTool("Perform deep multi-source research on a topic, synthesizing across many sources. Escalate here from tavily_search only for broad or complex questions one search cannot answer. Rate-limited (20 requests/min). Returns a markdown text string.", true)
     },
     {
       name: "tavily_feedback",
-      description: "Submits structured feedback (agent_score, per-result urls_scores, used_ids/citations, comments) on a search request or session via POST /feedback. Score every result honestly and explain any score below 0.5."
+      description: describeTool("Submits structured feedback (agent_score, per-result urls_scores, used_ids/citations, comments) on a search request or session via POST /feedback. Score every result honestly and explain any score below 0.5.", true)
     }
   ];
 
