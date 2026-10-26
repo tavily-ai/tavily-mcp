@@ -253,3 +253,7 @@ Optional local-server environment variables:
 | `TAVILY_HUMAN_ID` | `X-Human-Id` metadata |
 
 API requests have a 180-second transport timeout; Research streaming also has bounded header, idle and total timers. API `timeout` tool arguments are separate server-side processing budgets.
+
+### Docker and Smithery configuration
+
+The Docker image does not embed a placeholder API key. Supply `TAVILY_API_KEY` at runtime for keyed access, or leave it unset for keyless Search/Extract. Smithery likewise makes `tavilyApiKey` optional and maps `defaultParameters`, `clientName`, `humanId`, `projectId`, `sessionId` and `apiBaseUrl` to the local server's environment settings. Supplying an invalid nonempty key does not select keyless mode. Registry/image updates require a new build and release.
