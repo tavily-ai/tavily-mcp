@@ -2,6 +2,7 @@ export interface TavilyResponse {
   // Response structure from Tavily API
   query: string;
   request_id?: string;
+  usage?: unknown;
   follow_up_questions?: Array<string>;
   answer?: string;
   images?: Array<string | {
@@ -22,6 +23,7 @@ export interface TavilyResponse {
 
 export interface TavilyExtractResponse {
   request_id?: string;
+  usage?: unknown;
   results: Array<{
     url: string;
     title?: string;
@@ -64,6 +66,8 @@ export function formatResults(response: TavilyResponse | TavilyExtractResponse):
     if (result.raw_content) {
       output.push(`Raw Content: ${result.raw_content}`);
     }
+    if ('published_date' in result && result.published_date != null) output.push(`Published Date: ${result.published_date}`);
+    if ('images' in result && result.images?.length) output.push(`Images: ${JSON.stringify(result.images)}`);
     if (result.favicon) {
       output.push(`Favicon: ${result.favicon}`);
     }
@@ -84,5 +88,7 @@ export function formatResults(response: TavilyResponse | TavilyExtractResponse):
       });
     }
 
+  if ('failed_results' in response && response.failed_results.length) output.push(`Failed Results: ${JSON.stringify(response.failed_results)}`);
+  if (response.usage != null) output.push(`Usage: ${JSON.stringify(response.usage)}`);
   return output.join('\n');
 }
