@@ -98,3 +98,25 @@ test('formats Extract results that have no title or content field', () => {
     'Raw Content: Extracted article text.',
   ].join('\n'));
 });
+
+test('includes failed Extract URLs and errors alongside successful results', () => {
+  const output = formatResults({
+    results: [{ url: 'https://example.com/ok', raw_content: 'Readable page.' }],
+    failed_results: [{ url: 'https://example.com/slow', error: 'Request timed out' }],
+    response_time: 0.1,
+  });
+
+  assert.match(output, /Raw Content: Readable page\./);
+  assert.match(output, /Failed Results:\n\nURL: https:\/\/example.com\/slow\nError: Request timed out/);
+});
+
+test('includes failure details when every Extract URL fails', () => {
+  const output = formatResults({
+    results: [],
+    failed_results: [{ url: 'https://example.com/blocked', error: 'Access denied' }],
+    response_time: 0.1,
+  });
+
+  assert.match(output, /URL: https:\/\/example.com\/blocked/);
+  assert.match(output, /Error: Access denied/);
+});
