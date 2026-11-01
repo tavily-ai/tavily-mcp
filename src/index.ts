@@ -29,6 +29,14 @@ const KEYLESS_TOOL_NOTE =
 const describeTool = (description: string, requiresKey: boolean): string =>
   requiresKey && IS_KEYLESS ? description + KEYLESS_TOOL_NOTE : description;
 
+// Sent to MCP clients on initialize; clients such as Claude Code add them to the model's context.
+const SERVER_INSTRUCTIONS =
+  "Researching with Tavily: when a result names a likely answer, read its page with tavily_extract to confirm it " +
+  "before searching more, and name the candidate in your next query when testing it. Keep your best candidate until " +
+  "a source contradicts it; if none confirms it, also search the main alternative by name. Once new searches stop " +
+  "adding evidence, answer with the best-supported candidate, from sources rather than memory, and say what you " +
+  "could not confirm.";
+
 
 interface TavilyCrawlResponse {
   base_url: string;
@@ -86,7 +94,7 @@ class TavilyClient {
     this.server = new Server(
       {
         name: "tavily-mcp",
-        version: "0.2.22",
+        version: "0.2.23",
       },
       {
         capabilities: {
@@ -106,12 +114,16 @@ HOW TOOLS COMBINE
 - Find then read: tavily_search to discover a source, then tavily_extract to read it in full.
 - Survey then mine: tavily_map to list a site's URLs, then tavily_crawl to pull them all.
 
+RESEARCH STRATEGY
+${SERVER_INSTRUCTIONS}
+
 RETURN FORMAT (important)
 Every Tavily tool returns ONE markdown TEXT STRING. The whole result is plain text (titles, URLs, content). It is NOT a JSON object: there is no .results array, no .answer, and no .data property. Treat the return value itself as the text; do not index properties on it.
 
 ${IS_KEYLESS
   ? `Running in KEYLESS mode (no TAVILY_API_KEY set): tavily_search and tavily_extract are available now. tavily_crawl, tavily_map, tavily_research, and tavily_feedback require the TAVILY_API_KEY environment variable and will return an 'API key required' message if called.`
   : `tavily_search and tavily_extract also work in keyless mode; tavily_crawl, tavily_map, tavily_research, and tavily_feedback require the TAVILY_API_KEY environment variable (currently set). If a result says 'API key required', the key env var is missing.`}`,
+
       }
     );
 
@@ -188,18 +200,18 @@ ${IS_KEYLESS
       const tools: Tool[] = [
         {
           name: "tavily_search",
-          description: "Search the web for current information on any topic - the DEFAULT tool for facts, news, and lookups (start here). Returns a single markdown text string of titles, URLs, and snippets; the return value is plain text, NOT a JSON object (no .results or .answer array).",
+          description: "Search the web for current information on any topic - the DEFAULT tool for facts, news, and lookups (start here). Use it for news, facts, or data beyond your knowledge cutoff, and before answering any question about specific facts, figures or recent events. Returns a single markdown text string of titles, URLs, and snippets; the return value is plain text, NOT a JSON object (no .results or .answer array). Results are short excerpts; read a page with tavily_extract to confirm what it says.",
           inputSchema: {
             type: "object",
             properties: {
               query: { 
                 type: "string", 
-                description: "Search query" 
+                description: "Search query. Keep it short and specific, in the words the page itself would use; one idea per query." 
               },
               search_depth: {
                 type: "string",
                 enum: ["basic","advanced","fast","ultra-fast"],
-                description: "The depth of the search. 'basic' for generic results, 'advanced' for more thorough search, 'fast' for optimized low latency with high relevance, 'ultra-fast' for prioritizing latency above all else",
+                description: "The depth of the search. 'basic' for generic results, 'advanced' for more thorough search, 'fast' for optimized low latency with high relevance, 'ultra-fast' for prioritizing latency above all else. Use 'advanced' when looking for a specific fact, page or entity, or when 'basic' did not find it.",
                 default: "basic"
               },
               topic : {
@@ -210,22 +222,22 @@ ${IS_KEYLESS
               },
               time_range: {
                 type: "string",
-                description: "The time range back from the current date to include in the search results",
+                description: "The time range back from the current date to include in the search results. Filters by when a page was published, not by when the events it describes happened.",
                 enum: ["day", "week", "month", "year"]
               },
               start_date: {
                 type: "string",
-                description: "Will return all results after the specified start date. Required to be written in the format YYYY-MM-DD.",
+                description: "Will return all results after the specified start date. Required to be written in the format YYYY-MM-DD. Filters by publish date, not by when events happened; leave it empty when looking for facts about past events.",
                 default: "",
               },
               end_date: { 
                 type: "string",
-                description: "Will return all results before the specified end date. Required to be written in the format YYYY-MM-DD",
+                description: "Will return all results before the specified end date. Required to be written in the format YYYY-MM-DD. Filters by publish date, not by when events happened; leave it empty when looking for facts about past events.",
                 default: "",
               },
               max_results: { 
                 type: "number", 
-                description: "The maximum number of search results to return",
+                description: "The maximum number of search results to return. Ask for 10 when looking for a specific fact, page or entity.",
                 default: 5,
                 minimum: 5,
                 maximum: 20
@@ -242,13 +254,13 @@ ${IS_KEYLESS
               },
               include_raw_content: {
                 type: "boolean",
-                description: "Include the cleaned and parsed HTML content of each search result",
+                description: "Include the cleaned and parsed HTML content of each search result. Whole pages can make the response too large to read; to read one page, use tavily_extract with a query instead.",
                 default: false
               },
               include_domains: {
                 type: "array",
                 items: { type: "string" },
-                description: "A list of domains to specifically include in the search results, if the user asks to search on specific sites set this to the domain of the site",
+                description: "A list of domains to specifically include in the search results, if the user asks to search on specific sites set this to the domain of the site. Use full domains such as 'en.wikipedia.org' or 'sec.gov', not suffixes such as 'edu'. This is a hard filter: if results come back empty or thin, search again without it.",
                 default: []
               },
               exclude_domains: {
@@ -277,14 +289,14 @@ ${IS_KEYLESS
         },
         {
           name: "tavily_extract",
-          description: "Extract the FULL content of specific URLs you already have. Takes a urls[] array - NOT a search query; use tavily_search first to find URLs. Returns a single markdown/text string (not a JSON object).",
+          description: "Extract the FULL content of specific URLs you already have. Takes a urls[] array - NOT a search query; use tavily_search first to find URLs. Use it to read a page in full or to confirm a fact found in search results. Returns a single markdown/text string (not a JSON object). Pages that could not be read are listed in failed_results; retry a timeout once, then try another source.",
           inputSchema: {
             type: "object",
             properties: {
               urls: { 
                 type: "array",
                 items: { type: "string" },
-                description: "List of URLs to extract content from"
+                description: "List of URLs to extract content from. Prefer URLs from search results; guessed page URLs often fail."
               },
               extract_depth: { 
                 type: "string",
@@ -310,7 +322,7 @@ ${IS_KEYLESS
               },
               query: {
                 type: "string",
-                description: "Query to rerank content chunks by relevance"
+                description: "Query to rerank content chunks by relevance. Set it to get only the relevant passages of a long article or PDF. Leave it empty for tables, lists, data files and API responses, which it can cut short; read those whole, or request a narrower URL."
               }
             },
             required: ["urls"]
