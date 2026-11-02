@@ -148,11 +148,11 @@ rm -rf ~/.mcp-auth
 
 #### Choosing an Account for OAuth
 
-After you sign in, Tavily asks which account the connection should use: your personal account or one of your teams. You see this each time you connect, even if you're already signed in. To use a different Tavily login, choose **Use a different account**.
+After you sign in, Tavily asks which account the connection should use: your personal account or one of your organizations. You see this each time you connect, even if you're already signed in. To use a different Tavily login, choose **Use a different account**.
 
 - Requests on that connection use the key named `mcp_auth_default` in the account you chose. If the account doesn't have one, Tavily creates it when you connect.
-- In teams with workspaces, Tavily uses an `mcp_auth_default` key from a workspace you belong to, even if another member created it or your team limits who can create or view keys.
-- If any of your teams doesn't allow personal accounts, Personal isn't offered.
+- Tavily uses your organization's `mcp_auth_default` key even if another member created it or your organization limits who can create or view keys.
+- If any of your organizations doesn't allow personal accounts, Personal isn't offered.
 - If you lose access to the account you chose, or its `mcp_auth_default` key is deleted, requests fail with a message asking you to reconnect. Tavily never switches to another account on its own. Reconnect to choose again.
 
 ## Local MCP 
