@@ -154,7 +154,6 @@ After you sign in, Tavily asks which account the connection should use: your per
 - In teams with workspaces, Tavily uses an `mcp_auth_default` key from a workspace you belong to, even if another member created it or your team limits who can create or view keys.
 - If any of your teams doesn't allow personal accounts, Personal isn't offered.
 - If you lose access to the account you chose, or its `mcp_auth_default` key is deleted, requests fail with a message asking you to reconnect. Tavily never switches to another account on its own. Reconnect to choose again.
-- Connections set up before account selection existed keep their previous key until you reconnect.
 
 ## Local MCP 
 
