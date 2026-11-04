@@ -2,11 +2,20 @@
 // and its body. Printing the whole object writes the customer's key to stderr and from there to
 // whatever collects the MCP client's logs, so log only what is needed to diagnose it.
 
-const KEY = /\btvly-[A-Za-z0-9_-]{16,}/g;
+// Also matches a key whose "-" is percent-encoded (tvly%2Ddev%2D...), as in an encoded URL.
+const KEY = /tvly(?:-|%(?:25)*2[dD])[A-Za-z0-9_%-]{16,}/g;
 const BEARER = /\b(bearer\s+)[A-Za-z0-9._~+/=-]{8,}/gi;
 
+function decode(text: string): string {
+    try {
+        return decodeURIComponent(decodeURIComponent(text));
+    } catch {
+        return text;
+    }
+}
+
 function maskKeys(text: string): string {
-    return text.replace(KEY, (m) => '****' + m.slice(-4)).replace(BEARER, '$1[REDACTED]');
+    return text.replace(KEY, (m) => '****' + decode(m).slice(-4)).replace(BEARER, '$1[REDACTED]');
 }
 
 /** One line: the error's name and message, plus the HTTP status or code when it has one. */

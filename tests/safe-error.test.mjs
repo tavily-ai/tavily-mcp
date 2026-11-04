@@ -34,6 +34,12 @@ test('a key in the message is masked', () => {
     assert.equal(describeError(`Bearer ${KEY}`), 'Bearer ****2345');
 });
 
+test('a key in an encoded URL is masked', () => {
+    const encoded = KEY.replace(/-/g, '%2D');
+    assert.equal(describeError(new Error(`GET /mcp?tavilyApiKey=${encoded}`)), 'Error: GET /mcp?tavilyApiKey=****2345');
+    assert.equal(describeError(KEY.replace(/-/g, '%252D')), '****2345');
+});
+
 test('odd values do not throw', () => {
     assert.equal(describeError(null), 'unknown error');
     assert.equal(describeError(undefined), 'unknown error');
