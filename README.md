@@ -155,6 +155,19 @@ After successful OAuth authentication, you can control which API key is used by 
 - If you have **both** a personal key and a team key named `mcp_auth_default`, the **personal key will be prioritized**.
 - If no `mcp_auth_default` key is set, the `default` key in your personal account will be used. If no `default` key is set, the first available key will be used.
 
+## Connect to FLUJO
+
+[FLUJO](https://github.com/mario-andreschak/FLUJO) can connect to the remote server using Tavily's [keyless access](https://docs.tavily.com/documentation/keyless). This mode needs no account or API key and is free but rate-limited.
+
+1. In FLUJO, open **Connected Apps**, select **Connect App**, and choose **I'm an expert**.
+2. Open **Configure & Test** and enter a **Server name**, such as `Tavily keyless`.
+3. Under **Third, define how to run your server**, select **Streamable HTTP** and set **Server URL** to `https://mcp.tavily.com/mcp/`.
+4. Under **Custom HTTP headers**, select **Add header**. Set **Header** to `X-Tavily-Access-Mode` and **Value** to `keyless`.
+5. Select **3) Test run**. After the connection test passes, select **Add server**.
+6. Open the new server card, select **Tools**, and choose `tavily_search`. Enter a query, set `max_results` to `1` for a small test, and select **Test tool**.
+
+Keyless access supports Search and Extract. Crawl, Map, and Research require an API key, even if they appear in the server's tool list.
+
 ## Local MCP 
 
 ### Prerequisites 🔧
