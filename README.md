@@ -146,14 +146,14 @@ rm -rf ~/.mcp-auth
 > **Note:**
 > - OAuth authentication is optional. You can still use API key authentication at any time by including your Tavily API key in the URL query parameter (`?tavilyApiKey=...`) or by setting it in the `Authorization` header, as described above.
 
-#### Selecting Which API Key Is Used for OAuth
+#### Choosing an Account for OAuth
 
-After successful OAuth authentication, you can control which API key is used by naming it `mcp_auth_default`:
+Each time you connect, Tavily asks whether to use your personal account or one of your organizations. To switch Tavily logins, choose **Use a different account**.
 
-- If you set a key named `mcp_auth_default` in your **personal account**, that key will be used for the auth flow.
-- If you are part of a **team** that has a key named `mcp_auth_default`, that key will be used for the auth flow.
-- If you have **both** a personal key and a team key named `mcp_auth_default`, the **personal key will be prioritized**.
-- If no `mcp_auth_default` key is set, the `default` key in your personal account will be used. If no `default` key is set, the first available key will be used.
+- **Key used**: the account's `mcp_auth_default` key. Tavily creates it if it doesn't exist.
+- **Organization keys**: used even if another member created the key or your organization restricts key access.
+- **Personal accounts off**: if an organization you belong to disables personal accounts, Personal isn't offered.
+- **Lost access**: if you lose access to the account or its key is deleted, requests fail and ask you to reconnect. Tavily never switches accounts on its own.
 
 ## Local MCP 
 
