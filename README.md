@@ -233,3 +233,27 @@ This is **entirely optional** — leave it unset and behavior is unchanged.
 
 - [Model Context Protocol](https://modelcontextprotocol.io) for the MCP specification
 - [Anthropic](https://anthropic.com) for Claude Desktop
+
+## Tool options and responses
+
+The local server exposes the current public Search, Extract, Crawl, Map and Research options in `tools/list`. Search includes domain preference/restriction, language filters, safe search, publication dates (beta), answer/raw-content modes, chunks and usage. Extract/Crawl/Map expose API timeouts and applicable filters. Research accepts domain lists, output length/schema, citation format and base64 text/JSON/Markdown attachments. Research returns one completed tool result; it aggregates polling or the API-required SSE fallback, rather than emitting partial tool results.
+
+`DEFAULT_PARAMETERS` supplies omitted Search arguments only. Explicit values, including `false`, `0` and empty lists, take precedence. Invalid combinations such as chunks with ultra-fast Search fail before an API request. The API remains authoritative for country/language values and attachment size limits.
+
+Every successful tool result includes the complete API response in `structuredContent`, alongside readable text. Research retains structured output, sources and request metadata, and reports failed or interrupted tasks with `isError: true`. Long-running Research can take up to 15 minutes; configure the MCP client's tool timeout accordingly.
+
+Optional local-server environment variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `TAVILY_API_BASE_URL` | API root, default `https://api.tavily.com` |
+| `TAVILY_CLIENT_NAME` | Integration identity sent as `X-Client-Name`; does not replace the server's client source |
+| `TAVILY_PROJECT_ID` | `X-Project-Id` metadata |
+| `TAVILY_SESSION_ID` | `X-Session-Id`; otherwise generated per process |
+| `TAVILY_HUMAN_ID` | `X-Human-Id` metadata |
+
+API requests have a 180-second transport timeout; Research streaming also has bounded header, idle and total timers. API `timeout` tool arguments are separate server-side processing budgets.
+
+### Docker and Smithery configuration
+
+The Docker image does not embed a placeholder API key. Supply `TAVILY_API_KEY` at runtime for keyed access, or leave it unset for keyless Search/Extract. Smithery likewise makes `tavilyApiKey` optional and maps `defaultParameters`, `clientName`, `humanId`, `projectId`, `sessionId` and `apiBaseUrl` to the local server's environment settings. Supplying an invalid nonempty key does not select keyless mode. Registry/image updates require a new build and release.

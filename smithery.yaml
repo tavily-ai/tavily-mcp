@@ -1,17 +1,37 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
-
 startCommand:
   type: stdio
   configSchema:
-    # JSON Schema defining the configuration options for the MCP.
     type: object
-    required:
-      - tavilyApiKey
     properties:
       tavilyApiKey:
         type: string
-        description: The API key for the Tavily MCP server.
-  commandFunction:
-    # A function that produces the CLI command to start the MCP on stdio.
-    |-
-    config => ({ command: 'node', args: ['build/index.js'], env: { TAVILY_API_KEY: config.tavilyApiKey } })
+        description: Optional API key. Omit for keyless Search/Extract; other tools require a key.
+      defaultParameters:
+        type: object
+        description: Defaults for omitted Search arguments; explicit tool arguments take precedence.
+      clientName:
+        type: string
+        description: Integration identity sent as X-Client-Name.
+      humanId:
+        type: string
+        description: Optional opaque end-user identifier.
+      projectId:
+        type: string
+        description: Optional project identifier.
+      sessionId:
+        type: string
+        description: Optional session identifier; otherwise generated.
+      apiBaseUrl:
+        type: string
+        description: Optional API root; defaults to https://api.tavily.com.
+  commandFunction: |-
+    config => ({ command: 'node', args: ['build/index.js'], env: {
+      ...(config.tavilyApiKey ? { TAVILY_API_KEY: config.tavilyApiKey } : {}),
+      ...(config.defaultParameters ? { DEFAULT_PARAMETERS: JSON.stringify(config.defaultParameters) } : {}),
+      ...(config.clientName ? { TAVILY_CLIENT_NAME: config.clientName } : {}),
+      ...(config.humanId ? { TAVILY_HUMAN_ID: config.humanId } : {}),
+      ...(config.projectId ? { TAVILY_PROJECT_ID: config.projectId } : {}),
+      ...(config.sessionId ? { TAVILY_SESSION_ID: config.sessionId } : {}),
+      ...(config.apiBaseUrl ? { TAVILY_API_BASE_URL: config.apiBaseUrl } : {})
+    } })
