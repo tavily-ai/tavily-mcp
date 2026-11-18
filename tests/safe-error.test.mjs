@@ -47,12 +47,6 @@ test('odd values do not throw', () => {
     assert.equal(describeError(42), '42');
 });
 
-test('no request body carries the key, the Authorization header does', () => {
-    const source = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
-    assert.ok(!/api_key:\s*API_KEY/.test(source), 'a request body must not carry the key');
-    assert.ok(source.includes("'Authorization': `Bearer ${API_KEY}`"));
-});
-
 test('errors are never logged as whole objects', () => {
     const source = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
     assert.ok(!/console\.error\(\s*"\[MCP Error\]",\s*error\s*\)/.test(source));

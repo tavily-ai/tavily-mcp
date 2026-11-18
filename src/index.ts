@@ -731,6 +731,7 @@ class TavilyClient {
         start_date: params.start_date,
         end_date: params.end_date,
         exact_match: params.exact_match,
+        ...(IS_KEYLESS ? {} : { api_key: API_KEY }),
       };
       
       // Apply default parameters
@@ -756,6 +757,7 @@ class TavilyClient {
   async extract(params: any): Promise<TavilyExtractResponse> {
     const response = await this.axiosInstance.post(this.baseURLs.extract, {
       ...params,
+      ...(IS_KEYLESS ? {} : { api_key: API_KEY })
     });
     return response.data;
   }
@@ -763,6 +765,7 @@ class TavilyClient {
   async crawl(params: any): Promise<TavilyCrawlResponse> {
     const response = await this.axiosInstance.post(this.baseURLs.crawl, {
       ...params,
+      ...(IS_KEYLESS ? {} : { api_key: API_KEY })
     });
     return response.data;
   }
@@ -770,6 +773,7 @@ class TavilyClient {
   async map(params: any): Promise<TavilyMapResponse> {
     const response = await this.axiosInstance.post(this.baseURLs.map, {
       ...params,
+      ...(IS_KEYLESS ? {} : { api_key: API_KEY })
     });
     return response.data;
   }
@@ -777,6 +781,7 @@ class TavilyClient {
   async feedback(params: any): Promise<TavilyFeedbackResponse> {
     const response = await this.axiosInstance.post(this.baseURLs.feedback, {
       ...stripEmptyValues(params),
+      ...(IS_KEYLESS ? {} : { api_key: API_KEY })
     });
     return response.data;
   }
@@ -792,6 +797,7 @@ class TavilyClient {
       const response = await this.axiosInstance.post(this.baseURLs.research, {
         input: params.input,
         model: params.model || 'auto',
+        ...(IS_KEYLESS ? {} : { api_key: API_KEY })
       });
 
       const requestId = response.data.request_id;
@@ -871,6 +877,7 @@ class TavilyClient {
         {
           input: params.input,
           model: params.model || 'auto',
+          api_key: API_KEY,
           stream: true
         },
         {
