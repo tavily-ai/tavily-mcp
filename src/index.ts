@@ -10,6 +10,7 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { formatResults, type TavilyResponse, type TavilyExtractResponse } from './format-results.js';
+import { describeError } from './safe-error.js';
 
 dotenv.config();
 
@@ -115,7 +116,7 @@ class TavilyClient {
 
   private setupErrorHandling(): void {
     this.server.onerror = (error: any) => {
-      console.error("[MCP Error]", error);
+      console.error("[MCP Error]", describeError(error));
     };
 
     process.on('SIGINT', async () => {
@@ -1175,4 +1176,4 @@ if (argv['list-tools']) {
 
 // Otherwise start the server
 const server = new TavilyClient();
-server.run().catch(console.error);
+server.run().catch((error) => console.error(describeError(error)));
