@@ -69,6 +69,15 @@ export function formatResults(response: TavilyResponse | TavilyExtractResponse):
     }
   });
 
+  if ('failed_results' in response && response.failed_results.length > 0) {
+    output.push('\nFailed Results:');
+    response.failed_results.forEach(result => {
+      output.push('');
+      output.push(`URL: ${result.url}`);
+      output.push(`Error: ${result.error}`);
+    });
+  }
+
     // Add images section if available
     if ('images' in response && response.images && response.images.length > 0) {
       output.push('\nImages:');
