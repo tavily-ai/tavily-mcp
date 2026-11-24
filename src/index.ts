@@ -11,6 +11,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { formatResults, type TavilyResponse, type TavilyExtractResponse } from './format-results.js';
 import { describeError } from './safe-error.js';
+import { splitSseFrames } from './sse-frames.js';
 
 dotenv.config();
 
@@ -970,8 +971,8 @@ class TavilyClient {
         if (settled) return;
         resetIdleTimer();
         buffer += chunk.toString('utf-8');
-        const frames = buffer.split('\n\n');
-        buffer = frames.pop() ?? '';
+        const { frames, rest } = splitSseFrames(buffer);
+        buffer = rest;
         for (const frame of frames) {
           if (settled) break;
           if (frame.trim()) handleFrame(frame);
